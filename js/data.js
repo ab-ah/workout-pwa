@@ -22,7 +22,7 @@ export const PLAN = [
     cardio: "15 min treadmill incline walk, or skip if you're spent — Pull day is long.",
     exercises: [
       { id: 'bent-over-barbell-row', name: 'Bent-Over Barbell Row', setsCount: 4, repRange: '6–8', restSeconds: 90, startWeight: '40–50 kg bar', watchUrl: 'https://www.google.com/search?q=bent+over+barbell+row+form' },
-      { id: 'one-arm-dumbbell-row', name: 'One-Arm Dumbbell Row', setsCount: 3, repRange: '8–10', restSeconds: 75, startWeight: '22–28 kg', watchUrl: 'https://www.google.com/search?q=one+arm+dumbbell+row+form' },
+      { id: 'one-arm-dumbbell-row', name: 'One-Arm Dumbbell Row', setsCount: 3, repRange: '8–10', restSeconds: 75, startWeight: '22–28 kg / hand', watchUrl: 'https://www.google.com/search?q=one+arm+dumbbell+row+form' },
       { id: 'chest-supported-dumbbell-row', name: 'Chest-Supported Dumbbell Row (incline bench)', setsCount: 3, repRange: '10–12', restSeconds: 60, startWeight: '14–18 kg / hand', watchUrl: 'https://www.google.com/search?q=chest+supported+incline+dumbbell+row' },
       { id: 'back-hyperextension', name: 'Back Hyperextension', setsCount: 3, repRange: '12–15', restSeconds: 60, startWeight: 'bodyweight → hold plate', watchUrl: 'https://www.google.com/search?q=back+hyperextension+chair+form' },
       { id: 'preacher-curl', name: 'Preacher Curl (EZ/straight bar)', setsCount: 3, repRange: '8–10', restSeconds: 60, startWeight: '20–30 kg bar', watchUrl: 'https://www.google.com/search?q=barbell+preacher+curl+form' },
