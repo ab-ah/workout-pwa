@@ -14,21 +14,28 @@ export function mountRestTimer(container, durationSeconds, onComplete) {
     <div class="rest-timer">
       <span class="muted">Rest</span>
       <span class="time">${durationSeconds}s</span>
-      <button class="btn-secondary" id="skip-rest">Skip rest</button>
+      <button class="btn-secondary btn-skip-rest">Skip rest</button>
     </div>
   `;
   const timeEl = container.querySelector('.time');
-  const skipBtn = container.querySelector('#skip-rest');
+  const skipBtn = container.querySelector('.btn-skip-rest');
 
   let intervalId = null;
+  let fired = false;
+
+  function complete() {
+    if (fired) return;
+    fired = true;
+    stop();
+    onComplete();
+  }
 
   function tick() {
     const remaining = computeRemainingSeconds(endTimestamp);
     timeEl.textContent = `${remaining}s`;
     if (remaining <= 0) {
-      stop();
       if (navigator.vibrate) navigator.vibrate(200);
-      onComplete();
+      complete();
     }
   }
 
@@ -37,13 +44,15 @@ export function mountRestTimer(container, durationSeconds, onComplete) {
       clearInterval(intervalId);
       intervalId = null;
     }
+    skipBtn.removeEventListener('click', handleSkip);
+  }
+
+  function handleSkip() {
+    complete();
   }
 
   intervalId = setInterval(tick, 250);
-  skipBtn.addEventListener('click', () => {
-    stop();
-    onComplete();
-  });
+  skipBtn.addEventListener('click', handleSkip);
 
   return { stop };
 }
