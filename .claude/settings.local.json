@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bash \"C:/Users/abuhi/.claude/plugins/cache/superpowers-dev/superpowers/5.0.7/skills/brainstorming/scripts/start-server.sh\" --project-dir \"C:/Users/abuhi/Desktop/WorkOut PWA\")",
+      "Bash(bash \"C:/Users/abuhi/.claude/plugins/cache/superpowers-dev/superpowers/5.0.7/skills/brainstorming/scripts/stop-server.sh\" \"C:/Users/abuhi/Desktop/WorkOut PWA/.superpowers/brainstorm/1080-1782848868\")",
+      "Bash(git init *)",
+      "Bash(git add *)",
+      "Bash(git commit *)"
+    ]
+  }
+}
