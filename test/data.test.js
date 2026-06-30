@@ -10,6 +10,8 @@ test('every day has a title, tag, and at least one exercise', () => {
   for (const day of PLAN) {
     assert.equal(typeof day.title, 'string');
     assert.equal(typeof day.tag, 'string');
+    assert.equal(typeof day.colorVar, 'string');
+    assert.ok(day.colorVar.length > 0);
     assert.ok(Array.isArray(day.exercises) && day.exercises.length > 0);
   }
 });
