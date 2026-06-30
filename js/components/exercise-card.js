@@ -10,6 +10,7 @@ export function mountExerciseCard(container, exercise, onExerciseComplete) {
   const loggedSets = [];
   let activeSetIndex = 0;
   let timerHandle = null;
+  let completed = false;
 
   function render() {
     // Stop any running rest timer before wiping the DOM — prevents a leaked
@@ -52,7 +53,10 @@ export function mountExerciseCard(container, exercise, onExerciseComplete) {
       logBtn.addEventListener('click', handleLogSet);
     }
     container.querySelector('#complete-exercise-btn').addEventListener('click', () => {
-      if (loggedSets.length >= exercise.setsCount) onExerciseComplete(loggedSets);
+      if (!completed && loggedSets.length >= exercise.setsCount) {
+        completed = true;
+        onExerciseComplete([...loggedSets]);
+      }
     });
   }
 
