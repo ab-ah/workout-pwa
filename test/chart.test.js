@@ -36,3 +36,13 @@ test('buildChartSVG returns an empty-state message for fewer than 2 points', () 
   const svg = buildChartSVG([], { width: 300, height: 200 });
   assert.match(svg, /No data yet/);
 });
+
+test('buildChartSVG escapes special characters in tooltip', () => {
+  const points = [
+    { date: '<script>', weight: 10, reps: 5 },
+    { date: '2026-06-27', weight: 20, reps: 6 }
+  ];
+  const svg = buildChartSVG(points, { width: 300, height: 200 });
+  assert.ok(!svg.includes('<script>'), 'raw <script> tag must not appear in SVG output');
+  assert.ok(svg.includes('&lt;script&gt;'), 'date must be XML-escaped');
+});
