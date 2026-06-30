@@ -1,4 +1,4 @@
-function escapeXml(s) {
+export function escapeXml(s) {
   return String(s)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -37,8 +37,8 @@ export function buildChartSVG(points, { width = 300, height = 200, padding = 20 
     return `<svg class="chart-svg" viewBox="0 0 ${width} ${height}"><text x="50%" y="50%" text-anchor="middle" fill="#8b94a3" font-size="13">No data yet — log a couple of sessions first</text></svg>`;
   }
 
-  const d = pointsToPath(points, { width, height, padding });
   const mapped = mapPoints(points, { width, height, padding });
+  const d = 'M' + mapped.map(({ x, y }) => `${x},${y}`).join(' L');
 
   const circles = mapped.map(({ x, y, point: p }) =>
     `<circle cx="${x}" cy="${y}" r="3.5" fill="#d6ff3f"><title>${escapeXml(p.date)}: ${escapeXml(p.weight)}kg x ${escapeXml(p.reps ?? '')}</title></circle>`
