@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { pointsToPath, buildChartSVG } from '../js/components/chart.js';
+import { pointsToPath, buildChartSVG, escapeXml } from '../js/components/chart.js';
 
 test('pointsToPath returns empty string for fewer than 2 points', () => {
   assert.equal(pointsToPath([], { width: 100, height: 100 }), '');
@@ -45,4 +45,11 @@ test('buildChartSVG escapes special characters in tooltip', () => {
   const svg = buildChartSVG(points, { width: 300, height: 200 });
   assert.ok(!svg.includes('<script>'), 'raw <script> tag must not appear in SVG output');
   assert.ok(svg.includes('&lt;script&gt;'), 'date must be XML-escaped');
+});
+
+test('escapeXml escapes all five special XML characters', () => {
+  assert.equal(escapeXml('&'), '&amp;');
+  assert.equal(escapeXml('<script>'), '&lt;script&gt;');
+  assert.equal(escapeXml('"quoted"'), '&quot;quoted&quot;');
+  assert.equal(escapeXml('a & b < c > d "e"'), 'a &amp; b &lt; c &gt; d &quot;e&quot;');
 });
