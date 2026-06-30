@@ -78,3 +78,10 @@ test('getExerciseHistory ignores sessions that did not include the exercise', ()
   });
   assert.deepEqual(store.getExerciseHistory('goblet-squat'), []);
 });
+
+test('getHistory returns empty array when JSON is corrupted', () => {
+  const storage = makeMemoryStorage();
+  storage.setItem('leanbuild-history-v2', '[not json');
+  const store = createStore(storage);
+  assert.deepEqual(store.getHistory(), []);
+});

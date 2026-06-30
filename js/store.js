@@ -38,8 +38,7 @@ export function createStore(storage) {
   }
 
   function addSession(session) {
-    const history = getHistory();
-    history.push(session);
+    const history = [...getHistory(), { ...session }];
     saveHistory(history);
     saveProgress({ lastCompletedDayIndex: session.dayIndex, lastCompletedAt: session.date });
     return history;
