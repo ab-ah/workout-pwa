@@ -9,6 +9,7 @@ export function renderToday(container, store) {
   const progress = store.getProgress();
   const todaySessionKey = 'leanbuild-today-session-v2';
   const inProgress = readInProgressSession();
+  let sessionCompleted = false;
 
   if (inProgress) {
     renderExerciseFlow(inProgress.dayIndex, inProgress.exerciseIndex, inProgress.loggedExercises, inProgress.startedAt);
@@ -21,7 +22,18 @@ export function renderToday(container, store) {
     const raw = sessionStorage.getItem(todaySessionKey);
     if (!raw) return null;
     try {
-      return JSON.parse(raw);
+      const parsed = JSON.parse(raw);
+      const { dayIndex, exerciseIndex, loggedExercises, startedAt } = parsed ?? {};
+      if (
+        typeof dayIndex !== 'number' || dayIndex < 0 || dayIndex >= PLAN.length ||
+        typeof exerciseIndex !== 'number' || exerciseIndex < 0 ||
+        !Array.isArray(loggedExercises) ||
+        typeof startedAt !== 'number'
+      ) {
+        sessionStorage.removeItem(todaySessionKey);
+        return null;
+      }
+      return parsed;
     } catch {
       return null;
     }
@@ -81,6 +93,8 @@ export function renderToday(container, store) {
   }
 
   function renderSummary(dayIndex, loggedExercises, startedAt) {
+    if (sessionCompleted) return;
+    sessionCompleted = true;
     const day = PLAN[dayIndex];
     const finishedAt = Date.now();
     const totalSets = loggedExercises.reduce((sum, e) => sum + e.sets.length, 0);
