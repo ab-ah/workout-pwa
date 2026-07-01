@@ -6,7 +6,7 @@ import { mountRestTimer } from './rest-timer.js';
  * `onExerciseComplete(loggedSets)` fires once all sets are logged and the
  * user taps "Mark Exercise Complete". `loggedSets` = [{ weight, reps }, ...]
  */
-export function mountExerciseCard(container, exercise, onExerciseComplete) {
+export function mountExerciseCard(container, exercise, previousSets, onExerciseComplete) {
   const loggedSets = [];
   let activeSetIndex = 0;
   let timerHandle = null;
@@ -27,16 +27,20 @@ export function mountExerciseCard(container, exercise, onExerciseComplete) {
         const s = loggedSets[i];
         rows.push(`<div class="set-row done"><span class="set-label">Set ${i + 1}</span><span>${s.weight}kg x ${s.reps}</span></div>`);
       } else if (i === activeSetIndex) {
+        const prevSessionSet = previousSets ? previousSets[activeSetIndex] ?? previousSets[previousSets.length - 1] : null;
+        const prevLoggedSet = loggedSets.length > 0 ? loggedSets[loggedSets.length - 1] : null;
+        const defaultWeight = prevLoggedSet?.weight ?? prevSessionSet?.weight ?? '';
+        const defaultReps   = prevLoggedSet?.reps   ?? prevSessionSet?.reps   ?? '';
         rows.push(`
           <div class="set-row active" id="active-set-row">
             <span class="set-label">Set ${i + 1}</span>
             <div class="input-group">
               <label class="input-label">Weight</label>
-              <input type="number" inputmode="decimal" class="set-input" id="weight-input" placeholder="kg">
+              <input type="number" inputmode="decimal" class="set-input" id="weight-input" placeholder="kg" value="${defaultWeight}">
             </div>
             <div class="input-group">
               <label class="input-label">Reps</label>
-              <input type="number" inputmode="numeric" class="set-input" id="reps-input" placeholder="${exercise.repRange}">
+              <input type="number" inputmode="numeric" class="set-input" id="reps-input" placeholder="${exercise.repRange}" value="${defaultReps}">
             </div>
             <button class="btn-primary" id="log-set-btn" ${restActive ? 'disabled style="opacity:.45"' : ''}>Log</button>
           </div>
