@@ -3,6 +3,15 @@ import { buildChartSVG } from '../components/chart.js';
 
 const ALL_EXERCISES = PLAN.flatMap((day) => day.exercises);
 
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 export function renderHistory(container, store) {
   let mode = 'log'; // 'log' | 'progress'
 
@@ -29,17 +38,17 @@ export function renderHistory(container, store) {
     }
     body.innerHTML = history.map((session) => `
       <div class="session-row">
-        <strong>${session.dayTitle}</strong> — <span class="muted">${session.date}</span>
+        <strong>${escapeHtml(session.dayTitle)}</strong> — <span class="muted">${escapeHtml(session.date)}</span>
         <div class="muted">${session.exercises.length} exercises</div>
         <ul>
-          ${session.exercises.map((e) => `<li>${e.name}: ${e.sets.map((s) => `${s.weight}kg x ${s.reps}`).join(', ')}</li>`).join('')}
+          ${session.exercises.map((e) => `<li>${escapeHtml(e.name)}: ${e.sets.map((s) => `${escapeHtml(s.weight)}kg x ${escapeHtml(s.reps)}`).join(', ')}</li>`).join('')}
         </ul>
       </div>
     `).join('');
   }
 
   function renderProgress(body) {
-    const options = ALL_EXERCISES.map((e) => `<option value="${e.id}">${e.name}</option>`).join('');
+    const options = ALL_EXERCISES.map((e) => `<option value="${escapeHtml(e.id)}">${escapeHtml(e.name)}</option>`).join('');
     body.innerHTML = `
       <select id="exercise-select" class="set-input" style="width:100%;margin-bottom:14px">${options}</select>
       <div id="chart-slot"></div>
