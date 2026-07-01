@@ -506,7 +506,7 @@ export function createMuscleAtlas(container, options = {}) {
 
   function applyColor(muscleId, cssColor) {
     container.querySelectorAll(`[data-muscle="${muscleId}"]`).forEach(el => {
-      el.setAttribute('fill', cssColor);
+      el.style.fill = cssColor;
     });
   }
 
