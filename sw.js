@@ -10,6 +10,8 @@ const ASSETS = [
   './js/views/today.js',
   './js/views/week.js',
   './js/views/history.js',
+  './js/views/recovery.js',
+  './css/recovery.css',
   './js/components/exercise-card.js',
   './js/components/rest-timer.js',
   './js/components/chart.js',

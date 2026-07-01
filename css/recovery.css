@@ -1,0 +1,22 @@
+.recovery-view { padding: 8px 0 }
+.recovery-header { font-family: 'Anton', sans-serif; font-size: 22px; text-transform: uppercase; margin-bottom: 4px }
+.recovery-sub { color: var(--muted); font-size: 12px; font-family: 'JetBrains Mono', monospace; margin-bottom: 16px }
+
+.body-toggle { display: flex; gap: 8px; margin-bottom: 16px }
+.body-toggle button {
+  flex: 1; padding: 9px; border-radius: 10px; border: 1px solid var(--line);
+  background: var(--panel); color: var(--muted);
+  font-family: 'JetBrains Mono', monospace; font-size: 11px; text-transform: uppercase; cursor: pointer;
+}
+.body-toggle button.active { color: var(--accent); border-color: var(--accent) }
+
+.body-diagram { width: 100%; max-width: 340px; margin: 0 auto 20px; display: block }
+
+.muscle-legend { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px }
+.muscle-item {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
+}
+.muscle-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0 }
+.muscle-name { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink); text-transform: uppercase }
+.muscle-status { font-size: 11px; color: var(--muted); margin-left: auto; font-family: 'JetBrains Mono', monospace }
