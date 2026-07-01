@@ -3,6 +3,7 @@ import { renderToday } from './views/today.js';
 import { renderWeek } from './views/week.js';
 import { renderHistory } from './views/history.js';
 import { renderRecovery } from './views/recovery.js';
+import { renderSettings } from './views/settings.js';
 
 const store = createStore(window.localStorage);
 const viewRoot = document.getElementById('view-root');
@@ -15,7 +16,10 @@ const VIEWS = {
   recovery: () => renderRecovery(viewRoot, store),
 };
 
+let currentTab = 'today';
+
 function setActiveTab(tab) {
+  currentTab = tab;
   navButtons.forEach((btn) => btn.classList.toggle('active', btn.dataset.tab === tab));
   VIEWS[tab]();
 }
@@ -25,6 +29,11 @@ navButtons.forEach((btn) => {
 });
 
 setActiveTab('today');
+
+const settingsGear = document.getElementById('settings-gear-btn');
+settingsGear.addEventListener('click', () => {
+  renderSettings(viewRoot, () => setActiveTab(currentTab));
+});
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
