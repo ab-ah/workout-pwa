@@ -3,7 +3,7 @@ const ROLE_COLORS = {
   synergist: '#cc7733',
   stabilizer: '#999922',
 };
-const DEFAULT_COLOR = '#3a4252';
+const DEFAULT_COLOR = '#2d3a4a';
 
 export const MUSCLE_LABELS = {
   chest: 'Chest', shoulders: 'Shoulders', triceps: 'Triceps',
@@ -24,6 +24,9 @@ function injectStyles() {
   gap: 12px;
   justify-content: center;
   align-items: flex-start;
+  background: #e8edf2;
+  border-radius: 12px;
+  padding: 16px 12px 10px;
 }
 .muscle-atlas-svg {
   width: 140px;
@@ -32,24 +35,24 @@ function injectStyles() {
   display: block;
 }
 .body-base {
-  fill: #2a3040;
+  fill: #9baab8;
 }
 .muscle-path {
-  fill: #3a4252;
-  stroke: #1a2030;
-  stroke-width: 0.5;
+  fill: #2a3340;
+  stroke: #9baab8;
+  stroke-width: 1;
   transition: fill 0.2s ease;
 }
 .interactive .muscle-path {
   cursor: pointer;
 }
 .interactive .muscle-path:hover {
-  filter: brightness(1.25);
+  filter: brightness(1.4);
 }
 .muscle-atlas-label {
   text-align: center;
   font-size: 9px;
-  color: #6b7280;
+  color: #4a5568;
   letter-spacing: 1px;
   text-transform: uppercase;
   margin-top: 4px;
