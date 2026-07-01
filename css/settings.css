@@ -1,4 +1,11 @@
 .settings-view { min-height: 100vh; padding-bottom: 80px }
+.btn-reset-data {
+  width: 100%; background: transparent; border: 1px solid var(--push);
+  color: var(--push); border-radius: 10px; padding: 11px 16px;
+  font-family: 'JetBrains Mono', monospace; font-size: 12px;
+  text-transform: uppercase; letter-spacing: .04em; cursor: pointer;
+  margin-bottom: 12px;
+}
 .settings-header {
   display: flex; align-items: center; justify-content: space-between;
   padding: 14px 0 10px; margin-bottom: 8px;
