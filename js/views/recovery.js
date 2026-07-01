@@ -34,9 +34,10 @@ function getMuscleStatus(muscle, history, settings) {
     if (depletion === 0) continue;
 
     const hoursAgo = (now - sessionTs) / 3600000;
-    // Primary: full recovery time. Secondary: recovers twice as fast.
-    const adjustedHours = recoveryHours * depletion;
-    const fraction = Math.min(1, hoursAgo / adjustedHours);
+    // Primary (depletion=1.0): starts at 0% recovered, climbs to 100% over full hours.
+    // Secondary (depletion=0.5): starts at 50% recovered, climbs to 100% over full hours.
+    const startFraction = 1 - depletion;
+    const fraction = Math.min(1, startFraction + (hoursAgo / recoveryHours) * depletion);
     return { fraction, hoursAgo };
   }
 
