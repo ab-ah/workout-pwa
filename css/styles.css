@@ -111,3 +111,5 @@ body{
 }
 .input-group{display:flex;flex-direction:column;gap:3px}
 .input-label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+
+.exercise-gif{width:100%;max-width:340px;border-radius:12px;margin:10px 0;display:block}

@@ -49,6 +49,13 @@ export function mountExerciseCard(container, exercise, onExerciseComplete) {
     container.innerHTML = `
       <div class="exercise-progress" id="exercise-progress"></div>
       <div class="exercise-name">${exercise.name}</div>
+      <img
+        src="${exercise.gifUrl}"
+        alt="${exercise.name} demonstration"
+        class="exercise-gif"
+        loading="lazy"
+        onerror="this.style.display='none'"
+      >
       <p class="muted">${exercise.repRange} reps · rest ${exercise.restSeconds}s · start ~${exercise.startWeight}</p>
       <div id="set-rows">${rows.join('')}</div>
       <div id="rest-timer-slot"></div>
