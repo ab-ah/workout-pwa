@@ -73,6 +73,14 @@ export function renderToday(container, store) {
     });
   }
 
+  function getLastSetsForExercise(exerciseId, history) {
+    for (let i = history.length - 1; i >= 0; i--) {
+      const ex = history[i].exercises.find(e => e.exerciseId === exerciseId);
+      if (ex && ex.sets.length > 0) return ex.sets;
+    }
+    return null;
+  }
+
   function renderExerciseFlow(dayIndex, exerciseIndex, loggedExercises, startedAt) {
     const day = PLAN[dayIndex];
 
@@ -88,7 +96,10 @@ export function renderToday(container, store) {
     progressLabel.className = 'exercise-progress';
     progressLabel.textContent = `Exercise ${exerciseIndex + 1} of ${day.exercises.length}`;
 
-    mountExerciseCard(slot, exercise, (sets) => {
+    const history = store.getHistory();
+    const lastSets = getLastSetsForExercise(exercise.id, history);
+
+    mountExerciseCard(slot, exercise, lastSets, (sets) => {
       const updatedLogged = [...loggedExercises, { exerciseId: exercise.id, name: exercise.name, sets }];
       const state = { dayIndex, exerciseIndex: exerciseIndex + 1, loggedExercises: updatedLogged, startedAt };
       saveInProgressSession(state);
