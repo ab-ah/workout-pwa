@@ -1,5 +1,6 @@
 import { PLAN } from '../data.js';
 import { mountExerciseCard } from '../components/exercise-card.js';
+import { getSettings } from '../settings-store.js';
 
 /**
  * Renders the Today tab into `container`.
@@ -55,7 +56,7 @@ export function renderToday(container, store) {
 
   function renderDayIntro() {
     const dayIndex = getDayIndex();
-    const day = PLAN[dayIndex];
+    const day = getSettings().days[dayIndex];
     container.innerHTML = `
       <div class="card" style="border-left:4px solid var(${day.colorVar})">
         <span class="muted">Up next</span>
@@ -82,7 +83,7 @@ export function renderToday(container, store) {
   }
 
   function renderExerciseFlow(dayIndex, exerciseIndex, loggedExercises, startedAt) {
-    const day = PLAN[dayIndex];
+    const day = getSettings().days[dayIndex];
 
     if (exerciseIndex >= day.exercises.length) {
       renderSummary(dayIndex, loggedExercises, startedAt);
@@ -112,7 +113,7 @@ export function renderToday(container, store) {
   function renderSummary(dayIndex, loggedExercises, startedAt) {
     if (sessionCompleted) return;
     sessionCompleted = true;
-    const day = PLAN[dayIndex];
+    const day = getSettings().days[dayIndex];
     const finishedAt = Date.now();
     const totalSets = loggedExercises.reduce((sum, e) => sum + e.sets.length, 0);
     const minutes = Math.max(1, Math.round((finishedAt - startedAt) / 60000));

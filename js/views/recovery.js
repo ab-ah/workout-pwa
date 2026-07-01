@@ -16,27 +16,31 @@ function recoveryColor(fraction) {
 function getMuscleStatus(muscle, history, settings) {
   const recoveryHours = settings.recoveryHours[muscle] ?? 48;
   const now = Date.now();
-  let lastTrainedMs = null;
 
   for (let i = history.length - 1; i >= 0; i--) {
     const session = history[i];
-    // Find all muscles trained in this session using settings muscle mappings
-    const trainedMuscles = new Set();
+    // Use actual finish timestamp; fall back to noon of session date if missing
+    const sessionTs = typeof session.finishedAt === 'number'
+      ? session.finishedAt
+      : new Date(session.date + 'T12:00:00').getTime();
+
+    let depletion = 0;
     for (const ex of (session.exercises ?? [])) {
-      for (const m of getExerciseMuscles(ex.exerciseId, settings)) {
-        trainedMuscles.add(m);
-      }
+      const { primary, secondary } = getExerciseMuscles(ex.exerciseId, settings);
+      if (primary.includes(muscle)) { depletion = 1.0; break; }
+      if (secondary.includes(muscle)) depletion = Math.max(depletion, 0.5);
     }
-    if (trainedMuscles.has(muscle)) {
-      lastTrainedMs = new Date(session.date + 'T00:00:00').getTime();
-      break;
-    }
+
+    if (depletion === 0) continue;
+
+    const hoursAgo = (now - sessionTs) / 3600000;
+    // Primary: full recovery time. Secondary: recovers twice as fast.
+    const adjustedHours = recoveryHours * depletion;
+    const fraction = Math.min(1, hoursAgo / adjustedHours);
+    return { fraction, hoursAgo };
   }
 
-  if (lastTrainedMs === null) return { fraction: 1, hoursAgo: null };
-  const hoursAgo = (now - lastTrainedMs) / 3600000;
-  const fraction = Math.min(1, hoursAgo / recoveryHours);
-  return { fraction, hoursAgo };
+  return { fraction: 1, hoursAgo: null }; // never trained
 }
 
 function buildFrontSVG(muscleColors) {

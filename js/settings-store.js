@@ -8,50 +8,66 @@ const DEFAULT_RECOVERY_HOURS = {
   glutes: 72, calves: 48, abs: 36,
 };
 
-// Default muscle groups trained per exercise (exercise id → muscle array)
 const DEFAULT_EXERCISE_MUSCLES = {
-  'flat-barbell-bench-press': ['chest', 'triceps', 'shoulders'],
-  'incline-dumbbell-press': ['chest', 'triceps', 'shoulders'],
-  'seated-dumbbell-shoulder-press': ['shoulders', 'triceps'],
-  'dumbbell-lateral-raise': ['shoulders'],
-  'lying-dumbbell-triceps-extension': ['triceps'],
-  'close-grip-dumbbell-press': ['triceps', 'chest'],
-  'bent-over-barbell-row': ['back', 'biceps', 'rear_delts'],
-  'one-arm-dumbbell-row': ['back', 'biceps'],
-  'chest-supported-dumbbell-row': ['back', 'rear_delts'],
-  'back-hyperextension': ['back', 'glutes', 'hamstrings'],
-  'preacher-curl': ['biceps'],
-  'dumbbell-hammer-curl': ['biceps'],
-  'rear-delt-dumbbell-fly': ['rear_delts', 'shoulders'],
-  'goblet-squat': ['quads', 'glutes'],
-  'dumbbell-romanian-deadlift': ['hamstrings', 'glutes', 'back'],
-  'bulgarian-split-squat': ['quads', 'glutes', 'hamstrings'],
-  'dumbbell-calf-raise': ['calves'],
-  'hanging-leg-raise': ['abs'],
-  'plank': ['abs'],
-  'incline-barbell-bench-press': ['chest', 'triceps', 'shoulders'],
-  'decline-dumbbell-press': ['chest', 'triceps'],
-  'two-arm-dumbbell-row': ['back', 'biceps'],
-  'dumbbell-pullover': ['back', 'chest'],
-  'standing-dumbbell-curl': ['biceps'],
-  'overhead-dumbbell-triceps-extension': ['triceps'],
-  'lateral-raise-dropset': ['shoulders'],
-  'barbell-romanian-deadlift': ['hamstrings', 'glutes', 'back'],
-  'goblet-heels-elevated-squat': ['quads', 'glutes'],
-  'dumbbell-reverse-lunge': ['quads', 'glutes', 'hamstrings'],
-  'weighted-back-hyperextension': ['back', 'glutes', 'hamstrings'],
-  'dumbbell-russian-twist': ['abs'],
-  'weighted-crunch': ['abs'],
-  'dead-bug': ['abs'],
+  'flat-barbell-bench-press':           { primary: ['chest'],            secondary: ['triceps', 'shoulders'] },
+  'incline-dumbbell-press':             { primary: ['chest'],            secondary: ['triceps', 'shoulders'] },
+  'incline-barbell-bench-press':        { primary: ['chest'],            secondary: ['triceps', 'shoulders'] },
+  'decline-dumbbell-press':             { primary: ['chest'],            secondary: ['triceps'] },
+  'seated-dumbbell-shoulder-press':     { primary: ['shoulders'],        secondary: ['triceps'] },
+  'dumbbell-lateral-raise':             { primary: ['shoulders'],        secondary: [] },
+  'lateral-raise-dropset':              { primary: ['shoulders'],        secondary: [] },
+  'lying-dumbbell-triceps-extension':   { primary: ['triceps'],          secondary: [] },
+  'close-grip-dumbbell-press':          { primary: ['triceps'],          secondary: ['chest'] },
+  'overhead-dumbbell-triceps-extension':{ primary: ['triceps'],          secondary: [] },
+  'bent-over-barbell-row':              { primary: ['back'],             secondary: ['biceps', 'rear_delts'] },
+  'one-arm-dumbbell-row':               { primary: ['back'],             secondary: ['biceps'] },
+  'chest-supported-dumbbell-row':       { primary: ['back'],             secondary: ['rear_delts'] },
+  'two-arm-dumbbell-row':               { primary: ['back'],             secondary: ['biceps'] },
+  'dumbbell-pullover':                  { primary: ['back'],             secondary: ['chest'] },
+  'back-hyperextension':                { primary: ['back'],             secondary: ['glutes', 'hamstrings'] },
+  'weighted-back-hyperextension':       { primary: ['back'],             secondary: ['glutes', 'hamstrings'] },
+  'preacher-curl':                      { primary: ['biceps'],           secondary: [] },
+  'dumbbell-hammer-curl':               { primary: ['biceps'],           secondary: [] },
+  'standing-dumbbell-curl':             { primary: ['biceps'],           secondary: [] },
+  'rear-delt-dumbbell-fly':             { primary: ['rear_delts'],       secondary: ['shoulders'] },
+  'goblet-squat':                       { primary: ['quads'],            secondary: ['glutes'] },
+  'goblet-heels-elevated-squat':        { primary: ['quads'],            secondary: ['glutes'] },
+  'bulgarian-split-squat':              { primary: ['quads', 'glutes'],  secondary: ['hamstrings'] },
+  'dumbbell-reverse-lunge':             { primary: ['quads', 'glutes'],  secondary: ['hamstrings'] },
+  'dumbbell-romanian-deadlift':         { primary: ['hamstrings'],       secondary: ['glutes', 'back'] },
+  'barbell-romanian-deadlift':          { primary: ['hamstrings'],       secondary: ['glutes', 'back'] },
+  'dumbbell-calf-raise':                { primary: ['calves'],           secondary: [] },
+  'hanging-leg-raise':                  { primary: ['abs'],              secondary: [] },
+  'plank':                              { primary: ['abs'],              secondary: [] },
+  'dumbbell-russian-twist':             { primary: ['abs'],              secondary: [] },
+  'weighted-crunch':                    { primary: ['abs'],              secondary: [] },
+  'dead-bug':                           { primary: ['abs'],              secondary: [] },
 };
 
 export function getSettings() {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    return raw ? JSON.parse(raw) : buildDefaults();
+    if (!raw) return buildDefaults();
+    const parsed = JSON.parse(raw);
+    return migrateSettings(parsed);
   } catch {
     return buildDefaults();
   }
+}
+
+function migrateSettings(settings) {
+  for (const day of (settings.days ?? [])) {
+    for (const ex of (day.exercises ?? [])) {
+      if (ex.muscles && !ex.primaryMuscles) {
+        ex.primaryMuscles = ex.muscles;
+        ex.secondaryMuscles = [];
+        delete ex.muscles;
+      }
+      ex.primaryMuscles = ex.primaryMuscles ?? [];
+      ex.secondaryMuscles = ex.secondaryMuscles ?? [];
+    }
+  }
+  return settings;
 }
 
 export function saveSettings(settings) {
@@ -64,6 +80,7 @@ export function buildDefaults() {
       title: day.title,
       tag: day.tag,
       colorVar: day.colorVar,
+      focus: day.focus,
       exercises: day.exercises.map(ex => ({
         id: ex.id,
         name: ex.name,
@@ -72,7 +89,8 @@ export function buildDefaults() {
         restSeconds: ex.restSeconds,
         startWeight: ex.startWeight,
         gifUrl: ex.gifUrl,
-        muscles: DEFAULT_EXERCISE_MUSCLES[ex.id] ?? [],
+        primaryMuscles: DEFAULT_EXERCISE_MUSCLES[ex.id]?.primary ?? [],
+        secondaryMuscles: DEFAULT_EXERCISE_MUSCLES[ex.id]?.secondary ?? [],
       })),
     })),
     recoveryHours: { ...DEFAULT_RECOVERY_HOURS },
@@ -82,7 +100,7 @@ export function buildDefaults() {
 export function getExerciseMuscles(exerciseId, settings) {
   for (const day of settings.days) {
     const ex = day.exercises.find(e => e.id === exerciseId);
-    if (ex) return ex.muscles ?? [];
+    if (ex) return { primary: ex.primaryMuscles ?? [], secondary: ex.secondaryMuscles ?? [] };
   }
-  return [];
+  return { primary: [], secondary: [] };
 }
