@@ -1,12 +1,5 @@
 import { getSettings, getExerciseMuscles } from '../settings-store.js';
-import { createMuscleAtlas } from '../components/muscle-atlas.js';
-
-const MUSCLE_LABELS = {
-  chest: 'Chest', shoulders: 'Shoulders', triceps: 'Triceps',
-  back: 'Back / Lats', biceps: 'Biceps', rear_delts: 'Rear Delts',
-  quads: 'Quads', hamstrings: 'Hamstrings', glutes: 'Glutes',
-  calves: 'Calves', abs: 'Abs / Core',
-};
+import { createMuscleAtlas, MUSCLE_LABELS } from '../components/muscle-atlas.js';
 
 const DEPLETION_BY_ROLE = {
   prime_mover: 1.0,

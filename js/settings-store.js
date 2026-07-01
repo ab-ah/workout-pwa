@@ -1,47 +1,93 @@
 export const SETTINGS_KEY = 'leanbuild-settings-v1';
 
 const DEFAULT_RECOVERY_HOURS = {
-  chest: 60, shoulders: 48, triceps: 48, back: 72,
-  biceps: 48, rear_delts: 48, quads: 72, hamstrings: 72,
-  glutes: 72, calves: 48, abs: 36,
+  chest: 60, shoulders: 48, traps: 48, triceps: 48, back: 72,
+  lower_back: 84, biceps: 48, forearms: 40, rear_delts: 48,
+  quads: 72, hamstrings: 72, glutes: 72, calves: 48,
+  abs: 36, obliques: 36,
 };
 
 // 4-level fatigue model: prime_mover=1.0, synergist=0.67, stabilizer=0.33, absent=0.0
 const DEFAULT_EXERCISE_MUSCLES = {
   'flat-barbell-bench-press':            { chest: 'prime_mover', triceps: 'synergist', shoulders: 'synergist' },
-  'incline-dumbbell-press':              { chest: 'prime_mover', triceps: 'synergist', shoulders: 'synergist' },
-  'incline-barbell-bench-press':         { chest: 'prime_mover', triceps: 'synergist', shoulders: 'synergist' },
+  'incline-dumbbell-press':              { chest: 'prime_mover', shoulders: 'synergist', triceps: 'synergist' },
+  'incline-barbell-bench-press':         { chest: 'prime_mover', shoulders: 'synergist', triceps: 'synergist' },
   'decline-dumbbell-press':              { chest: 'prime_mover', triceps: 'synergist' },
-  'seated-dumbbell-shoulder-press':      { shoulders: 'prime_mover', triceps: 'synergist' },
-  'dumbbell-lateral-raise':              { shoulders: 'prime_mover' },
-  'lateral-raise-dropset':               { shoulders: 'prime_mover' },
+  'seated-dumbbell-shoulder-press':      { shoulders: 'prime_mover', triceps: 'synergist', traps: 'stabilizer' },
+  'dumbbell-lateral-raise':              { shoulders: 'prime_mover', traps: 'stabilizer' },
+  'lateral-raise-dropset':               { shoulders: 'prime_mover', traps: 'stabilizer' },
   'lying-dumbbell-triceps-extension':    { triceps: 'prime_mover' },
   'close-grip-dumbbell-press':           { triceps: 'prime_mover', chest: 'synergist' },
   'overhead-dumbbell-triceps-extension': { triceps: 'prime_mover' },
-  'bent-over-barbell-row':               { back: 'prime_mover', biceps: 'synergist', rear_delts: 'synergist' },
-  'one-arm-dumbbell-row':                { back: 'prime_mover', biceps: 'synergist' },
-  'chest-supported-dumbbell-row':        { back: 'prime_mover', rear_delts: 'synergist' },
-  'two-arm-dumbbell-row':                { back: 'prime_mover', biceps: 'synergist' },
+  'bent-over-barbell-row':               { back: 'prime_mover', biceps: 'synergist', rear_delts: 'synergist', forearms: 'stabilizer', lower_back: 'stabilizer' },
+  'one-arm-dumbbell-row':                { back: 'prime_mover', biceps: 'synergist', forearms: 'stabilizer' },
+  'chest-supported-dumbbell-row':        { back: 'prime_mover', rear_delts: 'synergist', biceps: 'synergist' },
+  'two-arm-dumbbell-row':                { back: 'prime_mover', biceps: 'synergist', forearms: 'stabilizer', lower_back: 'stabilizer' },
   'dumbbell-pullover':                   { back: 'prime_mover', chest: 'synergist' },
-  'back-hyperextension':                 { back: 'prime_mover', glutes: 'synergist', hamstrings: 'synergist' },
-  'weighted-back-hyperextension':        { back: 'prime_mover', glutes: 'synergist', hamstrings: 'synergist' },
-  'preacher-curl':                       { biceps: 'prime_mover' },
-  'dumbbell-hammer-curl':                { biceps: 'prime_mover' },
-  'standing-dumbbell-curl':              { biceps: 'prime_mover' },
-  'rear-delt-dumbbell-fly':              { rear_delts: 'prime_mover', shoulders: 'synergist' },
-  'goblet-squat':                        { quads: 'prime_mover', glutes: 'synergist' },
-  'goblet-heels-elevated-squat':         { quads: 'prime_mover', glutes: 'synergist' },
-  'bulgarian-split-squat':               { quads: 'prime_mover', glutes: 'prime_mover', hamstrings: 'synergist' },
-  'dumbbell-reverse-lunge':              { quads: 'prime_mover', glutes: 'prime_mover', hamstrings: 'synergist' },
-  'dumbbell-romanian-deadlift':          { hamstrings: 'prime_mover', glutes: 'synergist', back: 'stabilizer' },
-  'barbell-romanian-deadlift':           { hamstrings: 'prime_mover', glutes: 'synergist', back: 'stabilizer' },
+  'back-hyperextension':                 { lower_back: 'prime_mover', glutes: 'synergist', hamstrings: 'synergist' },
+  'weighted-back-hyperextension':        { lower_back: 'prime_mover', glutes: 'synergist', hamstrings: 'synergist' },
+  'preacher-curl':                       { biceps: 'prime_mover', forearms: 'synergist' },
+  'dumbbell-hammer-curl':                { biceps: 'prime_mover', forearms: 'synergist' },
+  'standing-dumbbell-curl':              { biceps: 'prime_mover', forearms: 'synergist' },
+  'rear-delt-dumbbell-fly':              { rear_delts: 'prime_mover', traps: 'synergist' },
+  'goblet-squat':                        { quads: 'prime_mover', glutes: 'synergist', abs: 'stabilizer', lower_back: 'stabilizer' },
+  'goblet-heels-elevated-squat':         { quads: 'prime_mover', glutes: 'synergist', abs: 'stabilizer' },
+  'bulgarian-split-squat':               { quads: 'prime_mover', glutes: 'prime_mover', hamstrings: 'synergist', abs: 'stabilizer' },
+  'dumbbell-reverse-lunge':              { quads: 'prime_mover', glutes: 'prime_mover', hamstrings: 'synergist', abs: 'stabilizer' },
+  'dumbbell-romanian-deadlift':          { hamstrings: 'prime_mover', glutes: 'synergist', lower_back: 'synergist', forearms: 'stabilizer' },
+  'barbell-romanian-deadlift':           { hamstrings: 'prime_mover', glutes: 'synergist', lower_back: 'synergist', forearms: 'stabilizer' },
   'dumbbell-calf-raise':                 { calves: 'prime_mover' },
   'hanging-leg-raise':                   { abs: 'prime_mover' },
-  'plank':                               { abs: 'prime_mover' },
-  'dumbbell-russian-twist':              { abs: 'prime_mover' },
+  'plank':                               { abs: 'prime_mover', obliques: 'synergist', lower_back: 'stabilizer' },
+  'dumbbell-russian-twist':              { obliques: 'prime_mover', abs: 'synergist' },
   'weighted-crunch':                     { abs: 'prime_mover' },
-  'dead-bug':                            { abs: 'prime_mover' },
+  'dead-bug':                            { abs: 'prime_mover', obliques: 'synergist' },
 };
+
+// Muscle groups introduced after the original 11-group model. Used by
+// migration to enrich stored exercises without clobbering user edits.
+const NEW_MUSCLE_IDS = ['traps', 'forearms', 'lower_back', 'obliques'];
+
+// Pre-expansion defaults for exercises whose assignments changed beyond
+// simple additions. If a stored exercise still matches its legacy default
+// exactly (user never customised it), migration upgrades it wholesale.
+const LEGACY_EXERCISE_MUSCLES = {
+  'back-hyperextension':          { back: 'prime_mover', glutes: 'synergist', hamstrings: 'synergist' },
+  'weighted-back-hyperextension': { back: 'prime_mover', glutes: 'synergist', hamstrings: 'synergist' },
+  'dumbbell-russian-twist':       { abs: 'prime_mover' },
+  'rear-delt-dumbbell-fly':       { rear_delts: 'prime_mover', shoulders: 'synergist' },
+  'dumbbell-romanian-deadlift':   { hamstrings: 'prime_mover', glutes: 'synergist', back: 'stabilizer' },
+  'barbell-romanian-deadlift':    { hamstrings: 'prime_mover', glutes: 'synergist', back: 'stabilizer' },
+};
+
+function musclesEqual(a, b) {
+  const aKeys = Object.keys(a);
+  const bKeys = Object.keys(b);
+  return aKeys.length === bKeys.length && aKeys.every(k => a[k] === b[k]);
+}
+
+/**
+ * Enrich a stored exercise with the expanded muscle groups. Untouched
+ * legacy assignments are upgraded to the new defaults wholesale; customised
+ * ones only gain roles for the brand-new muscle groups.
+ */
+function upgradeExerciseMuscles(ex) {
+  const current = DEFAULT_EXERCISE_MUSCLES[ex.id];
+  if (!current) return ex;
+  const muscles = ex.muscles ?? {};
+
+  const legacy = LEGACY_EXERCISE_MUSCLES[ex.id];
+  if (legacy && musclesEqual(muscles, legacy)) {
+    return { ...ex, muscles: { ...current } };
+  }
+
+  const added = {};
+  for (const m of NEW_MUSCLE_IDS) {
+    if (current[m] && !(m in muscles)) added[m] = current[m];
+  }
+  if (Object.keys(added).length === 0) return ex;
+  return { ...ex, muscles: { ...muscles, ...added } };
+}
 
 // All exercise data self-contained (no import from data.js)
 const EXERCISE_POOL_DATA = [
@@ -226,19 +272,20 @@ function migrateSettings(settings) {
     });
 
     return {
-      exercises: Array.from(exerciseMap.values()),
+      exercises: Array.from(exerciseMap.values()).map(upgradeExerciseMuscles),
       routines,
       schedule,
-      recoveryHours: settings.recoveryHours ?? { ...DEFAULT_RECOVERY_HOURS },
+      recoveryHours: { ...DEFAULT_RECOVERY_HOURS, ...(settings.recoveryHours ?? {}) },
     };
   }
 
-  // Already new format — ensure required fields exist
+  // Already new format — ensure required fields exist and merge in any
+  // muscle groups added since the settings were last saved
   return {
-    exercises: settings.exercises ?? [],
+    exercises: (settings.exercises ?? []).map(upgradeExerciseMuscles),
     routines: settings.routines ?? [],
     schedule: settings.schedule ?? { ...DEFAULT_SCHEDULE },
-    recoveryHours: settings.recoveryHours ?? { ...DEFAULT_RECOVERY_HOURS },
+    recoveryHours: { ...DEFAULT_RECOVERY_HOURS, ...(settings.recoveryHours ?? {}) },
   };
 }
 
