@@ -1,4 +1,5 @@
 import { getSettings, saveSettings, buildDefaults } from '../settings-store.js';
+import { PROGRESS_KEY, HISTORY_KEY } from '../store.js';
 
 const MUSCLE_NAMES = {
   chest: 'Chest', shoulders: 'Shoulders', triceps: 'Triceps',
@@ -22,8 +23,9 @@ export function renderSettings(container, onClose) {
         <div class="settings-header">
           <button class="settings-back" id="settings-close">✕ Close</button>
           <span class="settings-title">Settings</span>
-          <button class="settings-reset" id="settings-reset">Reset</button>
+          <button class="settings-reset" id="settings-reset">Reset Config</button>
         </div>
+        <button class="btn-reset-data" id="settings-reset-data">🗑 Reset User Data</button>
         <div class="settings-tabs">
           <button class="${activeSection === 'exercises' ? 'active' : ''}" data-sec="exercises">Exercises</button>
           <button class="${activeSection === 'recovery' ? 'active' : ''}" data-sec="recovery">Recovery</button>
@@ -39,6 +41,14 @@ export function renderSettings(container, onClose) {
         expandedExerciseIndex = null;
         save();
         render();
+      }
+    });
+    container.querySelector('#settings-reset-data').addEventListener('click', () => {
+      if (confirm('Clear all workout history, progress, and logged data?\n\nYour exercise list and settings will be kept.')) {
+        localStorage.removeItem(PROGRESS_KEY);
+        localStorage.removeItem(HISTORY_KEY);
+        sessionStorage.removeItem('leanbuild-today-session-v2');
+        alert('User data cleared.');
       }
     });
     container.querySelectorAll('.settings-tabs button').forEach(btn => {
@@ -92,7 +102,7 @@ export function renderSettings(container, onClose) {
           <div class="settings-ex-card-body">
             <div class="settings-field">
               <label class="settings-field-label">Name</label>
-              <input type="text" class="set-input settings-name-input" data-ex="${i}" value="${ex.name}">
+              <input type="text" class="set-input settings-name-input" style="width:100%" data-ex="${i}" value="${ex.name}">
             </div>
             <div class="settings-field">
               <label class="settings-field-label">Sets</label>
