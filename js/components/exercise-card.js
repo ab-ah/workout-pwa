@@ -36,7 +36,7 @@ export function mountExerciseCard(container, exercise, previousSets, onExerciseC
             <span class="set-label">Set ${i + 1}</span>
             <div class="input-group">
               <label class="input-label">Weight</label>
-              <input type="number" inputmode="decimal" class="set-input" id="weight-input" placeholder="kg" value="${defaultWeight}">
+              <input type="number" inputmode="decimal" class="set-input" id="weight-input" placeholder="${exercise.startWeight ?? 'kg'}" value="${defaultWeight}">
             </div>
             <div class="input-group">
               <label class="input-label">Reps</label>
@@ -75,9 +75,14 @@ export function mountExerciseCard(container, exercise, previousSets, onExerciseC
     if (logBtn) {
       logBtn.addEventListener('click', handleLogSet);
     }
-    container.querySelector('#complete-exercise-btn').addEventListener('click', () => {
-      if (!completed) onExerciseComplete([...loggedSets]);
-    });
+    const completeBtn = container.querySelector('#complete-exercise-btn');
+    if (completeBtn) {
+      completeBtn.addEventListener('click', () => {
+        if (completed) return;
+        completed = true;
+        onExerciseComplete([...loggedSets]);
+      });
+    }
   }
 
   function handleLogSet() {
