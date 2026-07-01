@@ -187,6 +187,83 @@
   border-radius: 12px;
 }
 
+/* Schedule tab */
+.schedule-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.schedule-day {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+.schedule-day-name {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--muted);
+  width: 90px;
+  flex-shrink: 0;
+}
+.schedule-day select.set-input {
+  flex: 1;
+}
+
+/* Routines tab */
+.routine-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.routine-ex-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.routine-ex-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+}
+.routine-ex-item:last-child {
+  border-bottom: none;
+}
+
+/* Atlas role legend (used in settings exercise cards) */
+.atlas-role-legend {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.atlas-role-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: #9ca3af;
+}
+.atlas-role-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
 /* Gear icon button — fixed top-right */
 .settings-gear {
   position: fixed; top: 14px; right: 16px; z-index: 100;
