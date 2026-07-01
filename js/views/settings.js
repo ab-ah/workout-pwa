@@ -1,13 +1,8 @@
 import { getSettings, saveSettings } from '../settings-store.js';
 import { PROGRESS_KEY, HISTORY_KEY } from '../store.js';
-import { createMuscleAtlas, ROLE_COLORS } from '../components/muscle-atlas.js';
+import { createMuscleAtlas, ROLE_COLORS, MUSCLE_LABELS } from '../components/muscle-atlas.js';
 
-const MUSCLE_NAMES = {
-  chest: 'Chest', shoulders: 'Shoulders', triceps: 'Triceps',
-  back: 'Back', biceps: 'Biceps', rear_delts: 'Rear Delts',
-  quads: 'Quads', hamstrings: 'Hamstrings', glutes: 'Glutes',
-  calves: 'Calves', abs: 'Abs',
-};
+const MUSCLE_NAMES = MUSCLE_LABELS;
 const ALL_MUSCLES = Object.keys(MUSCLE_NAMES);
 
 const ROUTINE_COLOR_OPTIONS = [
