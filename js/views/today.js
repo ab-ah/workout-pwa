@@ -1,4 +1,3 @@
-import { PLAN } from '../data.js';
 import { mountExerciseCard } from '../components/exercise-card.js';
 import { getSettings } from '../settings-store.js';
 
@@ -7,26 +6,44 @@ import { getSettings } from '../settings-store.js';
  * `store` is the object returned by createStore(localStorage).
  */
 export function renderToday(container, store) {
-  const progress = store.getProgress();
   const todaySessionKey = 'leanbuild-today-session-v2';
   const inProgress = readInProgressSession();
   let sessionCompleted = false;
 
   if (inProgress) {
-    renderExerciseFlow(inProgress.dayIndex, inProgress.exerciseIndex, inProgress.loggedExercises, inProgress.startedAt);
-    return;
+    const settings = getSettings();
+    const scheduled = getScheduledRoutine(settings);
+    // If the in-progress routine no longer exists in settings, discard it
+    if (!scheduled || scheduled.routine.id !== inProgress.routineId) {
+      clearInProgressSession();
+    } else {
+      renderExerciseFlow(inProgress.routineId, inProgress.exerciseIndex, inProgress.loggedExercises, inProgress.startedAt);
+      return;
+    }
   }
 
   renderDayIntro();
+
+  function getScheduledRoutine(settings) {
+    const dow = new Date().getDay(); // 0=Sun to 6=Sat
+    const routineId = settings.schedule?.[String(dow)] ?? null;
+    if (!routineId) return null;
+    const routine = settings.routines?.find(r => r.id === routineId);
+    if (!routine) return null;
+    const exercises = (routine.exerciseIds ?? [])
+      .map(id => settings.exercises?.find(e => e.id === id))
+      .filter(Boolean);
+    return { routine, exercises };
+  }
 
   function readInProgressSession() {
     const raw = sessionStorage.getItem(todaySessionKey);
     if (!raw) return null;
     try {
       const parsed = JSON.parse(raw);
-      const { dayIndex, exerciseIndex, loggedExercises, startedAt } = parsed ?? {};
+      const { routineId, exerciseIndex, loggedExercises, startedAt } = parsed ?? {};
       if (
-        typeof dayIndex !== 'number' || dayIndex < 0 || dayIndex >= PLAN.length ||
+        typeof routineId !== 'string' || !routineId ||
         typeof exerciseIndex !== 'number' || exerciseIndex < 0 ||
         !Array.isArray(loggedExercises) ||
         typeof startedAt !== 'number'
@@ -48,29 +65,35 @@ export function renderToday(container, store) {
     sessionStorage.removeItem(todaySessionKey);
   }
 
-  function getDayIndex() {
-    const dow = new Date().getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
-    const map = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 4 };
-    return map[dow] ?? 0; // Weekend → Monday (Push)
-  }
-
   function renderDayIntro() {
-    const dayIndex = getDayIndex();
-    const day = getSettings().days[dayIndex];
+    const settings = getSettings();
+    const scheduled = getScheduledRoutine(settings);
+
+    if (!scheduled) {
+      container.innerHTML = `
+        <div class="card">
+          <span class="muted">Today</span>
+          <h2>Rest Day</h2>
+          <p class="muted">No workout scheduled for today. Recovery in progress.</p>
+        </div>
+      `;
+      return;
+    }
+
+    const { routine, exercises } = scheduled;
     container.innerHTML = `
-      <div class="card" style="border-left:4px solid var(${day.colorVar})">
+      <div class="card" style="border-left:4px solid var(${routine.colorVar})">
         <span class="muted">Up next</span>
-        <h2>${day.title}</h2>
-        <p class="muted">${day.tag}</p>
-        <p class="muted" style="margin-top:8px">${day.focus}</p>
-        <p class="muted" style="margin-top:10px">${day.exercises.length} exercises</p>
+        <h2>${routine.name}</h2>
+        <p class="muted">${routine.tag}</p>
+        <p class="muted" style="margin-top:10px">${exercises.length} exercises</p>
         <button class="btn-primary" id="start-workout-btn">Start Workout</button>
       </div>
     `;
     container.querySelector('#start-workout-btn').addEventListener('click', () => {
-      const state = { dayIndex, exerciseIndex: 0, loggedExercises: [], startedAt: Date.now() };
+      const state = { routineId: routine.id, exerciseIndex: 0, loggedExercises: [], startedAt: Date.now() };
       saveInProgressSession(state);
-      renderExerciseFlow(state.dayIndex, state.exerciseIndex, state.loggedExercises, state.startedAt);
+      renderExerciseFlow(state.routineId, state.exerciseIndex, state.loggedExercises, state.startedAt);
     });
   }
 
@@ -82,46 +105,55 @@ export function renderToday(container, store) {
     return null;
   }
 
-  function renderExerciseFlow(dayIndex, exerciseIndex, loggedExercises, startedAt) {
-    const day = getSettings().days[dayIndex];
-
-    if (exerciseIndex >= day.exercises.length) {
-      renderSummary(dayIndex, loggedExercises, startedAt);
+  function renderExerciseFlow(routineId, exerciseIndex, loggedExercises, startedAt) {
+    const settings = getSettings();
+    const routine = settings.routines?.find(r => r.id === routineId);
+    if (!routine) {
+      clearInProgressSession();
+      renderDayIntro();
       return;
     }
 
-    const exercise = day.exercises[exerciseIndex];
+    const exercises = (routine.exerciseIds ?? [])
+      .map(id => settings.exercises?.find(e => e.id === id))
+      .filter(Boolean);
+
+    if (exerciseIndex >= exercises.length) {
+      renderSummary(routineId, routine, loggedExercises, startedAt);
+      return;
+    }
+
+    const exercise = exercises[exerciseIndex];
     container.innerHTML = `<div class="card" id="exercise-card-slot"></div>`;
     const slot = container.querySelector('#exercise-card-slot');
     const progressLabel = document.createElement('div');
     progressLabel.className = 'exercise-progress';
-    progressLabel.textContent = `Exercise ${exerciseIndex + 1} of ${day.exercises.length}`;
+    progressLabel.textContent = `Exercise ${exerciseIndex + 1} of ${exercises.length}`;
 
     const history = store.getHistory();
     const lastSets = getLastSetsForExercise(exercise.id, history);
 
     mountExerciseCard(slot, exercise, lastSets, (sets) => {
       const updatedLogged = [...loggedExercises, { exerciseId: exercise.id, name: exercise.name, sets }];
-      const state = { dayIndex, exerciseIndex: exerciseIndex + 1, loggedExercises: updatedLogged, startedAt };
+      const state = { routineId, exerciseIndex: exerciseIndex + 1, loggedExercises: updatedLogged, startedAt };
       saveInProgressSession(state);
-      renderExerciseFlow(dayIndex, exerciseIndex + 1, updatedLogged, startedAt);
+      renderExerciseFlow(routineId, exerciseIndex + 1, updatedLogged, startedAt);
     });
 
     slot.prepend(progressLabel);
   }
 
-  function renderSummary(dayIndex, loggedExercises, startedAt) {
+  function renderSummary(routineId, routine, loggedExercises, startedAt) {
     if (sessionCompleted) return;
     sessionCompleted = true;
-    const day = getSettings().days[dayIndex];
     const finishedAt = Date.now();
     const totalSets = loggedExercises.reduce((sum, e) => sum + e.sets.length, 0);
     const minutes = Math.max(1, Math.round((finishedAt - startedAt) / 60000));
 
     const session = {
       sessionId: `s_${finishedAt}`,
-      dayIndex,
-      dayTitle: day.title,
+      dayIndex: routineId, // store routineId as dayIndex for backward-compat with history viewing
+      dayTitle: routine.name,
       date: new Date().toISOString().slice(0, 10),
       startedAt,
       finishedAt,
@@ -133,7 +165,7 @@ export function renderToday(container, store) {
     container.innerHTML = `
       <div class="card">
         <h2>Workout Complete</h2>
-        <p class="muted">${day.title} — ${loggedExercises.length} exercises, ${totalSets} sets, ${minutes} min</p>
+        <p class="muted">${routine.name} — ${loggedExercises.length} exercises, ${totalSets} sets, ${minutes} min</p>
         <button class="btn-primary" id="back-to-today-btn">Back to Today</button>
       </div>
     `;
