@@ -50,6 +50,136 @@
   padding: 12px 14px; margin-bottom: 8px;
 }
 
+/* Unified exercise card */
+.settings-ex-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+.settings-ex-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  cursor: pointer;
+  user-select: none;
+}
+.settings-ex-card-name {
+  font-size: 14px;
+  font-weight: 600;
+}
+.settings-ex-card-chevron {
+  font-size: 11px;
+  color: var(--muted);
+}
+.settings-ex-card-body {
+  padding: 0 16px 16px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.settings-field-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.gif-url-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.gif-url-row .settings-gif-input {
+  flex: 1;
+  min-width: 0;
+}
+.btn-save-gif {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+}
+/* Muscle chips */
+.muscle-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.muscle-chip {
+  padding: 6px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all .15s;
+}
+.muscle-chip.primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.muscle-chip.secondary {
+  background: transparent;
+  color: var(--accent);
+  border-color: var(--accent);
+  opacity: .75;
+}
+/* Remove / add exercise */
+.btn-remove-ex {
+  background: transparent;
+  border: 1px solid var(--push);
+  color: var(--push);
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  text-transform: uppercase;
+  cursor: pointer;
+  margin-top: 4px;
+}
+.settings-add-ex-section {
+  margin-top: 12px;
+}
+.btn-add-ex {
+  background: transparent;
+  border: 1px dashed var(--accent);
+  color: var(--accent);
+  border-radius: 10px;
+  padding: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  text-transform: uppercase;
+  cursor: pointer;
+  width: 100%;
+}
+.settings-add-ex-form {
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 14px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
 /* Gear icon button — fixed top-right */
 .settings-gear {
   position: fixed; top: 14px; right: 16px; z-index: 100;
