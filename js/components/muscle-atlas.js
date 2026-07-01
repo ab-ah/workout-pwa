@@ -78,6 +78,23 @@ function injectStyles() {
   border-radius: 50%;
   flex-shrink: 0;
 }
+.muscle-tooltip {
+  position: fixed;
+  background: #1a2030;
+  color: #e2e8f0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 9999;
+  opacity: 0;
+  transition: opacity 0.1s ease;
+}
+.muscle-tooltip.visible {
+  opacity: 1;
+}
 `;
   document.head.appendChild(style);
 }
@@ -466,6 +483,7 @@ export function createMuscleAtlas(container, options = {}) {
         <div class="muscle-atlas-label">Back</div>
       </div>
     </div>
+    <div class="muscle-tooltip" id="muscle-tooltip"></div>
   `;
 
   // Apply initial roles
@@ -473,9 +491,25 @@ export function createMuscleAtlas(container, options = {}) {
     applyColor(muscle, role ? (ROLE_COLORS[role] ?? DEFAULT_COLOR) : DEFAULT_COLOR);
   }
 
-  // Wire up click handlers for interactive mode
+  // Wire up tooltip + click handlers for interactive mode
   if (mode === 'interactive') {
+    const tooltip = container.querySelector('#muscle-tooltip');
+
     container.querySelectorAll('.muscle-path').forEach(path => {
+      path.addEventListener('mouseenter', e => {
+        const muscleId = path.dataset.muscle;
+        const label = MUSCLE_LABELS[muscleId] ?? muscleId;
+        tooltip.textContent = label;
+        tooltip.classList.add('visible');
+      });
+      path.addEventListener('mousemove', e => {
+        tooltip.style.left = (e.clientX + 12) + 'px';
+        tooltip.style.top = (e.clientY - 28) + 'px';
+      });
+      path.addEventListener('mouseleave', () => {
+        tooltip.classList.remove('visible');
+      });
+
       path.addEventListener('click', () => {
         const muscle = path.dataset.muscle;
         const current = muscleRoles[muscle] ?? null;
