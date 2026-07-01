@@ -109,3 +109,5 @@ body{
 @media(max-width:680px){
   .wrap{padding-top:14px}
 }
+.input-group{display:flex;flex-direction:column;gap:3px}
+.input-label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}

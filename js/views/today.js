@@ -47,8 +47,14 @@ export function renderToday(container, store) {
     sessionStorage.removeItem(todaySessionKey);
   }
 
+  function getDayIndex() {
+    const dow = new Date().getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+    const map = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 4 };
+    return map[dow] ?? 0; // Weekend → Monday (Push)
+  }
+
   function renderDayIntro() {
-    const dayIndex = store.getNextDayIndex(PLAN.length, progress);
+    const dayIndex = getDayIndex();
     const day = PLAN[dayIndex];
     container.innerHTML = `
       <div class="card" style="border-left:4px solid var(${day.colorVar})">

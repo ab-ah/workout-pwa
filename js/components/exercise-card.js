@@ -11,6 +11,7 @@ export function mountExerciseCard(container, exercise, onExerciseComplete) {
   let activeSetIndex = 0;
   let timerHandle = null;
   let completed = false;
+  let restActive = false;
 
   function render() {
     // Stop any running rest timer before wiping the DOM — prevents a leaked
@@ -29,9 +30,15 @@ export function mountExerciseCard(container, exercise, onExerciseComplete) {
         rows.push(`
           <div class="set-row active" id="active-set-row">
             <span class="set-label">Set ${i + 1}</span>
-            <input type="number" inputmode="decimal" class="set-input" id="weight-input" placeholder="${exercise.startWeight}">
-            <input type="number" inputmode="numeric" class="set-input" id="reps-input" placeholder="${exercise.repRange}">
-            <button class="btn-primary" id="log-set-btn">Log set</button>
+            <div class="input-group">
+              <label class="input-label">Weight</label>
+              <input type="number" inputmode="decimal" class="set-input" id="weight-input" placeholder="kg">
+            </div>
+            <div class="input-group">
+              <label class="input-label">Reps</label>
+              <input type="number" inputmode="numeric" class="set-input" id="reps-input" placeholder="${exercise.repRange}">
+            </div>
+            <button class="btn-primary" id="log-set-btn" ${restActive ? 'disabled style="opacity:.45"' : ''}>Log</button>
           </div>
         `);
       } else {
@@ -45,7 +52,12 @@ export function mountExerciseCard(container, exercise, onExerciseComplete) {
       <p class="muted">${exercise.repRange} reps · rest ${exercise.restSeconds}s · start ~${exercise.startWeight}</p>
       <div id="set-rows">${rows.join('')}</div>
       <div id="rest-timer-slot"></div>
-      <button class="btn-primary" id="complete-exercise-btn" ${loggedSets.length < exercise.setsCount ? 'disabled' : ''}>Mark Exercise Complete →</button>
+      <button class="btn-primary" id="complete-exercise-btn">${(() => {
+        const allSetsDone = loggedSets.length >= exercise.setsCount;
+        return allSetsDone
+          ? 'Mark Exercise Complete →'
+          : `Finish Early (${loggedSets.length}/${exercise.setsCount} sets) →`;
+      })()}</button>
     `;
 
     const logBtn = container.querySelector('#log-set-btn');
@@ -53,10 +65,7 @@ export function mountExerciseCard(container, exercise, onExerciseComplete) {
       logBtn.addEventListener('click', handleLogSet);
     }
     container.querySelector('#complete-exercise-btn').addEventListener('click', () => {
-      if (!completed && loggedSets.length >= exercise.setsCount) {
-        completed = true;
-        onExerciseComplete([...loggedSets]);
-      }
+      if (!completed) onExerciseComplete([...loggedSets]);
     });
   }
 
@@ -75,10 +84,13 @@ export function mountExerciseCard(container, exercise, onExerciseComplete) {
     render();
 
     if (loggedSets.length < exercise.setsCount) {
+      restActive = true;
+      render(); // re-render with Log button disabled
       const slot = container.querySelector('#rest-timer-slot');
       timerHandle = mountRestTimer(slot, exercise.restSeconds, () => {
+        restActive = false;
         slot.innerHTML = '';
-        timerHandle = null;
+        render(); // re-enable Log button
       });
     }
   }
