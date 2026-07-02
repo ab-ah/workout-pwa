@@ -25,7 +25,7 @@ export function localDateStr(ts) {
  *
  * @param {Object<string,string|null>} schedule  dow → routineId
  * @param {Array<{id:string,name:string}>} routines
- * @param {Array<{date:string, dayIndex?:string}>} history
+ * @param {Array<{date:string, routineId?:string}>} history
  * @param {number} [now]
  * @param {{ lookbackDays?: number }} [opts]
  * @returns {{ routine, dow, dayName, dateStr, daysAgo } | null}
@@ -48,7 +48,7 @@ export function findMissedWorkout(schedule, routines, history, now = Date.now(),
     if (loggedDates.has(dateStr)) continue; // trained something that day
 
     // Skip if the routine itself was done on or after that day (a late make-up).
-    const doneSince = (history ?? []).some(s => s.dayIndex === routineId && s.date >= dateStr);
+    const doneSince = (history ?? []).some(s => s.routineId === routineId && s.date >= dateStr);
     if (doneSince) continue;
 
     return { routine, dow, dayName: DAY_NAMES[dow], dateStr, daysAgo };

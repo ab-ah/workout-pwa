@@ -24,7 +24,7 @@ test('flags yesterday’s scheduled routine when nothing was logged', () => {
 });
 
 test('does not flag a day you logged any session on', () => {
-  const history = [{ date: '2026-07-01', dayIndex: 'pull' }];
+  const history = [{ date: '2026-07-01', routineId: 'pull' }];
   const missed = findMissedWorkout(schedule, routines, history, NOW);
   // Wednesday satisfied → should look further back to Tuesday (push)
   assert.equal(missed.routine.id, 'push');
@@ -33,23 +33,23 @@ test('does not flag a day you logged any session on', () => {
 
 test('does not flag a routine performed on a later make-up day', () => {
   // Missed pull on Wed but did pull today-ish (later date) → not flagged
-  const history = [{ date: '2026-07-02', dayIndex: 'pull' }];
+  const history = [{ date: '2026-07-02', routineId: 'pull' }];
   const missed = findMissedWorkout(schedule, routines, history, NOW);
   assert.notEqual(missed?.routine.id, 'pull');
 });
 
 test('returns null when the whole lookback window is satisfied or empty', () => {
   const history = [
-    { date: '2026-07-01', dayIndex: 'pull' },
-    { date: '2026-06-30', dayIndex: 'push' },
-    { date: '2026-06-29', dayIndex: 'legs' },
+    { date: '2026-07-01', routineId: 'pull' },
+    { date: '2026-06-30', routineId: 'push' },
+    { date: '2026-06-29', routineId: 'legs' },
   ];
   assert.equal(findMissedWorkout(schedule, routines, history, NOW), null);
 });
 
 test('respects a shorter lookback window', () => {
   // Only look back 1 day; Wednesday was logged → nothing within window
-  const history = [{ date: '2026-07-01', dayIndex: 'pull' }];
+  const history = [{ date: '2026-07-01', routineId: 'pull' }];
   const missed = findMissedWorkout(schedule, routines, history, NOW, { lookbackDays: 1 });
   assert.equal(missed, null);
 });

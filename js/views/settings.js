@@ -16,61 +16,27 @@ const ROUTINE_COLOR_OPTIONS = [
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-/**
- * Flatten all exercises from the days-based model (or from settings.exercises
- * if the new format is in use) into a single array.
- */
+/** All exercises in the pool. */
 function getAllExercises(settings) {
-  if (Array.isArray(settings.exercises)) return settings.exercises;
-  // Legacy days-based model
-  const seen = new Set();
-  const out = [];
-  for (const day of (settings.days ?? [])) {
-    for (const ex of (day.exercises ?? [])) {
-      if (!seen.has(ex.id)) {
-        seen.add(ex.id);
-        out.push(ex);
-      }
-    }
-  }
-  return out;
+  return settings.exercises ?? [];
 }
 
-/**
- * Get the muscles map for an exercise, normalising old primaryMuscles/secondaryMuscles
- * to the new { [muscleId]: role } format.
- */
+/** The muscles map { [muscleId]: role } for an exercise. */
 function getExMuscles(ex) {
-  if (ex.muscles && typeof ex.muscles === 'object' && !Array.isArray(ex.muscles)) {
-    return ex.muscles;
-  }
-  const result = {};
-  for (const m of (ex.primaryMuscles ?? [])) result[m] = 'prime_mover';
-  for (const m of (ex.secondaryMuscles ?? [])) {
-    if (!result[m]) result[m] = 'synergist';
-  }
-  return result;
+  return ex.muscles ?? {};
 }
 
-/**
- * Save back muscles to the exercise object, maintaining compat with both formats.
- */
-function setExMuscles(ex, rolesObj, settings) {
-  if (Array.isArray(settings.exercises)) {
-    // New format
-    ex.muscles = { ...rolesObj };
-  } else {
-    // Legacy format
-    ex.muscles = undefined;
-    ex.primaryMuscles = Object.entries(rolesObj).filter(([, r]) => r === 'prime_mover').map(([m]) => m);
-    ex.secondaryMuscles = Object.entries(rolesObj).filter(([, r]) => r === 'synergist').map(([m]) => m);
-  }
+/** Save the muscles map back to the exercise object. */
+function setExMuscles(ex, rolesObj) {
+  ex.muscles = { ...rolesObj };
 }
 
 export function renderSettings(container, onClose) {
   let settings = getSettings();
   let activeSection = 'exercises';
   let expandedExerciseIndex = null;
+  let expandedRoutineExKey = null; // `${routineIndex}:${exerciseId}` currently expanded in Routines
+  let exerciseFilter = null; // prime-mover muscle id to filter the Exercises list by, or null for all
 
   function save() { saveSettings(settings); }
 
@@ -151,6 +117,8 @@ export function renderSettings(container, onClose) {
       btn.addEventListener('click', () => {
         activeSection = btn.dataset.sec;
         expandedExerciseIndex = null;
+        expandedRoutineExKey = null;
+        exerciseFilter = null;
         render();
       });
     });
@@ -164,15 +132,47 @@ export function renderSettings(container, onClose) {
 
   // ─── Exercises tab ──────────────────────────────────────────────────────────
 
+  /** Prime-mover muscle ids for an exercise. */
+  function primeMuscles(ex) {
+    return Object.entries(getExMuscles(ex))
+      .filter(([, role]) => role === 'prime_mover')
+      .map(([m]) => m);
+  }
+
   function renderExercises(body) {
     const exercises = getAllExercises(settings);
 
+    // Count exercises per prime-mover muscle for the filter chips.
+    const primeCounts = {};
+    for (const ex of exercises) {
+      for (const m of primeMuscles(ex)) primeCounts[m] = (primeCounts[m] ?? 0) + 1;
+    }
+    const filterMuscles = Object.keys(primeCounts)
+      .sort((a, b) => (MUSCLE_NAMES[a] ?? a).localeCompare(MUSCLE_NAMES[b] ?? b));
+
+    const filterBar = `
+      <div class="ex-filter-bar">
+        <button class="ex-filter-chip ${exerciseFilter === null ? 'active' : ''}" data-filter="">All <span class="ex-filter-count">${exercises.length}</span></button>
+        ${filterMuscles.map(m => `<button class="ex-filter-chip ${exerciseFilter === m ? 'active' : ''}" data-filter="${m}">${MUSCLE_NAMES[m] ?? m} <span class="ex-filter-count">${primeCounts[m]}</span></button>`).join('')}
+      </div>
+    `;
+
+    const matches = (ex) => !exerciseFilter || getExMuscles(ex)[exerciseFilter] === 'prime_mover';
+
     const exCards = exercises.map((ex, i) => {
+      if (!matches(ex)) return '';
       const isExpanded = expandedExerciseIndex === i;
+      const primes = primeMuscles(ex);
+      const tags = primes.length
+        ? primes.map(m => `<span class="ex-muscle-tag">${MUSCLE_NAMES[m] ?? m}</span>`).join('')
+        : '<span class="ex-muscle-tag is-empty">No prime muscle</span>';
       return `
         <div class="settings-ex-card ${isExpanded ? 'expanded' : ''}">
           <div class="settings-ex-card-header" data-toggle="${i}">
-            <span class="settings-ex-card-name">${ex.name}</span>
+            <div class="settings-ex-card-heading">
+              <span class="settings-ex-card-name">${ex.name}</span>
+              <div class="settings-ex-card-tags">${tags}</div>
+            </div>
             <span class="settings-ex-card-chevron">${isExpanded ? '▲' : '▼'}</span>
           </div>
           ${isExpanded ? `
@@ -200,6 +200,7 @@ export function renderSettings(container, onClose) {
                 <button class="btn-save-gif" data-ex="${i}">Save</button>
               </div>
               <span class="gif-save-confirm" id="gif-confirm-${i}" style="display:none;color:var(--accent);font-size:11px;margin-top:4px">✓ Saved</span>
+              <img class="settings-gif-preview" id="gif-preview-${i}" src="${ex.gifUrl ?? ''}" alt="${ex.name} demonstration" loading="lazy" ${ex.gifUrl ? '' : 'style="display:none"'} onerror="this.style.display='none'">
             </div>
             <div class="settings-field">
               <label class="settings-field-label">Muscles <span class="muted" style="font-size:10px">click to cycle: none → primary → synergist → stabilizer</span></label>
@@ -218,7 +219,8 @@ export function renderSettings(container, onClose) {
     }).join('');
 
     body.innerHTML = `
-      ${exCards}
+      ${filterBar}
+      ${exCards || '<div class="muted" style="font-size:12px;padding:10px 0">No exercises train this muscle as a prime mover.</div>'}
       <div class="settings-add-ex-section">
         <button class="btn-add-ex" id="btn-add-ex">+ Add Exercise</button>
         <div id="add-ex-form" style="display:none" class="settings-add-ex-form">
@@ -241,9 +243,18 @@ export function renderSettings(container, onClose) {
         initialRoles: getExMuscles(ex),
         onChange: ({ muscle, role }) => {
           const currentRoles = atlas.getMuscleRoles();
-          setExMuscles(ex, currentRoles, settings);
+          setExMuscles(ex, currentRoles);
           save();
         },
+      });
+    });
+
+    // Filter by prime-mover muscle
+    body.querySelectorAll('.ex-filter-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        exerciseFilter = chip.dataset.filter || null;
+        expandedExerciseIndex = null;
+        render();
       });
     });
 
@@ -284,6 +295,11 @@ export function renderSettings(container, onClose) {
         const urlInput = body.querySelector(`.settings-gif-input[data-ex="${i}"]`);
         const ex = getAllExercises(settings)[i];
         if (ex) { ex.gifUrl = urlInput.value; save(); }
+        const previewEl = body.querySelector(`#gif-preview-${i}`);
+        if (previewEl) {
+          previewEl.src = urlInput.value;
+          previewEl.style.display = urlInput.value ? '' : 'none';
+        }
         const confirmEl = body.querySelector(`#gif-confirm-${i}`);
         if (confirmEl) {
           confirmEl.style.display = 'block';
@@ -299,14 +315,7 @@ export function renderSettings(container, onClose) {
         if (!confirm('Remove this exercise?')) return;
         const exercises = getAllExercises(settings);
         const removedId = exercises[i]?.id;
-        if (Array.isArray(settings.exercises)) {
-          settings.exercises.splice(i, 1);
-        } else {
-          // Remove from every day in legacy format
-          for (const day of (settings.days ?? [])) {
-            day.exercises = (day.exercises ?? []).filter(e => e.id !== removedId);
-          }
-        }
+        settings.exercises.splice(i, 1);
         // Remove from all routines too
         for (const r of (settings.routines ?? [])) {
           r.exerciseIds = (r.exerciseIds ?? []).filter(id => id !== removedId);
@@ -334,16 +343,9 @@ export function renderSettings(container, onClose) {
       const newEx = {
         id, name, setsCount: sets, repRange: reps, restSeconds: rest,
         startWeight: '—', gifUrl: '', muscles: {},
-        primaryMuscles: [], secondaryMuscles: [],
       };
-      if (Array.isArray(settings.exercises)) {
-        settings.exercises.push(newEx);
-      } else {
-        // Legacy: add to first day
-        if (settings.days && settings.days.length > 0) {
-          settings.days[0].exercises.push(newEx);
-        }
-      }
+      settings.exercises = settings.exercises ?? [];
+      settings.exercises.push(newEx);
       save();
       render();
     });
@@ -360,9 +362,23 @@ export function renderSettings(container, onClose) {
       const exListItems = (r.exerciseIds ?? []).map(exId => {
         const ex = allExercises.find(e => e.id === exId);
         if (!ex) return '';
-        return `<div class="routine-ex-item">
-          <span>${ex.name}</span>
-          <button class="btn-icon danger" data-routine="${ri}" data-ex-id="${exId}" title="Remove from routine">×</button>
+        const key = `${ri}:${exId}`;
+        const isOpen = expandedRoutineExKey === key;
+        const details = isOpen ? `
+          <div class="routine-ex-detail">
+            <p class="muted">${ex.setsCount} sets · ${ex.repRange} reps · rest ${ex.restSeconds}s${ex.startWeight ? ` · start ${ex.startWeight}` : ''}</p>
+            ${ex.gifUrl ? `<img class="routine-ex-gif" src="${ex.gifUrl}" alt="${ex.name} demonstration" loading="lazy" onerror="this.style.display='none'">` : ''}
+            <div id="routine-atlas-${ri}-${exId}" class="routine-ex-atlas"></div>
+          </div>` : '';
+        return `<div class="routine-ex-item ${isOpen ? 'expanded' : ''}">
+          <div class="routine-ex-row">
+            <button class="routine-ex-toggle" data-routine="${ri}" data-ex-id="${exId}">
+              <span class="routine-ex-chevron">${isOpen ? '▲' : '▼'}</span>
+              <span>${ex.name}</span>
+            </button>
+            <button class="btn-icon danger" data-remove-routine="${ri}" data-ex-id="${exId}" title="Remove from routine">×</button>
+          </div>
+          ${details}
         </div>`;
       }).join('');
 
@@ -429,12 +445,32 @@ export function renderSettings(container, onClose) {
       });
     });
 
-    // Remove exercise from routine
-    body.querySelectorAll('.routine-ex-item .btn-icon.danger').forEach(btn => {
+    // Expand / collapse an exercise's details inside a routine
+    body.querySelectorAll('.routine-ex-toggle').forEach(btn => {
       btn.addEventListener('click', () => {
-        const ri = +btn.dataset.routine;
+        const key = `${btn.dataset.routine}:${btn.dataset.exId}`;
+        expandedRoutineExKey = expandedRoutineExKey === key ? null : key;
+        render();
+      });
+    });
+
+    // Mount a read-only muscle atlas for the expanded routine exercise
+    if (expandedRoutineExKey) {
+      const [riStr, exId] = expandedRoutineExKey.split(':');
+      const ex = allExercises.find(e => e.id === exId);
+      const slot = body.querySelector(`#routine-atlas-${riStr}-${exId}`);
+      if (ex && slot) {
+        createMuscleAtlas(slot, { mode: 'display', initialRoles: getExMuscles(ex) });
+      }
+    }
+
+    // Remove exercise from routine
+    body.querySelectorAll('[data-remove-routine]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const ri = +btn.dataset.removeRoutine;
         const exId = btn.dataset.exId;
         settings.routines[ri].exerciseIds = (settings.routines[ri].exerciseIds ?? []).filter(id => id !== exId);
+        if (expandedRoutineExKey === `${ri}:${exId}`) expandedRoutineExKey = null;
         save();
         render();
       });

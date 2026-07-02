@@ -4,7 +4,7 @@ import { weeklyVolumeByMuscle } from '../js/volume.js';
 
 const exercises = [
   { id: 'bench', setsCount: 4, muscles: { chest: 'prime_mover', triceps: 'synergist' } },
-  { id: 'row', setsCount: 4, muscles: { back: 'prime_mover', biceps: 'synergist', forearms: 'stabilizer' } },
+  { id: 'row', setsCount: 4, muscles: { lats: 'prime_mover', biceps: 'synergist', forearms: 'stabilizer' } },
   { id: 'squat', setsCount: 5, muscles: { quads: 'prime_mover', glutes: 'synergist', abs: 'stabilizer' } },
 ];
 const routines = [

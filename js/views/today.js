@@ -2,7 +2,7 @@ import { mountExerciseCard } from '../components/exercise-card.js';
 import { getSettings } from '../settings-store.js';
 import { routineReadiness } from '../recovery-model.js';
 import { MUSCLE_LABELS } from '../components/muscle-atlas-paths.js';
-import { findMissedWorkout } from '../schedule.js';
+import { findMissedWorkout, localDateStr } from '../schedule.js';
 import { enableWakeLock, disableWakeLock } from '../wake-lock.js';
 
 const READINESS_LOW = 0.6; // prime movers below this get a warning
@@ -47,9 +47,10 @@ export function renderToday(container, store) {
 
   if (inProgress) {
     const settings = getSettings();
-    const scheduled = getScheduledRoutine(settings);
-    // If the in-progress routine no longer exists in settings, discard it
-    if (!scheduled || scheduled.routine.id !== inProgress.routineId) {
+    // If the in-progress routine no longer exists in settings, discard it.
+    // It does not have to match today's schedule; missed workouts can be run
+    // from the Today screen too.
+    if (!getRoutineById(settings, inProgress.routineId)) {
       clearInProgressSession();
     } else {
       renderExerciseFlow(inProgress.routineId, inProgress.exerciseIndex, inProgress.loggedExercises, inProgress.startedAt);
@@ -71,8 +72,12 @@ export function renderToday(container, store) {
     return { routine, exercises };
   }
 
+  function getRoutineById(settings, routineId) {
+    return settings.routines?.find(r => r.id === routineId) ?? null;
+  }
+
   function readInProgressSession() {
-    const raw = sessionStorage.getItem(todaySessionKey);
+    const raw = localStorage.getItem(todaySessionKey) ?? sessionStorage.getItem(todaySessionKey);
     if (!raw) return null;
     try {
       const parsed = JSON.parse(raw);
@@ -83,7 +88,7 @@ export function renderToday(container, store) {
         !Array.isArray(loggedExercises) ||
         typeof startedAt !== 'number'
       ) {
-        sessionStorage.removeItem(todaySessionKey);
+        clearInProgressSession();
         return null;
       }
       return parsed;
@@ -93,10 +98,12 @@ export function renderToday(container, store) {
   }
 
   function saveInProgressSession(state) {
-    sessionStorage.setItem(todaySessionKey, JSON.stringify(state));
+    localStorage.setItem(todaySessionKey, JSON.stringify(state));
+    sessionStorage.removeItem(todaySessionKey);
   }
 
   function clearInProgressSession() {
+    localStorage.removeItem(todaySessionKey);
     sessionStorage.removeItem(todaySessionKey);
   }
 
@@ -106,22 +113,36 @@ export function renderToday(container, store) {
     renderExerciseFlow(state.routineId, state.exerciseIndex, state.loggedExercises, state.startedAt);
   }
 
-  function missedBannerHtml(missed) {
+  function missedBannerHtml(missed, routines) {
     if (!missed) return '';
+    const options = (routines ?? [])
+      .map(r => `<option value="${r.id}" ${r.id === missed.routine.id ? 'selected' : ''}>${r.name}</option>`)
+      .join('');
     return `
       <div class="missed-banner">
         <div class="missed-banner-text">
           <span class="muted">Missed workout</span>
           <div><strong>${missed.routine.name}</strong> <span class="muted">was scheduled ${missed.dayName}</span></div>
         </div>
-        <button class="btn-secondary" id="do-missed-btn">Do it now</button>
+        <div class="missed-banner-actions">
+          <select class="set-input" id="missed-routine-select" aria-label="Choose a routine to do now">${options}</select>
+          <button class="btn-secondary" id="do-missed-btn">Do it now</button>
+        </div>
       </div>
     `;
   }
 
   function wireMissed(missed) {
+    if (!missed) return;
     const btn = container.querySelector('#do-missed-btn');
-    if (btn && missed) btn.addEventListener('click', () => startRoutine(missed.routine));
+    const select = container.querySelector('#missed-routine-select');
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+      const settings = getSettings();
+      const chosenId = select?.value ?? missed.routine.id;
+      const routine = settings.routines?.find(r => r.id === chosenId) ?? missed.routine;
+      startRoutine(routine);
+    });
   }
 
   function renderDayIntro() {
@@ -129,7 +150,7 @@ export function renderToday(container, store) {
     const settings = getSettings();
     const scheduled = getScheduledRoutine(settings);
     const missed = findMissedWorkout(settings.schedule, settings.routines, store.getHistory());
-    const banner = missedBannerHtml(missed);
+    const banner = missedBannerHtml(missed, settings.routines);
 
     if (!scheduled) {
       container.innerHTML = `
@@ -191,21 +212,45 @@ export function renderToday(container, store) {
     const exercise = exercises[exerciseIndex];
     container.innerHTML = `<div class="card" id="exercise-card-slot"></div>`;
     const slot = container.querySelector('#exercise-card-slot');
-    const progressLabel = document.createElement('div');
-    progressLabel.className = 'exercise-progress';
-    progressLabel.textContent = `Exercise ${exerciseIndex + 1} of ${exercises.length}`;
+
+    const header = document.createElement('div');
+    header.className = 'exercise-flow-header';
+    header.innerHTML = `
+      ${exerciseIndex > 0 ? '<button class="exercise-back-btn" id="exercise-back-btn">← Previous</button>' : '<span></span>'}
+      <span class="exercise-progress">Exercise ${exerciseIndex + 1} of ${exercises.length}</span>
+    `;
 
     const history = store.getHistory();
     const lastSets = getLastSetsForExercise(exercise.id, history);
+    // Sets already logged for this exercise this session (present when the user
+    // navigated back), so the card can pre-fill them for editing.
+    const alreadyLogged = loggedExercises[exerciseIndex]?.sets ?? null;
 
-    mountExerciseCard(slot, exercise, lastSets, (sets) => {
-      const updatedLogged = [...loggedExercises, { exerciseId: exercise.id, name: exercise.name, sets }];
+    const card = mountExerciseCard(slot, exercise, lastSets, alreadyLogged, (sets) => {
+      const updatedLogged = loggedExercises.slice();
+      updatedLogged[exerciseIndex] = { exerciseId: exercise.id, name: exercise.name, sets };
       const state = { routineId, exerciseIndex: exerciseIndex + 1, loggedExercises: updatedLogged, startedAt };
       saveInProgressSession(state);
       renderExerciseFlow(routineId, exerciseIndex + 1, updatedLogged, startedAt);
     });
 
-    slot.prepend(progressLabel);
+    slot.prepend(header);
+
+    const backBtn = container.querySelector('#exercise-back-btn');
+    if (backBtn) {
+      backBtn.addEventListener('click', () => {
+        // Keep everything logged so far — including any sets entered or corrected
+        // on this exercise — then step back to review/correct the previous one.
+        const updatedLogged = loggedExercises.slice();
+        const current = card.getLoggedSets();
+        if (current.length > 0) {
+          updatedLogged[exerciseIndex] = { exerciseId: exercise.id, name: exercise.name, sets: current };
+        }
+        const state = { routineId, exerciseIndex: exerciseIndex - 1, loggedExercises: updatedLogged, startedAt };
+        saveInProgressSession(state);
+        renderExerciseFlow(routineId, exerciseIndex - 1, updatedLogged, startedAt);
+      });
+    }
   }
 
   function renderSummary(routineId, routine, loggedExercises, startedAt) {
@@ -213,17 +258,18 @@ export function renderToday(container, store) {
     sessionCompleted = true;
     disableWakeLock(); // workout finished
     const finishedAt = Date.now();
-    const totalSets = loggedExercises.reduce((sum, e) => sum + e.sets.length, 0);
+    const logged = loggedExercises.filter(Boolean);
+    const totalSets = logged.reduce((sum, e) => sum + e.sets.length, 0);
     const minutes = Math.max(1, Math.round((finishedAt - startedAt) / 60000));
 
     const session = {
       sessionId: `s_${finishedAt}`,
-      dayIndex: routineId, // store routineId as dayIndex for backward-compat with history viewing
+      routineId,
       dayTitle: routine.name,
-      date: new Date().toISOString().slice(0, 10),
+      date: localDateStr(finishedAt),
       startedAt,
       finishedAt,
-      exercises: loggedExercises
+      exercises: logged
     };
     store.addSession(session);
     clearInProgressSession();
@@ -231,7 +277,7 @@ export function renderToday(container, store) {
     container.innerHTML = `
       <div class="card">
         <h2>Workout Complete</h2>
-        <p class="muted">${routine.name} — ${loggedExercises.length} exercises, ${totalSets} sets, ${minutes} min</p>
+        <p class="muted">${routine.name} — ${logged.length} exercises, ${totalSets} sets, ${minutes} min</p>
         <button class="btn-primary" id="back-to-today-btn">Back to Today</button>
       </div>
     `;
