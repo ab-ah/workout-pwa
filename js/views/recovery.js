@@ -1,14 +1,6 @@
-import { getSettings, getExerciseMuscles } from '../settings-store.js';
+import { getSettings } from '../settings-store.js';
 import { createMuscleAtlas, MUSCLE_LABELS } from '../components/muscle-atlas.js';
-
-const DEPLETION_BY_ROLE = {
-  prime_mover: 1.0,
-  synergist: 0.67,
-  stabilizer: 0.33,
-  // Legacy compat for old primaryMuscles/secondaryMuscles format
-  primary: 1.0,
-  secondary: 0.5,
-};
+import { allMuscleFreshness } from '../recovery-model.js';
 
 function recoveryColor(fraction) {
   const r = Math.round(255 * (1 - fraction));
@@ -16,61 +8,16 @@ function recoveryColor(fraction) {
   return `rgb(${r},${g},40)`;
 }
 
-/**
- * Normalise getExerciseMuscles output to { [muscleId]: role } regardless of
- * whether settings-store has been migrated to the new format yet.
- */
-function normaliseMuscles(raw) {
-  if (!raw) return {};
-  // New format: plain object with role string values, no 'primary'/'secondary' keys
-  if (typeof raw === 'object' && !Array.isArray(raw) && !('primary' in raw) && !('secondary' in raw)) {
-    return raw;
-  }
-  // Legacy format: { primary: string[], secondary: string[] }
-  const result = {};
-  for (const m of (raw.primary ?? [])) result[m] = 'prime_mover';
-  for (const m of (raw.secondary ?? [])) {
-    if (!result[m]) result[m] = 'synergist';
-  }
-  return result;
-}
-
-function getMuscleStatus(muscle, history, settings) {
-  const recoveryHours = settings.recoveryHours[muscle] ?? 48;
-  const now = Date.now();
-
-  for (let i = history.length - 1; i >= 0; i--) {
-    const session = history[i];
-    const sessionTs = typeof session.finishedAt === 'number'
-      ? session.finishedAt
-      : new Date(session.date + 'T12:00:00').getTime();
-
-    let depletion = 0;
-    for (const ex of (session.exercises ?? [])) {
-      const rawMuscles = getExerciseMuscles(ex.exerciseId, settings);
-      const muscles = normaliseMuscles(rawMuscles);
-      const role = muscles[muscle];
-      if (role) depletion = Math.max(depletion, DEPLETION_BY_ROLE[role] ?? 0);
-    }
-
-    if (depletion === 0) continue;
-
-    const hoursAgo = (now - sessionTs) / 3600000;
-    const startFraction = 1 - depletion;
-    const fraction = Math.min(1, startFraction + (hoursAgo / recoveryHours) * depletion);
-    return { fraction, hoursAgo };
-  }
-
-  return { fraction: 1, hoursAgo: null };
-}
-
 export function renderRecovery(container, store) {
   const settings = getSettings();
   const history = store.getHistory();
 
+  const muscleIds = Object.keys(MUSCLE_LABELS);
+  const freshness = allMuscleFreshness(muscleIds, history, settings);
+
   const muscleData = {};
-  for (const muscle of Object.keys(MUSCLE_LABELS)) {
-    const { fraction, hoursAgo } = getMuscleStatus(muscle, history, settings);
+  for (const muscle of muscleIds) {
+    const { fraction, hoursAgo } = freshness[muscle];
     muscleData[muscle] = {
       fraction,
       hoursAgo,
