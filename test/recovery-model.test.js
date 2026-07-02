@@ -1,7 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  ROLE_WEIGHT,
   FULL_DEPLETION_SETS,
   sessionDepletion,
   muscleFreshness,
@@ -130,25 +129,45 @@ test('muscleFreshness hoursAgo reports the most recent hit', () => {
 
 // ─── routineReadiness ────────────────────────────────────────────────────────
 
-test('routineReadiness is 1 for a fresh routine and weights prime movers most', () => {
+test('routineReadiness is 1 when fresh and weights muscles by projected volume', () => {
   const settings = makeSettings([
-    { id: 'bench', muscles: { chest: 'prime_mover', triceps: 'synergist' } },
-    { id: 'ohp', muscles: { shoulders: 'prime_mover', triceps: 'synergist' } },
+    { id: 'bench', setsCount: 4, muscles: { chest: 'prime_mover', triceps: 'synergist' } },
+    { id: 'ohp', setsCount: 3, muscles: { shoulders: 'prime_mover', triceps: 'synergist' } },
   ], { chest: 48, triceps: 48, shoulders: 48 });
   const routine = { exerciseIds: ['bench', 'ohp'] };
   const { readiness, perMuscle } = routineReadiness(routine, settings, [], 1_000_000_000_000);
-  assert.equal(readiness, 1);
-  // chest should be recorded as prime mover (weight 1), triceps as synergist (0.67)
+  assert.equal(readiness, 1, 'all muscles fresh → fully ready');
+
   const chest = perMuscle.find(p => p.muscle === 'chest');
+  const shoulders = perMuscle.find(p => p.muscle === 'shoulders');
   const triceps = perMuscle.find(p => p.muscle === 'triceps');
-  assert.equal(chest.weight, ROLE_WEIGHT.prime_mover);
-  assert.equal(triceps.weight, ROLE_WEIGHT.synergist);
+
+  // weight is now projected depletion for today's planned sets, in (0, 1)
+  assert.ok(chest.weight > 0 && chest.weight < 1, `got ${chest.weight}`);
+  // triceps is worked by BOTH exercises → more projected fatigue than chest (one)
+  assert.ok(triceps.weight > chest.weight, `triceps ${triceps.weight} <= chest ${chest.weight}`);
+  // chest gets 4 prime sets vs shoulders 3 → chest weighted heavier
+  assert.ok(chest.weight > shoulders.weight, `chest ${chest.weight} <= shoulders ${shoulders.weight}`);
+});
+
+test('routineReadiness weights a heavily-worked muscle above a lightly-worked one', () => {
+  // Both prime movers, so the OLD role-weight model would weight them equally.
+  // Load-weighting must weight the 5-set muscle above the 1-set muscle.
+  const settings = makeSettings([
+    { id: 'press', setsCount: 5, muscles: { chest: 'prime_mover' } },
+    { id: 'curl', setsCount: 1, muscles: { biceps: 'prime_mover' } },
+  ], { chest: 48, biceps: 48 });
+  const routine = { exerciseIds: ['press', 'curl'] };
+  const { perMuscle } = routineReadiness(routine, settings, [], 1_000_000_000_000);
+  const chest = perMuscle.find(p => p.muscle === 'chest');
+  const biceps = perMuscle.find(p => p.muscle === 'biceps');
+  assert.ok(chest.weight > biceps.weight, `chest ${chest.weight} should exceed biceps ${biceps.weight}`);
 });
 
 test('routineReadiness drops when a prime mover is depleted, sorted worst-first', () => {
   const now = 1_000_000_000_000;
   const settings = makeSettings([
-    { id: 'bench', muscles: { chest: 'prime_mover', triceps: 'synergist' } },
+    { id: 'bench', setsCount: 4, muscles: { chest: 'prime_mover', triceps: 'synergist' } },
   ], { chest: 48, triceps: 48 });
   const routine = { exerciseIds: ['bench'] };
   const history = [{ finishedAt: now - 2 * HOUR, exercises: [{ exerciseId: 'bench', sets: sets(4) }] }];
@@ -160,8 +179,8 @@ test('routineReadiness drops when a prime mover is depleted, sorted worst-first'
 
 test('routineReadiness uses the strongest role when a muscle appears in several exercises', () => {
   const settings = makeSettings([
-    { id: 'row', muscles: { back: 'prime_mover' } },
-    { id: 'pullover', muscles: { back: 'synergist' } },
+    { id: 'row', setsCount: 4, muscles: { back: 'prime_mover' } },
+    { id: 'pullover', setsCount: 3, muscles: { back: 'synergist' } },
   ], { back: 72 });
   const routine = { exerciseIds: ['pullover', 'row'] };
   const { perMuscle } = routineReadiness(routine, settings, [], 1_000_000_000_000);
