@@ -113,8 +113,15 @@ export function allMuscleFreshness(muscleIds, history, settings, now = Date.now(
 }
 
 /**
- * Readiness of a whole routine: a role-weighted average of the freshness of
- * every muscle the routine trains. Prime movers dominate the score.
+ * Readiness of a whole routine: an average of each trained muscle's current
+ * freshness, weighted by how much fatigue TODAY'S planned volume will add to
+ * that muscle. Muscles the routine will hammer count most; lightly-worked
+ * assistance muscles barely move the score.
+ *
+ * The weight is the muscle's projected depletion, computed by running the
+ * routine's configured set counts through the same saturating curve used for
+ * logged sessions. Each entry also carries the strongest ROLE the muscle
+ * plays in the routine (used for warnings), independent of the weight.
  *
  * @param {{ exerciseIds?: string[] }} routine
  * @param {{ exercises: Array, recoveryHours?: Object }} settings
@@ -123,11 +130,16 @@ export function allMuscleFreshness(muscleIds, history, settings, now = Date.now(
  * @returns {{ readiness: number, perMuscle: Array<{ muscle, role, weight, freshness, hoursAgo }> }}
  */
 export function routineReadiness(routine, settings, history, now = Date.now()) {
-  // Strongest role each muscle plays anywhere in the routine.
+  // Synthetic session standing in for today's planned work: each exercise
+  // contributes its configured number of sets.
+  const plannedSession = { exercises: [] };
   const roleByMuscle = {};
+
   for (const exId of (routine.exerciseIds ?? [])) {
-    const muscles = getExerciseMuscles(exId, settings);
-    for (const [muscle, role] of Object.entries(muscles)) {
+    const exercise = settings.exercises?.find(e => e.id === exId);
+    plannedSession.exercises.push({ exerciseId: exId, sets: exercise?.setsCount ?? 0 });
+
+    for (const [muscle, role] of Object.entries(getExerciseMuscles(exId, settings))) {
       const weight = ROLE_WEIGHT[role] ?? 0;
       if (weight > (ROLE_WEIGHT[roleByMuscle[muscle]] ?? 0)) {
         roleByMuscle[muscle] = role;
@@ -140,7 +152,8 @@ export function routineReadiness(routine, settings, history, now = Date.now()) {
   const perMuscle = [];
 
   for (const [muscle, role] of Object.entries(roleByMuscle)) {
-    const weight = ROLE_WEIGHT[role];
+    // Weight = fatigue today's planned sets will add to this muscle.
+    const weight = sessionDepletion(muscle, plannedSession, settings);
     const { fraction, hoursAgo } = muscleFreshness(muscle, history, settings, now);
     weightSum += weight;
     weightedFreshness += weight * fraction;
