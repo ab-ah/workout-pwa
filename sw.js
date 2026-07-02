@@ -1,11 +1,10 @@
-const CACHE_NAME = 'leanbuild-v4';
+const CACHE_NAME = 'leanbuild-v8';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
   './css/styles.css',
   './js/app.js',
-  './js/data.js',
   './js/store.js',
   './js/recovery-model.js',
   './js/recovery-tuning.js',

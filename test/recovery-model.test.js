@@ -144,8 +144,8 @@ test('routineReadiness is 1 when fresh and weights muscles by projected volume',
 
   // weight is now projected depletion for today's planned sets, in (0, 1)
   assert.ok(chest.weight > 0 && chest.weight < 1, `got ${chest.weight}`);
-  // triceps is worked by BOTH exercises → more projected fatigue than chest (one)
-  assert.ok(triceps.weight > chest.weight, `triceps ${triceps.weight} <= chest ${chest.weight}`);
+  // triceps is worked by BOTH exercises, but only as a synergist.
+  assert.ok(triceps.weight > 0 && triceps.weight < chest.weight, `triceps ${triceps.weight} should be below chest ${chest.weight}`);
   // chest gets 4 prime sets vs shoulders 3 → chest weighted heavier
   assert.ok(chest.weight > shoulders.weight, `chest ${chest.weight} <= shoulders ${shoulders.weight}`);
 });
@@ -179,13 +179,13 @@ test('routineReadiness drops when a prime mover is depleted, sorted worst-first'
 
 test('routineReadiness uses the strongest role when a muscle appears in several exercises', () => {
   const settings = makeSettings([
-    { id: 'row', setsCount: 4, muscles: { back: 'prime_mover' } },
-    { id: 'pullover', setsCount: 3, muscles: { back: 'synergist' } },
-  ], { back: 72 });
+    { id: 'row', setsCount: 4, muscles: { lats: 'prime_mover' } },
+    { id: 'pullover', setsCount: 3, muscles: { lats: 'synergist' } },
+  ], { lats: 72 });
   const routine = { exerciseIds: ['pullover', 'row'] };
   const { perMuscle } = routineReadiness(routine, settings, [], 1_000_000_000_000);
-  const back = perMuscle.find(p => p.muscle === 'back');
-  assert.equal(back.role, 'prime_mover', 'takes the highest role across the routine');
+  const lats = perMuscle.find(p => p.muscle === 'lats');
+  assert.equal(lats.role, 'prime_mover', 'takes the highest role across the routine');
 });
 
 test('FULL_DEPLETION_SETS is a sane reference constant', () => {

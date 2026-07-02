@@ -12,7 +12,7 @@ export const MUSCLE_LABELS = {
   biceps: 'Biceps',
   triceps: 'Triceps',
   forearms: 'Forearms',
-  back: 'Lats',
+  lats: 'Lats',
   lower_back: 'Lower Back',
   abs: 'Abs',
   obliques: 'Obliques',
@@ -165,7 +165,7 @@ const BACK_LEFT_MUSCLES =
   // Rear deltoid cap
   muscle('rear_delts', `M55,95 C47,98 41,106 40,116 C40,124 43,130 48,131 C54,131 59,124 61,114 C61,105 60,98 58,95 C57,93 56,94 55,95 Z`) +
   // Latissimus dorsi fan
-  muscle('back', `M63,120 C61,134 61,148 64,162 C67,176 73,188 81,196 C86,200 91,198 93,192 C94,180 94,166 93,152 C92,138 89,126 85,118 C78,113 69,115 63,120 Z`) +
+  muscle('lats', `M63,120 C61,134 61,148 64,162 C67,176 73,188 81,196 C86,200 91,198 93,192 C94,180 94,166 93,152 C92,138 89,126 85,118 C78,113 69,115 63,120 Z`) +
   // Erector spinae column
   muscleRect('lower_back', 89, 156, 9, 78, 4.5) +
   // Triceps

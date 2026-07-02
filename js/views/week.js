@@ -31,9 +31,9 @@ export function renderWeek(container, store) {
     }).join('');
     return `
       <div class="volume-section">
-        <div class="volume-title">Weekly Volume · sets per muscle</div>
+        <div class="volume-title">Planned Weekly Volume · sets per muscle</div>
         ${rows}
-        <div class="volume-note">Prime + synergist sets across the week. <span class="is-low">Amber</span> = under ${LOW_VOLUME_SETS}/week.</div>
+        <div class="volume-note">Planned prime + synergist sets from your routines (not logged workouts). <span class="is-low">Amber</span> = under ${LOW_VOLUME_SETS}/week.</div>
       </div>
     `;
   }

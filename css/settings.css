@@ -88,6 +88,67 @@
   font-size: 14px;
   font-weight: 600;
 }
+.settings-ex-card-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+.settings-ex-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.ex-muscle-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--accent);
+  background: rgba(214, 255, 63, .10);
+  border-radius: 5px;
+  padding: 2px 6px;
+}
+.ex-muscle-tag.is-empty {
+  color: var(--muted);
+  background: transparent;
+  border: 1px dashed var(--line);
+}
+
+/* Prime-muscle filter bar (Exercises tab) */
+.ex-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.ex-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 5px 11px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ex-filter-chip:hover {
+  color: var(--text);
+  border-color: var(--muted);
+}
+.ex-filter-chip.active {
+  color: var(--bg);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.ex-filter-count {
+  font-size: 10px;
+  opacity: .7;
+}
 .settings-ex-card-chevron {
   font-size: 11px;
   color: var(--muted);
@@ -242,15 +303,59 @@
   gap: 6px;
 }
 .routine-ex-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   font-size: 13px;
   padding: 6px 0;
   border-bottom: 1px solid var(--line);
 }
 .routine-ex-item:last-child {
   border-bottom: none;
+}
+.routine-ex-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.routine-ex-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  padding: 2px 0;
+}
+.routine-ex-chevron {
+  color: var(--muted);
+  font-size: 10px;
+  flex-shrink: 0;
+}
+.routine-ex-detail {
+  padding: 8px 0 4px 18px;
+}
+.routine-ex-gif {
+  width: 100%;
+  max-width: 300px;
+  border-radius: 10px;
+  margin: 6px 0;
+  display: block;
+}
+.routine-ex-atlas {
+  margin-top: 6px;
+}
+
+/* GIF preview in the Exercises tab */
+.settings-gif-preview {
+  width: 100%;
+  max-width: 300px;
+  border-radius: 10px;
+  margin-top: 10px;
+  display: block;
 }
 
 /* Atlas role legend (used in settings exercise cards) */

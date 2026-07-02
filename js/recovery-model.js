@@ -15,11 +15,8 @@ import { getExerciseMuscles } from './settings-store.js';
  *  and stabilising work count proportionally less. */
 export const ROLE_WEIGHT = {
   prime_mover: 1.0,
-  synergist: 0.67,
-  stabilizer: 0.33,
-  // Legacy role names, tolerated defensively if any old data slips through.
-  primary: 1.0,
-  secondary: 0.67,
+  synergist: 0.35,
+  stabilizer: 0.08,
 };
 
 /** Weighted-set count at which a muscle is treated as ~90% depleted. Beyond

@@ -76,6 +76,13 @@ body{
 }
 .missed-banner-text strong{font-size:14px}
 .missed-banner .btn-secondary{margin-top:0;white-space:nowrap;flex-shrink:0}
+.missed-banner-actions{display:flex;flex-direction:column;gap:8px;flex-shrink:0}
+.missed-banner-actions .set-input{min-width:130px}
+
+/* History log — edit date/time */
+.session-edit{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:4px}
+.session-edit .set-input{font-size:12px;padding:4px 6px}
+.session-edit-btn{margin-left:6px;padding:2px 6px;font-size:12px;line-height:1}
 
 /* Progression hint (exercise card) */
 .progression-hint{
@@ -121,6 +128,17 @@ body{
 
 /* EXERCISE CARD (flow) */
 .exercise-progress{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted);margin-bottom:10px}
+.exercise-flow-header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.exercise-flow-header .exercise-progress{margin-bottom:0}
+.exercise-back-btn{
+  background:transparent;border:1px solid var(--line);border-radius:8px;
+  color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:12px;
+  padding:5px 10px;cursor:pointer;white-space:nowrap;
+}
+.exercise-back-btn:hover{color:var(--text);border-color:var(--muted)}
+.set-row.done.editable{opacity:.75;cursor:pointer}
+.set-row.done.editable:hover{opacity:1}
+.set-edit-hint{color:var(--accent);font-size:11px;margin-left:4px}
 .exercise-name{font-family:'Anton',sans-serif;font-size:28px;text-transform:uppercase;margin-bottom:4px}
 .set-row{
   display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--panel-2);

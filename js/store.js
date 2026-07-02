@@ -18,16 +18,12 @@ export function createStore(storage) {
     storage.setItem(PROGRESS_KEY, JSON.stringify(progress));
   }
 
-  function getNextDayIndex(planLength, progress) {
-    return (progress.lastCompletedDayIndex + 1) % planLength;
-  }
-
   function getHistory() {
     const raw = storage.getItem(HISTORY_KEY);
     if (!raw) return [];
     try {
       const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed : [];
+      return Array.isArray(parsed) ? parsed.map(normalizeSession) : [];
     } catch {
       return [];
     }
@@ -38,9 +34,22 @@ export function createStore(storage) {
   }
 
   function addSession(session) {
-    const history = [...getHistory(), { ...session }];
+    const normalized = normalizeSession(session);
+    const history = [...getHistory(), normalized];
     saveHistory(history);
-    saveProgress({ lastCompletedDayIndex: session.dayIndex, lastCompletedAt: session.date });
+    saveProgress({ lastCompletedDayIndex: normalized.routineId, lastCompletedAt: normalized.date });
+    return history;
+  }
+
+  /**
+   * Patch a stored session in place (matched by sessionId) and persist.
+   * Used by the History tab to edit a logged workout's date/time.
+   */
+  function updateSession(sessionId, patch) {
+    const history = getHistory().map((s) =>
+      s.sessionId === sessionId ? normalizeSession({ ...s, ...patch }) : s
+    );
+    saveHistory(history);
     return history;
   }
 
@@ -48,7 +57,7 @@ export function createStore(storage) {
     const history = getHistory();
     const points = [];
     for (const session of history) {
-      const ex = session.exercises.find((e) => e.exerciseId === exerciseId);
+      const ex = (session.exercises ?? []).find((e) => e.exerciseId === exerciseId);
       if (ex && ex.sets.length > 0) {
         const heaviest = ex.sets.reduce((best, s) => (s.weight > best.weight ? s : best), ex.sets[0]);
         points.push({ date: session.date, weight: heaviest.weight, reps: heaviest.reps });
@@ -57,5 +66,15 @@ export function createStore(storage) {
     return points;
   }
 
-  return { getProgress, saveProgress, getNextDayIndex, getHistory, saveHistory, addSession, getExerciseHistory };
+  return { getProgress, saveProgress, getHistory, saveHistory, addSession, updateSession, getExerciseHistory };
+}
+
+function normalizeSession(session) {
+  const exercises = Array.isArray(session?.exercises)
+    ? session.exercises.map(ex => ({
+        ...ex,
+        sets: Array.isArray(ex?.sets) ? ex.sets : [],
+      }))
+    : [];
+  return { ...session, exercises };
 }
