@@ -1,4 +1,9 @@
 import { getSettings } from '../settings-store.js';
+import { weeklyVolumeByMuscle } from '../volume.js';
+import { MUSCLE_LABELS } from '../components/muscle-atlas-paths.js';
+
+// Weekly working sets below this are flagged as low maintenance volume.
+const LOW_VOLUME_SETS = 8;
 
 export function renderWeek(container, store) {
   const settings = getSettings();
@@ -6,6 +11,32 @@ export function renderWeek(container, store) {
   let expandedDow = null;
 
   const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+  function volumeHtml() {
+    const volume = weeklyVolumeByMuscle(settings.schedule, settings.routines, settings.exercises);
+    if (!volume.length) return '';
+    const max = volume[0].sets || 1;
+    const rows = volume.map(({ muscle, sets }) => {
+      const pct = Math.round((sets / max) * 100);
+      const low = sets < LOW_VOLUME_SETS;
+      return `
+        <div class="volume-row">
+          <span class="volume-label">${MUSCLE_LABELS[muscle] ?? muscle}</span>
+          <div class="volume-track">
+            <div class="volume-fill${low ? ' is-low' : ''}" style="width:${pct}%"></div>
+          </div>
+          <span class="volume-count${low ? ' is-low' : ''}">${sets}</span>
+        </div>
+      `;
+    }).join('');
+    return `
+      <div class="volume-section">
+        <div class="volume-title">Weekly Volume · sets per muscle</div>
+        ${rows}
+        <div class="volume-note">Prime + synergist sets across the week. <span class="is-low">Amber</span> = under ${LOW_VOLUME_SETS}/week.</div>
+      </div>
+    `;
+  }
 
   function render() {
     // Mon–Sun display order
@@ -47,7 +78,7 @@ export function renderWeek(container, store) {
       </div>`;
     }).join('');
 
-    container.innerHTML = `<div class="week-grid">${items}</div>`;
+    container.innerHTML = `<div class="week-grid">${items}</div>${volumeHtml()}`;
 
     container.querySelectorAll('.week-item:not(.is-rest)').forEach(item => {
       item.querySelector('.week-item-main').addEventListener('click', () => {
