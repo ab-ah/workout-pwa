@@ -50,6 +50,23 @@ body{
 }
 .card h2{font-family:'Anton',sans-serif;font-size:26px;text-transform:uppercase;margin-bottom:6px}
 .muted{color:var(--muted);font-size:13px}
+
+/* TODAY readiness */
+.today-readiness{margin-top:14px}
+.today-readiness-track{
+  height:8px;border-radius:6px;background:rgba(255,255,255,.08);overflow:hidden;
+}
+.today-readiness-fill{height:100%;border-radius:6px;transition:width .3s ease}
+.today-readiness-row{
+  display:flex;justify-content:space-between;align-items:baseline;margin-top:7px;
+}
+.today-readiness-label{
+  font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.05em;text-transform:uppercase;
+}
+.today-readiness-pct{color:var(--muted);font-size:12px;font-family:'JetBrains Mono',monospace}
+.today-readiness-warn{
+  color:#e0553a;font-size:12px;margin-top:8px;line-height:1.4;
+}
 .btn-primary{
   font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.06em;text-transform:uppercase;
   color:var(--bg);background:var(--accent);border:none;

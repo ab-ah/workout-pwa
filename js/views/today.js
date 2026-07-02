@@ -1,5 +1,38 @@
 import { mountExerciseCard } from '../components/exercise-card.js';
 import { getSettings } from '../settings-store.js';
+import { routineReadiness } from '../recovery-model.js';
+import { MUSCLE_LABELS } from '../components/muscle-atlas-paths.js';
+
+const READINESS_LOW = 0.6; // prime movers below this get a warning
+
+function readinessTier(readiness) {
+  if (readiness >= 0.85) return { label: 'Ready', color: '#46d160' };
+  if (readiness >= 0.65) return { label: 'Mostly ready', color: '#e0b03a' };
+  return { label: 'Under-recovered', color: '#e0553a' };
+}
+
+function buildReadinessBlock(readiness, perMuscle) {
+  const pct = Math.round(readiness * 100);
+  const tier = readinessTier(readiness);
+  const lagging = perMuscle.filter(m => m.role === 'prime_mover' && m.freshness < READINESS_LOW);
+  const warn = lagging.length
+    ? `<p class="today-readiness-warn">⚠ ${lagging
+        .map(m => `${MUSCLE_LABELS[m.muscle] ?? m.muscle} ${Math.round(m.freshness * 100)}%`)
+        .join(' · ')}</p>`
+    : '';
+  return `
+    <div class="today-readiness">
+      <div class="today-readiness-track">
+        <div class="today-readiness-fill" style="width:${pct}%;background:${tier.color}"></div>
+      </div>
+      <div class="today-readiness-row">
+        <span class="today-readiness-label" style="color:${tier.color}">${tier.label}</span>
+        <span class="today-readiness-pct">${pct}% recovered</span>
+      </div>
+      ${warn}
+    </div>
+  `;
+}
 
 /**
  * Renders the Today tab into `container`.
@@ -81,12 +114,14 @@ export function renderToday(container, store) {
     }
 
     const { routine, exercises } = scheduled;
+    const { readiness, perMuscle } = routineReadiness(routine, settings, store.getHistory());
     container.innerHTML = `
       <div class="card" style="border-left:4px solid var(${routine.colorVar})">
         <span class="muted">Up next</span>
         <h2>${routine.name}</h2>
         <p class="muted">${routine.tag}</p>
         <p class="muted" style="margin-top:10px">${exercises.length} exercises</p>
+        ${buildReadinessBlock(readiness, perMuscle)}
         <button class="btn-primary" id="start-workout-btn">Start Workout</button>
       </div>
     `;
