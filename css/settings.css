@@ -6,6 +6,17 @@
   text-transform: uppercase; letter-spacing: .04em; cursor: pointer;
   margin-bottom: 12px;
 }
+.settings-data-actions {
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px;
+}
+.settings-data-actions .btn-reset-data { width: auto; margin-bottom: 0 }
+.btn-data {
+  background: transparent; border: 1px solid var(--line); color: var(--ink, #e7ecf3);
+  border-radius: 10px; padding: 11px 8px;
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  text-transform: uppercase; letter-spacing: .03em; cursor: pointer;
+}
+.btn-data:hover { border-color: var(--accent); color: var(--accent) }
 .settings-header {
   display: flex; align-items: center; justify-content: space-between;
   padding: 14px 0 10px; margin-bottom: 8px;

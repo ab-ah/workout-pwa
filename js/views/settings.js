@@ -1,6 +1,7 @@
 import { getSettings, saveSettings } from '../settings-store.js';
 import { PROGRESS_KEY, HISTORY_KEY } from '../store.js';
 import { createMuscleAtlas, ROLE_COLORS, MUSCLE_LABELS } from '../components/muscle-atlas.js';
+import { buildBackup, parseBackup } from '../backup.js';
 
 const MUSCLE_NAMES = MUSCLE_LABELS;
 const ALL_MUSCLES = Object.keys(MUSCLE_NAMES);
@@ -73,6 +74,41 @@ export function renderSettings(container, onClose) {
 
   function save() { saveSettings(settings); }
 
+  function exportBackup() {
+    let history = [];
+    let progress = null;
+    try { history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch { /* keep [] */ }
+    try { progress = JSON.parse(localStorage.getItem(PROGRESS_KEY) || 'null'); } catch { /* keep null */ }
+    const bundle = buildBackup({ settings: getSettings(), history, progress });
+    const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `leanbuild-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function importBackup(file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const restored = parseBackup(reader.result);
+        saveSettings(restored.settings);
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(restored.history));
+        if (restored.progress) localStorage.setItem(PROGRESS_KEY, JSON.stringify(restored.progress));
+        settings = getSettings();
+        render();
+        alert('Backup restored.');
+      } catch (err) {
+        alert('Import failed: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+  }
+
   function render() {
     container.innerHTML = `
       <div class="settings-view">
@@ -80,7 +116,12 @@ export function renderSettings(container, onClose) {
           <button class="settings-back" id="settings-close">✕ Close</button>
           <span class="settings-title">Settings</span>
         </div>
-        <button class="btn-reset-data" id="settings-reset-data">🗑 Reset User Data</button>
+        <div class="settings-data-actions">
+          <button class="btn-data" id="settings-export">⬇ Export Backup</button>
+          <button class="btn-data" id="settings-import">⬆ Import Backup</button>
+          <button class="btn-reset-data" id="settings-reset-data">🗑 Reset Data</button>
+          <input type="file" id="settings-import-file" accept="application/json,.json" hidden>
+        </div>
         <div class="settings-tabs">
           <button class="${activeSection === 'exercises' ? 'active' : ''}" data-sec="exercises">Exercises</button>
           <button class="${activeSection === 'routines' ? 'active' : ''}" data-sec="routines">Routines</button>
@@ -92,6 +133,12 @@ export function renderSettings(container, onClose) {
     `;
 
     container.querySelector('#settings-close').addEventListener('click', onClose);
+    container.querySelector('#settings-export').addEventListener('click', exportBackup);
+    const importInput = container.querySelector('#settings-import-file');
+    container.querySelector('#settings-import').addEventListener('click', () => importInput.click());
+    importInput.addEventListener('change', () => {
+      if (importInput.files && importInput.files[0]) importBackup(importInput.files[0]);
+    });
     container.querySelector('#settings-reset-data').addEventListener('click', () => {
       if (confirm('Clear all workout history, progress, and logged data?\n\nYour exercise list and settings will be kept.')) {
         localStorage.removeItem(PROGRESS_KEY);

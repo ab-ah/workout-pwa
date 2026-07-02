@@ -4,6 +4,36 @@ export function computeRemainingSeconds(endTimestamp, now = Date.now()) {
 }
 
 /**
+ * Short two-tone beep via WebAudio — the reliable "rest over" cue on iOS,
+ * where navigator.vibrate is a no-op inside a PWA. Best-effort: silently
+ * does nothing if the browser blocks or lacks audio.
+ */
+function playRestDoneBeep() {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    const now = ctx.currentTime;
+    [880, 1320].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      const start = now + i * 0.18;
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.3, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.16);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + 0.17);
+    });
+    setTimeout(() => ctx.close().catch(() => {}), 600);
+  } catch {
+    /* audio unavailable — vibration / visual countdown still cover it */
+  }
+}
+
+/**
  * Mounts a rest timer into `container` counting down `durationSeconds`.
  * Calls `onComplete` when it reaches zero. Returns a `stop()` function
  * to cancel early (used by the Skip button and on unmount).
@@ -35,6 +65,7 @@ export function mountRestTimer(container, durationSeconds, onComplete) {
     timeEl.textContent = `${remaining}s`;
     if (remaining <= 0) {
       if (navigator.vibrate) navigator.vibrate(200);
+      playRestDoneBeep();
       complete();
     }
   }

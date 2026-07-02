@@ -23,3 +23,17 @@
 .muscle-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0 }
 .muscle-name { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink); text-transform: uppercase }
 .muscle-status { font-size: 11px; color: var(--muted); margin-left: auto; font-family: 'JetBrains Mono', monospace }
+
+/* Soreness tuning controls */
+.muscle-legend { grid-template-columns: 1fr }
+.muscle-name { flex: 1 }
+.muscle-status { margin-left: 0 }
+.muscle-window { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--muted); min-width: 34px; text-align: right }
+.muscle-tune { display: inline-flex; gap: 5px; flex-shrink: 0 }
+.tune-btn {
+  width: 26px; height: 26px; border-radius: 6px; padding: 0;
+  border: 1px solid var(--line); background: var(--bg); color: var(--ink);
+  font-size: 15px; line-height: 1; cursor: pointer;
+}
+.tune-btn:hover { border-color: var(--accent); color: var(--accent) }
+.tune-btn:active { transform: scale(0.92) }

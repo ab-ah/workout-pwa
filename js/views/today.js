@@ -2,6 +2,8 @@ import { mountExerciseCard } from '../components/exercise-card.js';
 import { getSettings } from '../settings-store.js';
 import { routineReadiness } from '../recovery-model.js';
 import { MUSCLE_LABELS } from '../components/muscle-atlas-paths.js';
+import { findMissedWorkout } from '../schedule.js';
+import { enableWakeLock, disableWakeLock } from '../wake-lock.js';
 
 const READINESS_LOW = 0.6; // prime movers below this get a warning
 
@@ -98,24 +100,54 @@ export function renderToday(container, store) {
     sessionStorage.removeItem(todaySessionKey);
   }
 
+  function startRoutine(routine) {
+    const state = { routineId: routine.id, exerciseIndex: 0, loggedExercises: [], startedAt: Date.now() };
+    saveInProgressSession(state);
+    renderExerciseFlow(state.routineId, state.exerciseIndex, state.loggedExercises, state.startedAt);
+  }
+
+  function missedBannerHtml(missed) {
+    if (!missed) return '';
+    return `
+      <div class="missed-banner">
+        <div class="missed-banner-text">
+          <span class="muted">Missed workout</span>
+          <div><strong>${missed.routine.name}</strong> <span class="muted">was scheduled ${missed.dayName}</span></div>
+        </div>
+        <button class="btn-secondary" id="do-missed-btn">Do it now</button>
+      </div>
+    `;
+  }
+
+  function wireMissed(missed) {
+    const btn = container.querySelector('#do-missed-btn');
+    if (btn && missed) btn.addEventListener('click', () => startRoutine(missed.routine));
+  }
+
   function renderDayIntro() {
+    disableWakeLock(); // not in a session on the intro screen
     const settings = getSettings();
     const scheduled = getScheduledRoutine(settings);
+    const missed = findMissedWorkout(settings.schedule, settings.routines, store.getHistory());
+    const banner = missedBannerHtml(missed);
 
     if (!scheduled) {
       container.innerHTML = `
+        ${banner}
         <div class="card">
           <span class="muted">Today</span>
           <h2>Rest Day</h2>
           <p class="muted">No workout scheduled for today. Recovery in progress.</p>
         </div>
       `;
+      wireMissed(missed);
       return;
     }
 
     const { routine, exercises } = scheduled;
     const { readiness, perMuscle } = routineReadiness(routine, settings, store.getHistory());
     container.innerHTML = `
+      ${banner}
       <div class="card" style="border-left:4px solid var(${routine.colorVar})">
         <span class="muted">Up next</span>
         <h2>${routine.name}</h2>
@@ -125,11 +157,8 @@ export function renderToday(container, store) {
         <button class="btn-primary" id="start-workout-btn">Start Workout</button>
       </div>
     `;
-    container.querySelector('#start-workout-btn').addEventListener('click', () => {
-      const state = { routineId: routine.id, exerciseIndex: 0, loggedExercises: [], startedAt: Date.now() };
-      saveInProgressSession(state);
-      renderExerciseFlow(state.routineId, state.exerciseIndex, state.loggedExercises, state.startedAt);
-    });
+    container.querySelector('#start-workout-btn').addEventListener('click', () => startRoutine(routine));
+    wireMissed(missed);
   }
 
   function getLastSetsForExercise(exerciseId, history) {
@@ -158,6 +187,7 @@ export function renderToday(container, store) {
       return;
     }
 
+    enableWakeLock(); // keep the screen on while training
     const exercise = exercises[exerciseIndex];
     container.innerHTML = `<div class="card" id="exercise-card-slot"></div>`;
     const slot = container.querySelector('#exercise-card-slot');
@@ -181,6 +211,7 @@ export function renderToday(container, store) {
   function renderSummary(routineId, routine, loggedExercises, startedAt) {
     if (sessionCompleted) return;
     sessionCompleted = true;
+    disableWakeLock(); // workout finished
     const finishedAt = Date.now();
     const totalSets = loggedExercises.reduce((sum, e) => sum + e.sets.length, 0);
     const minutes = Math.max(1, Math.round((finishedAt - startedAt) / 60000));

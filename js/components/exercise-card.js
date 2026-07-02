@@ -1,4 +1,5 @@
 import { mountRestTimer } from './rest-timer.js';
+import { suggestProgression } from '../progression.js';
 
 /**
  * Renders one exercise with its sets into `container`.
@@ -61,6 +62,10 @@ export function mountExerciseCard(container, exercise, previousSets, onExerciseC
         onerror="this.style.display='none'"
       >
       <p class="muted">${exercise.repRange} reps · rest ${exercise.restSeconds}s · start ~${exercise.startWeight}</p>
+      ${(() => {
+        const hint = suggestProgression(previousSets, exercise.repRange);
+        return hint ? `<p class="progression-hint">💡 ${hint.text}</p>` : '';
+      })()}
       <div id="set-rows">${rows.join('')}</div>
       <div id="rest-timer-slot"></div>
       <button class="btn-primary" id="complete-exercise-btn">${(() => {
