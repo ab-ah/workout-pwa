@@ -4,6 +4,7 @@ import { routineReadiness } from '../recovery-model.js';
 import { MUSCLE_LABELS } from '../components/muscle-atlas-paths.js';
 import { findMissedWorkout, localDateStr } from '../schedule.js';
 import { enableWakeLock, disableWakeLock } from '../wake-lock.js';
+import { downloadBackup, promptRestore } from '../backup-io.js';
 
 const READINESS_LOW = 0.6; // prime movers below this get a warning
 
@@ -145,15 +146,45 @@ export function renderToday(container, store) {
     });
   }
 
+  // Shown when no workouts have been logged yet — e.g. a fresh install or a
+  // phone whose storage was wiped — so a saved backup can be pulled back in.
+  function restoreBannerHtml(show) {
+    if (!show) return '';
+    return `
+      <div class="missed-banner">
+        <div class="missed-banner-text">
+          <span class="muted">No workouts logged yet</span>
+          <div>Have a backup file? <strong>Restore your data.</strong></div>
+        </div>
+        <div class="missed-banner-actions">
+          <button class="btn-secondary" id="restore-backup-btn">⬆ Restore Backup</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function wireRestore() {
+    const btn = container.querySelector('#restore-backup-btn');
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+      promptRestore()
+        .then(() => renderToday(container, store))
+        .catch((err) => alert('Restore failed: ' + err.message));
+    });
+  }
+
   function renderDayIntro() {
     disableWakeLock(); // not in a session on the intro screen
     const settings = getSettings();
     const scheduled = getScheduledRoutine(settings);
-    const missed = findMissedWorkout(settings.schedule, settings.routines, store.getHistory());
+    const history = store.getHistory();
+    const missed = findMissedWorkout(settings.schedule, settings.routines, history);
     const banner = missedBannerHtml(missed, settings.routines);
+    const restoreBanner = restoreBannerHtml(history.length === 0);
 
     if (!scheduled) {
       container.innerHTML = `
+        ${restoreBanner}
         ${banner}
         <div class="card">
           <span class="muted">Today</span>
@@ -162,12 +193,14 @@ export function renderToday(container, store) {
         </div>
       `;
       wireMissed(missed);
+      wireRestore();
       return;
     }
 
     const { routine, exercises } = scheduled;
     const { readiness, perMuscle } = routineReadiness(routine, settings, store.getHistory());
     container.innerHTML = `
+      ${restoreBanner}
       ${banner}
       <div class="card" style="border-left:4px solid var(${routine.colorVar})">
         <span class="muted">Up next</span>
@@ -180,6 +213,7 @@ export function renderToday(container, store) {
     `;
     container.querySelector('#start-workout-btn').addEventListener('click', () => startRoutine(routine));
     wireMissed(missed);
+    wireRestore();
   }
 
   function getLastSetsForExercise(exerciseId, history) {
@@ -279,10 +313,13 @@ export function renderToday(container, store) {
         <h2>Workout Complete</h2>
         <p class="muted">${routine.name} — ${logged.length} exercises, ${totalSets} sets, ${minutes} min</p>
         <button class="btn-primary" id="back-to-today-btn">Back to Today</button>
+        <button class="btn-secondary" id="backup-btn" style="margin-top:10px">⬇ Back up my data</button>
+        <p class="muted" style="margin-top:8px;font-size:13px">Save a backup file so a phone wipe never loses your log.</p>
       </div>
     `;
     container.querySelector('#back-to-today-btn').addEventListener('click', () => {
       renderToday(container, store);
     });
+    container.querySelector('#backup-btn').addEventListener('click', downloadBackup);
   }
 }

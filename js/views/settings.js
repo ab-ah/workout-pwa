@@ -1,7 +1,7 @@
 import { getSettings, saveSettings } from '../settings-store.js';
 import { PROGRESS_KEY, HISTORY_KEY } from '../store.js';
 import { createMuscleAtlas, ROLE_COLORS, MUSCLE_LABELS } from '../components/muscle-atlas.js';
-import { buildBackup, parseBackup } from '../backup.js';
+import { downloadBackup, restoreBackupFromFile } from '../backup-io.js';
 
 const MUSCLE_NAMES = MUSCLE_LABELS;
 const ALL_MUSCLES = Object.keys(MUSCLE_NAMES);
@@ -40,39 +40,14 @@ export function renderSettings(container, onClose) {
 
   function save() { saveSettings(settings); }
 
-  function exportBackup() {
-    let history = [];
-    let progress = null;
-    try { history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch { /* keep [] */ }
-    try { progress = JSON.parse(localStorage.getItem(PROGRESS_KEY) || 'null'); } catch { /* keep null */ }
-    const bundle = buildBackup({ settings: getSettings(), history, progress });
-    const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `leanbuild-backup-${new Date().toISOString().slice(0, 10)}.json`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  }
-
   function importBackup(file) {
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const restored = parseBackup(reader.result);
-        saveSettings(restored.settings);
-        localStorage.setItem(HISTORY_KEY, JSON.stringify(restored.history));
-        if (restored.progress) localStorage.setItem(PROGRESS_KEY, JSON.stringify(restored.progress));
+    restoreBackupFromFile(file)
+      .then(() => {
         settings = getSettings();
         render();
         alert('Backup restored.');
-      } catch (err) {
-        alert('Import failed: ' + err.message);
-      }
-    };
-    reader.readAsText(file);
+      })
+      .catch((err) => alert('Import failed: ' + err.message));
   }
 
   function render() {
@@ -99,7 +74,7 @@ export function renderSettings(container, onClose) {
     `;
 
     container.querySelector('#settings-close').addEventListener('click', onClose);
-    container.querySelector('#settings-export').addEventListener('click', exportBackup);
+    container.querySelector('#settings-export').addEventListener('click', downloadBackup);
     const importInput = container.querySelector('#settings-import-file');
     container.querySelector('#settings-import').addEventListener('click', () => importInput.click());
     importInput.addEventListener('change', () => {
