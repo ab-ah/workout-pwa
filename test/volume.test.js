@@ -13,14 +13,14 @@ const routines = [
   { id: 'legs', exerciseIds: ['squat'] },
 ];
 
-test('weeklyVolumeByMuscle sums prime + synergist sets across the schedule', () => {
+test('weeklyVolumeByMuscle sums prime sets in full and synergist sets at half', () => {
   const schedule = { '1': 'push', '2': 'pull', '3': 'legs' };
   const vol = weeklyVolumeByMuscle(schedule, routines, exercises);
   const map = Object.fromEntries(vol.map(v => [v.muscle, v.sets]));
-  assert.equal(map.chest, 4);
-  assert.equal(map.triceps, 4);   // synergist counts
-  assert.equal(map.quads, 5);
-  assert.equal(map.glutes, 5);
+  assert.equal(map.chest, 4);      // prime mover, full credit
+  assert.equal(map.triceps, 2);    // synergist, half credit (4 * 0.5)
+  assert.equal(map.quads, 5);      // prime mover, full credit
+  assert.equal(map.glutes, 2.5);   // synergist, half credit (5 * 0.5)
 });
 
 test('weeklyVolumeByMuscle excludes stabilisers', () => {

@@ -45,10 +45,11 @@ test('default exercise roles follow the recovery-focused fatigue categories', ()
     glutes: 'prime_mover',
     lower_back: 'synergist',
     forearms: 'stabilizer',
+    traps: 'stabilizer',
   });
   assert.deepEqual(byId.get('plank').muscles, {
     abs: 'prime_mover',
-    obliques: 'prime_mover',
+    obliques: 'synergist',
     shoulders: 'stabilizer',
     glutes: 'stabilizer',
     lower_back: 'stabilizer',
@@ -66,6 +67,26 @@ test('fat-loss plan ships the new conditioning exercises with muscle maps', () =
   }
   assert.equal(byId.get('dumbbell-thruster').muscles.quads, 'prime_mover');
   assert.equal(byId.get('dumbbell-thruster').muscles.shoulders, 'prime_mover');
+});
+
+test('treadmill exercises ship a cardio countdown timer config', () => {
+  globalThis.localStorage = makeMemoryStorage();
+
+  const settings = getSettings();
+  const byId = new Map(settings.exercises.map(ex => [ex.id, ex]));
+
+  assert.deepEqual(byId.get('treadmill-hiit-intervals').timer, {
+    type: 'interval',
+    workSeconds: 30,
+    restSeconds: 60,
+    rounds: 9,
+  });
+  assert.deepEqual(byId.get('treadmill-incline-walk').timer, {
+    type: 'duration',
+    seconds: 1800,
+  });
+  // Lifting exercises are untouched — no timer field at all.
+  assert.equal(byId.get('flat-barbell-bench-press').timer, undefined);
 });
 
 test('default schedule spaces fatigue: Mon–Sat with mid-week active recovery', () => {
@@ -138,6 +159,12 @@ test('migration repoints an existing default exercise from an external gif to th
         gifUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/08/Hanging-Leg-Raises.gif',
         muscles: {},
       },
+      {
+        id: 'dumbbell-pullover',
+        name: 'Dumbbell Pullover (lat/chest)',
+        gifUrl: 'assets/exercise-gifs/dumbbell-pullover.gif',
+        muscles: { lats: 'prime_mover', chest: 'stabilizer' }, // pre-v5 roles
+      },
     ],
     routines: [],
     schedule: {},
@@ -151,6 +178,35 @@ test('migration repoints an existing default exercise from an external gif to th
   const legRaise = settings.exercises.find(e => e.id === 'hanging-leg-raise');
   assert.equal(legRaise.name, 'Lying Leg Raise'); // no pull-up bar assumption
   assert.equal(legRaise.gifUrl, 'assets/exercise-gifs/hanging-leg-raise.gif');
+  const pullover = settings.exercises.find(e => e.id === 'dumbbell-pullover');
+  assert.deepEqual(pullover.muscles, {
+    lats: 'prime_mover',
+    chest: 'synergist',
+    triceps: 'stabilizer',
+  }); // stale muscle roles refreshed by the plan bump
+  assert.equal(settings.planVersion, CURRENT_PLAN_VERSION);
+});
+
+test('migration adds the interval timer to a treadmill exercise saved before v6', () => {
+  globalThis.localStorage = makeMemoryStorage();
+
+  saveSettings({
+    exercises: [{
+      id: 'treadmill-hiit-intervals',
+      name: 'Treadmill HIIT Intervals',
+      gifUrl: 'assets/exercise-gifs/treadmill-hiit-intervals.gif',
+      muscles: { quads: 'synergist', calves: 'synergist', hamstrings: 'synergist', glutes: 'stabilizer' },
+      // no `timer` field — this is what a pre-v6 save looks like
+    }],
+    routines: [],
+    schedule: {},
+    recoveryHours: {},
+    planVersion: 5,
+  });
+
+  const settings = getSettings();
+  const hiit = settings.exercises.find(e => e.id === 'treadmill-hiit-intervals');
+  assert.deepEqual(hiit.timer, { type: 'interval', workSeconds: 30, restSeconds: 60, rounds: 9 });
   assert.equal(settings.planVersion, CURRENT_PLAN_VERSION);
 });
 

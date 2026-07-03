@@ -5,9 +5,13 @@ export const SETTINGS_KEY = 'leanbuild-settings-v1';
 // conditioning. v3 = exercise GIFs repointed from external URLs to bundled local
 // files (assets/exercise-gifs/*). v4 = fatigue-spaced week (Wed active recovery,
 // Sat conditioning), no pull-up-bar equipment assumption (Lying Leg Raise).
-// Existing saved settings below this version are migrated once (routines/schedule
-// reinstalled + default exercise names/gifUrls refreshed).
-export const CURRENT_PLAN_VERSION = 4;
+// v5 = corrected muscle-role maps (pullover chest, plank obliques, flutter-kick
+// quads, plus stabilizer accuracy on presses/rows/RDLs). v6 = cardio countdown
+// timers on the treadmill exercises (interval work/rest cycling for HIIT, plain
+// duration countdown for the steady walk). Existing saved settings below this
+// version are migrated once (routines/schedule reinstalled + default exercise
+// names/gifUrls/muscles/timers refreshed).
+export const CURRENT_PLAN_VERSION = 6;
 
 const DEFAULT_RECOVERY_HOURS = {
   chest: 60, shoulders: 48, traps: 48, triceps: 48, lats: 72,
@@ -21,18 +25,18 @@ const DEFAULT_EXERCISE_MUSCLES = {
   'flat-barbell-bench-press':            { chest: 'prime_mover', triceps: 'synergist', shoulders: 'synergist', lats: 'stabilizer' },
   'incline-dumbbell-press':              { chest: 'prime_mover', shoulders: 'prime_mover', triceps: 'synergist' },
   'incline-barbell-bench-press':         { chest: 'prime_mover', shoulders: 'prime_mover', triceps: 'synergist' },
-  'decline-dumbbell-press':              { chest: 'prime_mover', triceps: 'synergist' },
+  'decline-dumbbell-press':              { chest: 'prime_mover', triceps: 'synergist', shoulders: 'stabilizer' },
   'seated-dumbbell-shoulder-press':      { shoulders: 'prime_mover', triceps: 'synergist', traps: 'synergist' },
   'dumbbell-lateral-raise':              { shoulders: 'prime_mover', traps: 'stabilizer' },
   'lateral-raise-dropset':               { shoulders: 'prime_mover', traps: 'stabilizer' },
   'lying-dumbbell-triceps-extension':    { triceps: 'prime_mover' },
   'close-grip-dumbbell-press':           { triceps: 'prime_mover', chest: 'synergist', shoulders: 'synergist' },
   'overhead-dumbbell-triceps-extension': { triceps: 'prime_mover' },
-  'bent-over-barbell-row':               { lats: 'prime_mover', traps: 'synergist', rear_delts: 'synergist', biceps: 'synergist', lower_back: 'synergist', forearms: 'stabilizer' },
+  'bent-over-barbell-row':               { lats: 'prime_mover', traps: 'synergist', rear_delts: 'synergist', biceps: 'synergist', lower_back: 'synergist', forearms: 'stabilizer', hamstrings: 'stabilizer' },
   'one-arm-dumbbell-row':                { lats: 'prime_mover', traps: 'synergist', rear_delts: 'synergist', biceps: 'synergist', forearms: 'stabilizer', obliques: 'stabilizer' },
   'chest-supported-dumbbell-row':        { lats: 'prime_mover', traps: 'synergist', rear_delts: 'synergist', biceps: 'synergist' },
   'two-arm-dumbbell-row':                { lats: 'prime_mover', traps: 'synergist', rear_delts: 'synergist', biceps: 'synergist', lower_back: 'synergist', forearms: 'stabilizer' },
-  'dumbbell-pullover':                   { lats: 'prime_mover', chest: 'stabilizer' },
+  'dumbbell-pullover':                   { lats: 'prime_mover', chest: 'synergist', triceps: 'stabilizer' },
   'back-hyperextension':                 { lower_back: 'prime_mover', glutes: 'synergist', hamstrings: 'synergist' },
   'weighted-back-hyperextension':        { lower_back: 'prime_mover', glutes: 'synergist', hamstrings: 'synergist' },
   'preacher-curl':                       { biceps: 'prime_mover', forearms: 'synergist' },
@@ -43,11 +47,11 @@ const DEFAULT_EXERCISE_MUSCLES = {
   'goblet-heels-elevated-squat':         { quads: 'prime_mover', glutes: 'synergist', abs: 'synergist', lower_back: 'stabilizer' },
   'bulgarian-split-squat':               { quads: 'prime_mover', glutes: 'prime_mover', hamstrings: 'synergist', abs: 'stabilizer' },
   'dumbbell-reverse-lunge':              { quads: 'prime_mover', glutes: 'prime_mover', hamstrings: 'synergist', abs: 'stabilizer' },
-  'dumbbell-romanian-deadlift':          { hamstrings: 'prime_mover', glutes: 'prime_mover', lower_back: 'synergist', forearms: 'stabilizer' },
-  'barbell-romanian-deadlift':           { hamstrings: 'prime_mover', glutes: 'prime_mover', lower_back: 'synergist', forearms: 'stabilizer' },
+  'dumbbell-romanian-deadlift':          { hamstrings: 'prime_mover', glutes: 'prime_mover', lower_back: 'synergist', forearms: 'stabilizer', traps: 'stabilizer' },
+  'barbell-romanian-deadlift':           { hamstrings: 'prime_mover', glutes: 'prime_mover', lower_back: 'synergist', forearms: 'stabilizer', traps: 'stabilizer' },
   'dumbbell-calf-raise':                 { calves: 'prime_mover' },
   'hanging-leg-raise':                   { abs: 'prime_mover' },
-  'plank':                               { abs: 'prime_mover', obliques: 'prime_mover', shoulders: 'stabilizer', glutes: 'stabilizer', lower_back: 'stabilizer' },
+  'plank':                               { abs: 'prime_mover', obliques: 'synergist', shoulders: 'stabilizer', glutes: 'stabilizer', lower_back: 'stabilizer' },
   'dumbbell-russian-twist':              { obliques: 'prime_mover', abs: 'synergist' },
   'weighted-crunch':                     { abs: 'prime_mover' },
   'dead-bug':                            { abs: 'prime_mover', obliques: 'synergist' },
@@ -64,7 +68,7 @@ const DEFAULT_EXERCISE_MUSCLES = {
   'push-up':                             { chest: 'prime_mover', triceps: 'synergist', shoulders: 'synergist', abs: 'stabilizer' },
   'bicycle-crunch':                      { abs: 'prime_mover', obliques: 'prime_mover' },
   'side-plank':                          { obliques: 'prime_mover', abs: 'synergist', shoulders: 'stabilizer', glutes: 'stabilizer' },
-  'flutter-kicks':                       { abs: 'prime_mover', hamstrings: 'stabilizer' },
+  'flutter-kicks':                       { abs: 'prime_mover', quads: 'stabilizer' },
 };
 
 // All exercise data self-contained
@@ -103,8 +107,8 @@ const EXERCISE_POOL_DATA = [
   { id: 'weighted-crunch', name: 'Weighted Crunch / Cable-free Crunch', setsCount: 3, repRange: '15', restSeconds: 45, startWeight: 'hold 5–10 kg DB', gifUrl: 'assets/exercise-gifs/weighted-crunch.gif' },
   { id: 'dead-bug', name: 'Dead Bug', setsCount: 2, repRange: '12 / side', restSeconds: 45, startWeight: 'bodyweight', gifUrl: 'assets/exercise-gifs/dead-bug.gif' },
   // --- Fat-loss conditioning & metabolic additions ---
-  { id: 'treadmill-incline-walk', name: 'Incline Treadmill Walk (steady)', setsCount: 1, repRange: '25–35 min', restSeconds: 0, startWeight: 'incline 6–10%, brisk', gifUrl: 'assets/exercise-gifs/treadmill-incline-walk.gif' },
-  { id: 'treadmill-hiit-intervals', name: 'Treadmill HIIT Intervals', setsCount: 1, repRange: '8–10 × 30s hard / 60s easy', restSeconds: 0, startWeight: 'run/fast walk', gifUrl: 'assets/exercise-gifs/treadmill-hiit-intervals.gif' },
+  { id: 'treadmill-incline-walk', name: 'Incline Treadmill Walk (steady)', setsCount: 1, repRange: '25–35 min', restSeconds: 0, startWeight: 'incline 6–10%, brisk', gifUrl: 'assets/exercise-gifs/treadmill-incline-walk.gif', timer: { type: 'duration', seconds: 1800 } },
+  { id: 'treadmill-hiit-intervals', name: 'Treadmill HIIT Intervals', setsCount: 1, repRange: '8–10 × 30s hard / 60s easy', restSeconds: 0, startWeight: 'run/fast walk', gifUrl: 'assets/exercise-gifs/treadmill-hiit-intervals.gif', timer: { type: 'interval', workSeconds: 30, restSeconds: 60, rounds: 9 } },
   { id: 'dumbbell-thruster', name: 'Dumbbell Thruster (squat → press)', setsCount: 3, repRange: '10–12', restSeconds: 60, startWeight: '10–16 kg / hand', gifUrl: 'assets/exercise-gifs/dumbbell-thruster.gif' },
   { id: 'dumbbell-swing', name: 'Dumbbell Swing (hip hinge)', setsCount: 3, repRange: '15–20', restSeconds: 45, startWeight: '16–24 kg DB', gifUrl: 'assets/exercise-gifs/dumbbell-swing.gif' },
   { id: 'renegade-row', name: 'Renegade Row (plank + row)', setsCount: 3, repRange: '8 / arm', restSeconds: 60, startWeight: '10–16 kg / hand', gifUrl: 'assets/exercise-gifs/renegade-row.gif' },
@@ -258,9 +262,11 @@ function normalizeSettings(settings) {
 
 /**
  * Bring stored settings up to the current shipped plan. Steps:
- *   1. One-time (on plan-version bump) — refresh known default exercises' name
- *      and gifUrl to the shipped values (bundled local assets/exercise-gifs/*
- *      files), leaving user-added exercises and all other fields alone.
+ *   1. One-time (on plan-version bump) — refresh known default exercises' name,
+ *      gifUrl and muscle-role map to the shipped values (bundled local gifs,
+ *      corrected muscle science), leaving user-added exercises and all other
+ *      fields alone. Note: a bump does overwrite atlas edits made to DEFAULT
+ *      exercises, the trade-off for being able to ship muscle corrections.
  *   2. Non-destructive — add any newly shipped default exercises (e.g. treadmill
  *      and conditioning moves) that the user doesn't have yet.
  *   3. One-time — for anyone below CURRENT_PLAN_VERSION, install the new default
@@ -273,15 +279,22 @@ function migrateSettings(settings) {
   const defaultById = new Map(defaults.map(e => [e.id, e]));
   const needsPlan = (settings.planVersion ?? 0) < CURRENT_PLAN_VERSION;
 
-  // Step 1: refresh name + gifUrl on known default exercises to the shipped
-  // values (local gif paths, corrected names like "Lying Leg Raise").
+  // Step 1: refresh name + gifUrl + muscles + timer on known default exercises
+  // to the shipped values (local gif paths, corrected names, corrected muscle
+  // roles, cardio countdown config).
   let exercises = settings.exercises;
   if (needsPlan) {
     exercises = exercises.map(e => {
       const d = defaultById.get(e.id);
       if (!d) return e;
-      const stale = (d.gifUrl && e.gifUrl !== d.gifUrl) || (d.name && e.name !== d.name);
-      return stale ? { ...e, name: d.name, gifUrl: d.gifUrl } : e;
+      const stale =
+        (d.gifUrl && e.gifUrl !== d.gifUrl) ||
+        (d.name && e.name !== d.name) ||
+        JSON.stringify(e.muscles ?? {}) !== JSON.stringify(d.muscles ?? {}) ||
+        JSON.stringify(e.timer ?? null) !== JSON.stringify(d.timer ?? null);
+      return stale
+        ? { ...e, name: d.name, gifUrl: d.gifUrl, muscles: { ...d.muscles }, ...(d.timer ? { timer: { ...d.timer } } : {}) }
+        : e;
     });
   }
 

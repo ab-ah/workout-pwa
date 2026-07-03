@@ -1,7 +1,7 @@
 {
-  "name": "Lean Build — 5-Day Plan",
+  "name": "Lean Build — Fat-Loss Plan",
   "short_name": "Lean Build",
-  "description": "5-day push/pull/legs/upper/lower workout plan with set tracking.",
+  "description": "6-day fat-loss training plan with treadmill conditioning, recovery tracking, and set logging.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

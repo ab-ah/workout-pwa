@@ -1,4 +1,4 @@
-const CACHE_NAME = 'leanbuild-v12';
+const CACHE_NAME = 'leanbuild-v14';
 const ASSETS = [
   './',
   './index.html',
@@ -24,6 +24,7 @@ const ASSETS = [
   './css/settings.css',
   './js/components/exercise-card.js',
   './js/components/rest-timer.js',
+  './js/components/workout-timer.js',
   './js/components/chart.js',
   './js/components/muscle-atlas.js',
   './js/components/muscle-atlas-paths.js',
