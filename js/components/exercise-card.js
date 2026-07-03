@@ -1,9 +1,12 @@
 import { mountRestTimer } from './rest-timer.js';
+import { mountWorkoutTimer } from './workout-timer.js';
 import { suggestProgression } from '../progression.js';
 
 /**
  * Renders one exercise with its sets into `container`.
- * `exercise` = { id, name, setsCount, repRange, restSeconds, startWeight, gifUrl }
+ * `exercise` = { id, name, setsCount, repRange, restSeconds, startWeight, gifUrl,
+ *   timer? } — `timer`, when present, shows a start/pause cardio countdown
+ *   (interval work/rest cycling or a plain duration walk); see workout-timer.js.
  * `previousSets` = sets from the last time this exercise was done (for defaults
  *   and the progression hint), or null.
  * `initialSets` = sets already logged for this exercise THIS session (present
@@ -16,6 +19,11 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
   let activeSetIndex = loggedSets.length;
   let editingIndex = null; // index of a logged set being corrected, or null
   let timerHandle = null;
+  // Cardio countdown (workout-timer.js) is independent of the rest timer above.
+  // It is (re)mounted fresh on every render(), same as the rest timer; in
+  // practice a cardio exercise's card only re-renders once (after its single
+  // set is logged), by which point the countdown has already finished.
+  let workoutTimerHandle = null;
   let completed = false;
   let restActive = false;
   // The active-set inputs are pre-filled with the previous set's values as a
@@ -30,6 +38,10 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
     if (timerHandle) {
       timerHandle.stop();
       timerHandle = null;
+    }
+    if (workoutTimerHandle) {
+      workoutTimerHandle.stop();
+      workoutTimerHandle = null;
     }
 
     const rows = [];
@@ -92,6 +104,7 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
         const hint = suggestProgression(previousSets, exercise.repRange);
         return hint ? `<p class="progression-hint">💡 ${hint.text}</p>` : '';
       })()}
+      ${exercise.timer ? '<div id="workout-timer-slot"></div>' : ''}
       <div id="set-rows">${rows.join('')}</div>
       <div id="rest-timer-slot"></div>
       <button class="btn-primary" id="complete-exercise-btn">${(() => {
@@ -101,6 +114,11 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
           : `Finish Early (${loggedSets.length}/${exercise.setsCount} sets) →`;
       })()}</button>
     `;
+
+    if (exercise.timer) {
+      const wtSlot = container.querySelector('#workout-timer-slot');
+      workoutTimerHandle = mountWorkoutTimer(wtSlot, exercise.timer, () => {});
+    }
 
     const logBtn = container.querySelector('#log-set-btn');
     if (logBtn) {
@@ -217,6 +235,10 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
       if (timerHandle) {
         timerHandle.stop();
         timerHandle = null;
+      }
+      if (workoutTimerHandle) {
+        workoutTimerHandle.stop();
+        workoutTimerHandle = null;
       }
     }
   };

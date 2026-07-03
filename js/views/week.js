@@ -12,6 +12,12 @@ export function renderWeek(container, store) {
 
   const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
+  // Synergist sets count at half weight (see volume.js), so totals can land on
+  // a .5 — show one decimal only when it's not a whole number.
+  function formatSets(sets) {
+    return Number.isInteger(sets) ? String(sets) : sets.toFixed(1);
+  }
+
   function volumeHtml() {
     const volume = weeklyVolumeByMuscle(settings.schedule, settings.routines, settings.exercises);
     if (!volume.length) return '';
@@ -25,7 +31,7 @@ export function renderWeek(container, store) {
           <div class="volume-track">
             <div class="volume-fill${low ? ' is-low' : ''}" style="width:${pct}%"></div>
           </div>
-          <span class="volume-count${low ? ' is-low' : ''}">${sets}</span>
+          <span class="volume-count${low ? ' is-low' : ''}">${formatSets(sets)}</span>
         </div>
       `;
     }).join('');
@@ -33,7 +39,7 @@ export function renderWeek(container, store) {
       <div class="volume-section">
         <div class="volume-title">Planned Weekly Volume · sets per muscle</div>
         ${rows}
-        <div class="volume-note">Planned prime + synergist sets from your routines (not logged workouts). <span class="is-low">Amber</span> = under ${LOW_VOLUME_SETS}/week.</div>
+        <div class="volume-note">Planned prime sets + half-credit synergist sets from your routines (not logged workouts). <span class="is-low">Amber</span> = under ${LOW_VOLUME_SETS}/week.</div>
       </div>
     `;
   }

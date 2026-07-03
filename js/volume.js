@@ -2,9 +2,12 @@
 // Pure: no DOM. The week view renders the returned bars.
 
 // A set counts as working volume for a muscle when the exercise trains it as a
-// prime mover or synergist. Stabilisers are excluded (they aren't the point of
-// the set). Prime and synergist each count as a full set toward the muscle.
-const VOLUME_ROLES = new Set(['prime_mover', 'synergist']);
+// prime mover or synergist (stabilisers are excluded — they aren't the point of
+// the set). A prime-mover set counts in full; a synergist set counts at HALF,
+// matching standard hypertrophy volume accounting and the weighting already
+// used by the recovery model (ROLE_WEIGHT in recovery-model.js), where indirect
+// work fatigues a muscle far less than direct work.
+const VOLUME_ROLE_WEIGHT = { prime_mover: 1, synergist: 0.5 };
 
 /**
  * @param {Object<string,string|null>} schedule  dow → routineId
@@ -25,8 +28,9 @@ export function weeklyVolumeByMuscle(schedule, routines, exercises) {
       if (!ex) continue;
       const setsCount = ex.setsCount ?? 0;
       for (const [muscle, role] of Object.entries(ex.muscles ?? {})) {
-        if (!VOLUME_ROLES.has(role)) continue;
-        tally[muscle] = (tally[muscle] ?? 0) + setsCount;
+        const weight = VOLUME_ROLE_WEIGHT[role];
+        if (!weight) continue;
+        tally[muscle] = (tally[muscle] ?? 0) + setsCount * weight;
       }
     }
   }

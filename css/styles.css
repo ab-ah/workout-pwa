@@ -162,6 +162,15 @@ body{
 }
 .rest-timer .time{font-family:'JetBrains Mono',monospace;font-size:22px;color:var(--accent)}
 
+/* WORKOUT TIMER (cardio HIIT / duration countdown) */
+.workout-timer{
+  display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;
+  background:var(--panel-2);border:1px dashed var(--cardio);border-radius:12px;padding:16px 18px;margin:12px 0;
+}
+.workout-timer-phase{font-family:'JetBrains Mono',monospace;font-size:13px;letter-spacing:0.04em;text-transform:uppercase;color:var(--cardio)}
+.workout-timer-clock{font-family:'JetBrains Mono',monospace;font-size:32px;color:var(--ink)}
+.workout-timer-actions{display:flex;gap:10px}
+
 /* WEEK GRID */
 .week-grid{display:grid;gap:12px}
 .week-item{

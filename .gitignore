@@ -1,0 +1,4 @@
+# Local tool/session state — not part of the app, shouldn't be public.
+.claude/
+.superpowers/
+node_modules/
