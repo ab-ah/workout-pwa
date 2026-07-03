@@ -11,6 +11,7 @@
   --pull:#4ab0ff;
   --legs:#c08bff;
   --core:#ffd24a;
+  --cardio:#46d160;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
