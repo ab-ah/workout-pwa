@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { getSettings, SETTINGS_KEY } from '../js/settings-store.js';
+import { getSettings, saveSettings, SETTINGS_KEY, CURRENT_PLAN_VERSION } from '../js/settings-store.js';
 
 function makeMemoryStorage() {
   const data = new Map();
@@ -53,4 +53,119 @@ test('default exercise roles follow the recovery-focused fatigue categories', ()
     glutes: 'stabilizer',
     lower_back: 'stabilizer',
   });
+});
+
+test('fat-loss plan ships the new conditioning exercises with muscle maps', () => {
+  globalThis.localStorage = makeMemoryStorage();
+
+  const settings = getSettings();
+  const byId = new Map(settings.exercises.map(ex => [ex.id, ex]));
+
+  for (const id of ['treadmill-incline-walk', 'treadmill-hiit-intervals', 'dumbbell-thruster', 'dumbbell-swing', 'renegade-row', 'burpee']) {
+    assert.ok(byId.has(id), `expected default exercise "${id}" to exist`);
+  }
+  assert.equal(byId.get('dumbbell-thruster').muscles.quads, 'prime_mover');
+  assert.equal(byId.get('dumbbell-thruster').muscles.shoulders, 'prime_mover');
+});
+
+test('default schedule spaces fatigue: Mon–Sat with mid-week active recovery', () => {
+  globalThis.localStorage = makeMemoryStorage();
+
+  const settings = getSettings();
+  const routineIds = new Set(settings.routines.map(r => r.id));
+
+  assert.deepEqual(
+    ['1', '2', '3', '4', '5', '6'].map(d => settings.schedule[d]),
+    ['upper-power', 'lower-power', 'recovery-walk', 'upper-hypertrophy', 'lower-hypertrophy', 'conditioning-core'],
+  );
+  assert.equal(settings.schedule['0'], null);
+  // Every scheduled routine's exercises must resolve against the pool.
+  const exIds = new Set(settings.exercises.map(e => e.id));
+  for (const r of settings.routines) {
+    assert.ok(routineIds.has(r.id));
+    for (const id of r.exerciseIds) {
+      assert.ok(exIds.has(id), `routine "${r.id}" references unknown exercise "${id}"`);
+    }
+  }
+});
+
+test('migrates a legacy saved plan: installs new routines and adds missing exercises once', () => {
+  globalThis.localStorage = makeMemoryStorage();
+
+  // A pre-fat-loss user: old routines, no planVersion, missing the new exercises.
+  saveSettings({
+    exercises: [{ id: 'flat-barbell-bench-press', name: 'Flat Barbell Bench Press', muscles: {} }],
+    routines: [{ id: 'push', name: 'Push Day', tag: 't', colorVar: '--push', exerciseIds: ['flat-barbell-bench-press'] }],
+    schedule: { '0': null, '1': 'push', '2': null, '3': null, '4': null, '5': null, '6': null },
+    recoveryHours: {},
+  });
+
+  const migrated = getSettings();
+  assert.equal(migrated.planVersion, CURRENT_PLAN_VERSION);
+  assert.equal(migrated.schedule['1'], 'upper-power');
+  assert.ok(migrated.exercises.some(e => e.id === 'treadmill-hiit-intervals'));
+  // The migration must have been persisted so it does not re-run.
+  const persisted = JSON.parse(globalThis.localStorage.getItem(SETTINGS_KEY));
+  assert.equal(persisted.planVersion, CURRENT_PLAN_VERSION);
+});
+
+test('default exercises reference bundled local GIFs, not external URLs', () => {
+  globalThis.localStorage = makeMemoryStorage();
+
+  const settings = getSettings();
+  for (const ex of settings.exercises) {
+    assert.ok(
+      /^assets\/exercise-gifs\/.+\.gif$/.test(ex.gifUrl),
+      `exercise "${ex.id}" should use a local gif path, got "${ex.gifUrl}"`,
+    );
+  }
+});
+
+test('migration repoints an existing default exercise from an external gif to the local file', () => {
+  globalThis.localStorage = makeMemoryStorage();
+
+  saveSettings({
+    exercises: [
+      {
+        id: 'flat-barbell-bench-press',
+        name: 'Flat Barbell Bench Press',
+        gifUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Bench-Press.gif',
+        muscles: {},
+      },
+      {
+        id: 'hanging-leg-raise',
+        name: 'Hanging-Free Leg Raise / Lying Leg Raise', // pre-v4 pull-up-bar name
+        gifUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/08/Hanging-Leg-Raises.gif',
+        muscles: {},
+      },
+    ],
+    routines: [],
+    schedule: {},
+    recoveryHours: {},
+    planVersion: 2, // had the plan already, but on the old external-gif version
+  });
+
+  const settings = getSettings();
+  const bench = settings.exercises.find(e => e.id === 'flat-barbell-bench-press');
+  assert.equal(bench.gifUrl, 'assets/exercise-gifs/flat-barbell-bench-press.gif');
+  const legRaise = settings.exercises.find(e => e.id === 'hanging-leg-raise');
+  assert.equal(legRaise.name, 'Lying Leg Raise'); // no pull-up bar assumption
+  assert.equal(legRaise.gifUrl, 'assets/exercise-gifs/hanging-leg-raise.gif');
+  assert.equal(settings.planVersion, CURRENT_PLAN_VERSION);
+});
+
+test('does not overwrite routines once the plan version is current', () => {
+  globalThis.localStorage = makeMemoryStorage();
+
+  saveSettings({
+    exercises: [],
+    routines: [{ id: 'my-custom', name: 'My Custom Day', tag: 't', colorVar: '--push', exerciseIds: [] }],
+    schedule: { '0': null, '1': 'my-custom', '2': null, '3': null, '4': null, '5': null, '6': null },
+    recoveryHours: {},
+    planVersion: CURRENT_PLAN_VERSION,
+  });
+
+  const settings = getSettings();
+  assert.deepEqual(settings.routines.map(r => r.id), ['my-custom']);
+  assert.equal(settings.schedule['1'], 'my-custom');
 });

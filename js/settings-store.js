@@ -1,5 +1,14 @@
 export const SETTINGS_KEY = 'leanbuild-settings-v1';
 
+// Bump when the shipped DEFAULT_ROUTINES/DEFAULT_SCHEDULE should be force-installed
+// over an older stored plan. v2 = fat-loss / lean-definition plan with treadmill
+// conditioning. v3 = exercise GIFs repointed from external URLs to bundled local
+// files (assets/exercise-gifs/*). v4 = fatigue-spaced week (Wed active recovery,
+// Sat conditioning), no pull-up-bar equipment assumption (Lying Leg Raise).
+// Existing saved settings below this version are migrated once (routines/schedule
+// reinstalled + default exercise names/gifUrls refreshed).
+export const CURRENT_PLAN_VERSION = 4;
+
 const DEFAULT_RECOVERY_HOURS = {
   chest: 60, shoulders: 48, traps: 48, triceps: 48, lats: 72,
   lower_back: 84, biceps: 48, forearms: 40, rear_delts: 48,
@@ -42,131 +51,182 @@ const DEFAULT_EXERCISE_MUSCLES = {
   'dumbbell-russian-twist':              { obliques: 'prime_mover', abs: 'synergist' },
   'weighted-crunch':                     { abs: 'prime_mover' },
   'dead-bug':                            { abs: 'prime_mover', obliques: 'synergist' },
+  // --- Fat-loss conditioning & metabolic additions ---
+  'treadmill-incline-walk':              { calves: 'synergist', hamstrings: 'stabilizer', glutes: 'stabilizer', quads: 'stabilizer' },
+  'treadmill-hiit-intervals':            { quads: 'synergist', calves: 'synergist', hamstrings: 'synergist', glutes: 'stabilizer' },
+  'dumbbell-thruster':                   { quads: 'prime_mover', shoulders: 'prime_mover', glutes: 'synergist', triceps: 'synergist', abs: 'stabilizer' },
+  'dumbbell-swing':                      { glutes: 'prime_mover', hamstrings: 'prime_mover', lower_back: 'synergist', shoulders: 'synergist', forearms: 'stabilizer', abs: 'stabilizer' },
+  'renegade-row':                        { lats: 'prime_mover', abs: 'prime_mover', obliques: 'synergist', biceps: 'synergist', shoulders: 'stabilizer', triceps: 'stabilizer' },
+  'dumbbell-push-press':                 { shoulders: 'prime_mover', triceps: 'synergist', quads: 'synergist', traps: 'synergist', glutes: 'stabilizer' },
+  'dumbbell-farmer-carry':               { forearms: 'prime_mover', traps: 'prime_mover', abs: 'stabilizer', obliques: 'stabilizer', glutes: 'stabilizer' },
+  'burpee':                              { quads: 'synergist', chest: 'synergist', shoulders: 'synergist', abs: 'synergist', hamstrings: 'stabilizer', triceps: 'stabilizer' },
+  'mountain-climber':                    { abs: 'prime_mover', obliques: 'synergist', quads: 'synergist', shoulders: 'stabilizer' },
+  'push-up':                             { chest: 'prime_mover', triceps: 'synergist', shoulders: 'synergist', abs: 'stabilizer' },
+  'bicycle-crunch':                      { abs: 'prime_mover', obliques: 'prime_mover' },
+  'side-plank':                          { obliques: 'prime_mover', abs: 'synergist', shoulders: 'stabilizer', glutes: 'stabilizer' },
+  'flutter-kicks':                       { abs: 'prime_mover', hamstrings: 'stabilizer' },
 };
 
 // All exercise data self-contained
 const EXERCISE_POOL_DATA = [
-  { id: 'flat-barbell-bench-press', name: 'Flat Barbell Bench Press', setsCount: 4, repRange: '6–8', restSeconds: 90, startWeight: '50–60 kg bar', gifUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Bench-Press.gif' },
-  { id: 'incline-dumbbell-press', name: 'Incline Dumbbell Press', setsCount: 3, repRange: '8–10', restSeconds: 75, startWeight: '18–22 kg / hand', gifUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Incline-Dumbbell-Press.gif' },
-  { id: 'seated-dumbbell-shoulder-press', name: 'Seated Dumbbell Shoulder Press', setsCount: 3, repRange: '8–10', restSeconds: 75, startWeight: '16–20 kg / hand', gifUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Shoulder-Press.gif' },
-  { id: 'dumbbell-lateral-raise', name: 'Dumbbell Lateral Raise', setsCount: 3, repRange: '12–15', restSeconds: 60, startWeight: '7–10 kg / hand', gifUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Lateral-Raise.gif' },
-  { id: 'lying-dumbbell-triceps-extension', name: 'Lying Dumbbell Triceps Extension', setsCount: 3, repRange: '10–12', restSeconds: 60, startWeight: '8–12 kg / hand', gifUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/06/Dumbbell-Skull-Crusher.gif' },
-  { id: 'close-grip-dumbbell-press', name: 'Close-Grip Dumbbell Press', setsCount: 2, repRange: '10–12', restSeconds: 60, startWeight: '14–18 kg / hand', gifUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/10/Close-Grip-Dumbbell-Press.gif' },
-  { id: 'bent-over-barbell-row', name: 'Bent-Over Barbell Row', setsCount: 4, repRange: '6–8', restSeconds: 90, startWeight: '40–50 kg bar', gifUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Bent-Over-Row.gif' },
-  { id: 'one-arm-dumbbell-row', name: 'One-Arm Dumbbell Row', setsCount: 3, repRange: '8–10', restSeconds: 75, startWeight: '22–28 kg / hand', gifUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Row.gif' },
-  { id: 'chest-supported-dumbbell-row', name: 'Chest-Supported Dumbbell Row (incline bench)', setsCount: 3, repRange: '10–12', restSeconds: 60, startWeight: '14–18 kg / hand', gifUrl: 'https://gymvisual.com/img/p/3/7/3/6/8/37368.gif' },
-  { id: 'back-hyperextension', name: 'Back Hyperextension', setsCount: 3, repRange: '12–15', restSeconds: 60, startWeight: 'bodyweight → hold plate', gifUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/hyperextension.gif' },
-  { id: 'preacher-curl', name: 'Preacher Curl (EZ/straight bar)', setsCount: 3, repRange: '8–10', restSeconds: 60, startWeight: '20–30 kg bar', gifUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Preacher-Curl.gif' },
-  { id: 'dumbbell-hammer-curl', name: 'Dumbbell Hammer Curl', setsCount: 3, repRange: '10–12', restSeconds: 60, startWeight: '10–14 kg / hand', gifUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Hammer-Curl.gif' },
-  { id: 'rear-delt-dumbbell-fly', name: 'Rear-Delt Dumbbell Fly', setsCount: 3, repRange: '12–15', restSeconds: 60, startWeight: '6–9 kg / hand', gifUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Bent-Over-Dumbbell-Rear-Delt-Raise-With-Head-On-Bench.gif' },
-  { id: 'goblet-squat', name: 'Goblet Squat (or DB Front Squat)', setsCount: 4, repRange: '8–10', restSeconds: 90, startWeight: '24–32 kg DB', gifUrl: 'https://fitnessprogramer.com/wp-content/uploads/2023/01/Dumbbell-Goblet-Squat.gif' },
-  { id: 'dumbbell-romanian-deadlift', name: 'Dumbbell Romanian Deadlift', setsCount: 3, repRange: '8–10', restSeconds: 75, startWeight: '22–28 kg / hand', gifUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Romanian-Deadlift.gif' },
-  { id: 'bulgarian-split-squat', name: 'Walking / Bulgarian Split Squat', setsCount: 3, repRange: '10 / leg', restSeconds: 60, startWeight: '12–18 kg / hand', gifUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/05/Dumbbell-Bulgarian-Split-Squat.gif' },
-  { id: 'dumbbell-calf-raise', name: 'Dumbbell Calf Raise', setsCount: 4, repRange: '15–20', restSeconds: 45, startWeight: '20–30 kg / hand', gifUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Calf-Raise.gif' },
-  { id: 'hanging-leg-raise', name: 'Hanging-Free Leg Raise / Lying Leg Raise', setsCount: 3, repRange: '12–15', restSeconds: 60, startWeight: 'bodyweight', gifUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/08/Hanging-Leg-Raises.gif' },
-  { id: 'plank', name: 'Plank', setsCount: 3, repRange: '45–60s hold', restSeconds: 45, startWeight: 'bodyweight', gifUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/plank.gif' },
-  { id: 'incline-barbell-bench-press', name: 'Incline Barbell Bench Press', setsCount: 4, repRange: '8–10', restSeconds: 90, startWeight: '40–50 kg bar', gifUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Incline-Barbell-Bench-Press.gif' },
-  { id: 'decline-dumbbell-press', name: 'Decline Dumbbell Press', setsCount: 3, repRange: '10–12', restSeconds: 75, startWeight: '16–20 kg / hand', gifUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Decline-Dumbbell-Press.gif' },
-  { id: 'two-arm-dumbbell-row', name: 'Two-Arm Dumbbell Row', setsCount: 4, repRange: '10–12', restSeconds: 75, startWeight: '18–24 kg / hand', gifUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Bent-Over-Dumbbell-Row.gif' },
-  { id: 'dumbbell-pullover', name: 'Dumbbell Pullover (lat/chest)', setsCount: 3, repRange: '12', restSeconds: 60, startWeight: '16–22 kg', gifUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Pullover.gif' },
-  { id: 'standing-dumbbell-curl', name: 'Standing Dumbbell Curl', setsCount: 3, repRange: '10–12', restSeconds: 60, startWeight: '12–16 kg / hand', gifUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Curl.gif' },
-  { id: 'overhead-dumbbell-triceps-extension', name: 'Overhead Dumbbell Triceps Extension', setsCount: 3, repRange: '10–12', restSeconds: 60, startWeight: '14–18 kg', gifUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/06/Seated-Dumbbell-Triceps-Extension.gif' },
-  { id: 'lateral-raise-dropset', name: 'Lateral Raise (drop set last set)', setsCount: 3, repRange: '15', restSeconds: 60, startWeight: '6–9 kg / hand', gifUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Lateral-Raise.gif' },
-  { id: 'barbell-romanian-deadlift', name: 'Barbell Romanian Deadlift', setsCount: 4, repRange: '8–10', restSeconds: 90, startWeight: '50–60 kg bar', gifUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Romanian-Deadlift.gif' },
-  { id: 'goblet-heels-elevated-squat', name: 'Goblet / Heels-Elevated Squat', setsCount: 3, repRange: '10–12', restSeconds: 75, startWeight: '24–30 kg DB', gifUrl: 'https://fitnessprogramer.com/wp-content/uploads/2025/07/Heel-Elevated-Goblet-Squat.gif' },
-  { id: 'dumbbell-reverse-lunge', name: 'Dumbbell Reverse Lunge', setsCount: 3, repRange: '10 / leg', restSeconds: 60, startWeight: '12–16 kg / hand', gifUrl: 'https://fitnessprogramer.com/wp-content/uploads/2022/09/Dumbell-reverse-lunge.gif' },
-  { id: 'weighted-back-hyperextension', name: 'Back Hyperextension (weighted)', setsCount: 3, repRange: '12', restSeconds: 60, startWeight: 'hold 10–20 kg plate', gifUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/06/Weighted-Back-Extension.gif' },
-  { id: 'dumbbell-russian-twist', name: 'Dumbbell Russian Twist', setsCount: 3, repRange: '16 (8/side)', restSeconds: 45, startWeight: '8–12 kg', gifUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Russian-Twist.gif' },
-  { id: 'weighted-crunch', name: 'Weighted Crunch / Cable-free Crunch', setsCount: 3, repRange: '15', restSeconds: 45, startWeight: 'hold 5–10 kg DB', gifUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/05/Weighted-Crunch.gif' },
-  { id: 'dead-bug', name: 'Dead Bug', setsCount: 2, repRange: '12 / side', restSeconds: 45, startWeight: 'bodyweight', gifUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/05/Dead-Bug.gif' },
+  { id: 'flat-barbell-bench-press', name: 'Flat Barbell Bench Press', setsCount: 4, repRange: '6–8', restSeconds: 90, startWeight: '50–60 kg bar', gifUrl: 'assets/exercise-gifs/flat-barbell-bench-press.gif' },
+  { id: 'incline-dumbbell-press', name: 'Incline Dumbbell Press', setsCount: 3, repRange: '8–10', restSeconds: 75, startWeight: '18–22 kg / hand', gifUrl: 'assets/exercise-gifs/incline-dumbbell-press.gif' },
+  { id: 'seated-dumbbell-shoulder-press', name: 'Seated Dumbbell Shoulder Press', setsCount: 3, repRange: '8–10', restSeconds: 75, startWeight: '16–20 kg / hand', gifUrl: 'assets/exercise-gifs/seated-dumbbell-shoulder-press.gif' },
+  { id: 'dumbbell-lateral-raise', name: 'Dumbbell Lateral Raise', setsCount: 3, repRange: '12–15', restSeconds: 60, startWeight: '7–10 kg / hand', gifUrl: 'assets/exercise-gifs/dumbbell-lateral-raise.gif' },
+  { id: 'lying-dumbbell-triceps-extension', name: 'Lying Dumbbell Triceps Extension', setsCount: 3, repRange: '10–12', restSeconds: 60, startWeight: '8–12 kg / hand', gifUrl: 'assets/exercise-gifs/lying-dumbbell-triceps-extension.gif' },
+  { id: 'close-grip-dumbbell-press', name: 'Close-Grip Dumbbell Press', setsCount: 2, repRange: '10–12', restSeconds: 60, startWeight: '14–18 kg / hand', gifUrl: 'assets/exercise-gifs/close-grip-dumbbell-press.gif' },
+  { id: 'bent-over-barbell-row', name: 'Bent-Over Barbell Row', setsCount: 4, repRange: '6–8', restSeconds: 90, startWeight: '40–50 kg bar', gifUrl: 'assets/exercise-gifs/bent-over-barbell-row.gif' },
+  { id: 'one-arm-dumbbell-row', name: 'One-Arm Dumbbell Row', setsCount: 3, repRange: '8–10', restSeconds: 75, startWeight: '22–28 kg / hand', gifUrl: 'assets/exercise-gifs/one-arm-dumbbell-row.gif' },
+  { id: 'chest-supported-dumbbell-row', name: 'Chest-Supported Dumbbell Row (incline bench)', setsCount: 3, repRange: '10–12', restSeconds: 60, startWeight: '14–18 kg / hand', gifUrl: 'assets/exercise-gifs/chest-supported-dumbbell-row.gif' },
+  { id: 'back-hyperextension', name: 'Back Hyperextension', setsCount: 3, repRange: '12–15', restSeconds: 60, startWeight: 'bodyweight → hold plate', gifUrl: 'assets/exercise-gifs/back-hyperextension.gif' },
+  { id: 'preacher-curl', name: 'Preacher Curl (EZ/straight bar)', setsCount: 3, repRange: '8–10', restSeconds: 60, startWeight: '20–30 kg bar', gifUrl: 'assets/exercise-gifs/preacher-curl.gif' },
+  { id: 'dumbbell-hammer-curl', name: 'Dumbbell Hammer Curl', setsCount: 3, repRange: '10–12', restSeconds: 60, startWeight: '10–14 kg / hand', gifUrl: 'assets/exercise-gifs/dumbbell-hammer-curl.gif' },
+  { id: 'rear-delt-dumbbell-fly', name: 'Rear-Delt Dumbbell Fly', setsCount: 3, repRange: '12–15', restSeconds: 60, startWeight: '6–9 kg / hand', gifUrl: 'assets/exercise-gifs/rear-delt-dumbbell-fly.gif' },
+  { id: 'goblet-squat', name: 'Goblet Squat (or DB Front Squat)', setsCount: 4, repRange: '8–10', restSeconds: 90, startWeight: '24–32 kg DB', gifUrl: 'assets/exercise-gifs/goblet-squat.gif' },
+  { id: 'dumbbell-romanian-deadlift', name: 'Dumbbell Romanian Deadlift', setsCount: 3, repRange: '8–10', restSeconds: 75, startWeight: '22–28 kg / hand', gifUrl: 'assets/exercise-gifs/dumbbell-romanian-deadlift.gif' },
+  { id: 'bulgarian-split-squat', name: 'Walking / Bulgarian Split Squat', setsCount: 3, repRange: '10 / leg', restSeconds: 60, startWeight: '12–18 kg / hand', gifUrl: 'assets/exercise-gifs/bulgarian-split-squat.gif' },
+  { id: 'dumbbell-calf-raise', name: 'Dumbbell Calf Raise', setsCount: 4, repRange: '15–20', restSeconds: 45, startWeight: '20–30 kg / hand', gifUrl: 'assets/exercise-gifs/dumbbell-calf-raise.gif' },
+  { id: 'hanging-leg-raise', name: 'Lying Leg Raise', setsCount: 3, repRange: '12–15', restSeconds: 60, startWeight: 'bodyweight', gifUrl: 'assets/exercise-gifs/hanging-leg-raise.gif' },
+  { id: 'plank', name: 'Plank', setsCount: 3, repRange: '45–60s hold', restSeconds: 45, startWeight: 'bodyweight', gifUrl: 'assets/exercise-gifs/plank.gif' },
+  { id: 'incline-barbell-bench-press', name: 'Incline Barbell Bench Press', setsCount: 4, repRange: '8–10', restSeconds: 90, startWeight: '40–50 kg bar', gifUrl: 'assets/exercise-gifs/incline-barbell-bench-press.gif' },
+  { id: 'decline-dumbbell-press', name: 'Decline Dumbbell Press', setsCount: 3, repRange: '10–12', restSeconds: 75, startWeight: '16–20 kg / hand', gifUrl: 'assets/exercise-gifs/decline-dumbbell-press.gif' },
+  { id: 'two-arm-dumbbell-row', name: 'Two-Arm Dumbbell Row', setsCount: 4, repRange: '10–12', restSeconds: 75, startWeight: '18–24 kg / hand', gifUrl: 'assets/exercise-gifs/two-arm-dumbbell-row.gif' },
+  { id: 'dumbbell-pullover', name: 'Dumbbell Pullover (lat/chest)', setsCount: 3, repRange: '12', restSeconds: 60, startWeight: '16–22 kg', gifUrl: 'assets/exercise-gifs/dumbbell-pullover.gif' },
+  { id: 'standing-dumbbell-curl', name: 'Standing Dumbbell Curl', setsCount: 3, repRange: '10–12', restSeconds: 60, startWeight: '12–16 kg / hand', gifUrl: 'assets/exercise-gifs/standing-dumbbell-curl.gif' },
+  { id: 'overhead-dumbbell-triceps-extension', name: 'Overhead Dumbbell Triceps Extension', setsCount: 3, repRange: '10–12', restSeconds: 60, startWeight: '14–18 kg', gifUrl: 'assets/exercise-gifs/overhead-dumbbell-triceps-extension.gif' },
+  { id: 'lateral-raise-dropset', name: 'Lateral Raise (drop set last set)', setsCount: 3, repRange: '15', restSeconds: 60, startWeight: '6–9 kg / hand', gifUrl: 'assets/exercise-gifs/lateral-raise-dropset.gif' },
+  { id: 'barbell-romanian-deadlift', name: 'Barbell Romanian Deadlift', setsCount: 4, repRange: '8–10', restSeconds: 90, startWeight: '50–60 kg bar', gifUrl: 'assets/exercise-gifs/barbell-romanian-deadlift.gif' },
+  { id: 'goblet-heels-elevated-squat', name: 'Goblet / Heels-Elevated Squat', setsCount: 3, repRange: '10–12', restSeconds: 75, startWeight: '24–30 kg DB', gifUrl: 'assets/exercise-gifs/goblet-heels-elevated-squat.gif' },
+  { id: 'dumbbell-reverse-lunge', name: 'Dumbbell Reverse Lunge', setsCount: 3, repRange: '10 / leg', restSeconds: 60, startWeight: '12–16 kg / hand', gifUrl: 'assets/exercise-gifs/dumbbell-reverse-lunge.gif' },
+  { id: 'weighted-back-hyperextension', name: 'Back Hyperextension (weighted)', setsCount: 3, repRange: '12', restSeconds: 60, startWeight: 'hold 10–20 kg plate', gifUrl: 'assets/exercise-gifs/weighted-back-hyperextension.gif' },
+  { id: 'dumbbell-russian-twist', name: 'Dumbbell Russian Twist', setsCount: 3, repRange: '16 (8/side)', restSeconds: 45, startWeight: '8–12 kg', gifUrl: 'assets/exercise-gifs/dumbbell-russian-twist.gif' },
+  { id: 'weighted-crunch', name: 'Weighted Crunch / Cable-free Crunch', setsCount: 3, repRange: '15', restSeconds: 45, startWeight: 'hold 5–10 kg DB', gifUrl: 'assets/exercise-gifs/weighted-crunch.gif' },
+  { id: 'dead-bug', name: 'Dead Bug', setsCount: 2, repRange: '12 / side', restSeconds: 45, startWeight: 'bodyweight', gifUrl: 'assets/exercise-gifs/dead-bug.gif' },
+  // --- Fat-loss conditioning & metabolic additions ---
+  { id: 'treadmill-incline-walk', name: 'Incline Treadmill Walk (steady)', setsCount: 1, repRange: '25–35 min', restSeconds: 0, startWeight: 'incline 6–10%, brisk', gifUrl: 'assets/exercise-gifs/treadmill-incline-walk.gif' },
+  { id: 'treadmill-hiit-intervals', name: 'Treadmill HIIT Intervals', setsCount: 1, repRange: '8–10 × 30s hard / 60s easy', restSeconds: 0, startWeight: 'run/fast walk', gifUrl: 'assets/exercise-gifs/treadmill-hiit-intervals.gif' },
+  { id: 'dumbbell-thruster', name: 'Dumbbell Thruster (squat → press)', setsCount: 3, repRange: '10–12', restSeconds: 60, startWeight: '10–16 kg / hand', gifUrl: 'assets/exercise-gifs/dumbbell-thruster.gif' },
+  { id: 'dumbbell-swing', name: 'Dumbbell Swing (hip hinge)', setsCount: 3, repRange: '15–20', restSeconds: 45, startWeight: '16–24 kg DB', gifUrl: 'assets/exercise-gifs/dumbbell-swing.gif' },
+  { id: 'renegade-row', name: 'Renegade Row (plank + row)', setsCount: 3, repRange: '8 / arm', restSeconds: 60, startWeight: '10–16 kg / hand', gifUrl: 'assets/exercise-gifs/renegade-row.gif' },
+  { id: 'dumbbell-push-press', name: 'Dumbbell Push Press', setsCount: 3, repRange: '8–10', restSeconds: 75, startWeight: '16–22 kg / hand', gifUrl: 'assets/exercise-gifs/dumbbell-push-press.gif' },
+  { id: 'dumbbell-farmer-carry', name: "Farmer's Carry", setsCount: 3, repRange: '30–40 m', restSeconds: 60, startWeight: '24–32 kg / hand', gifUrl: 'assets/exercise-gifs/dumbbell-farmer-carry.gif' },
+  { id: 'burpee', name: 'Burpee', setsCount: 3, repRange: '10–12', restSeconds: 45, startWeight: 'bodyweight', gifUrl: 'assets/exercise-gifs/burpee.gif' },
+  { id: 'mountain-climber', name: 'Mountain Climbers', setsCount: 3, repRange: '30–40 total', restSeconds: 30, startWeight: 'bodyweight', gifUrl: 'assets/exercise-gifs/mountain-climber.gif' },
+  { id: 'push-up', name: 'Push-Up', setsCount: 3, repRange: '12–20', restSeconds: 45, startWeight: 'bodyweight', gifUrl: 'assets/exercise-gifs/push-up.gif' },
+  { id: 'bicycle-crunch', name: 'Bicycle Crunch', setsCount: 3, repRange: '20 (10/side)', restSeconds: 30, startWeight: 'bodyweight', gifUrl: 'assets/exercise-gifs/bicycle-crunch.gif' },
+  { id: 'side-plank', name: 'Side Plank', setsCount: 2, repRange: '30–45s / side', restSeconds: 30, startWeight: 'bodyweight', gifUrl: 'assets/exercise-gifs/side-plank.gif' },
+  { id: 'flutter-kicks', name: 'Flutter Kicks', setsCount: 3, repRange: '30–40s', restSeconds: 30, startWeight: 'bodyweight', gifUrl: 'assets/exercise-gifs/flutter-kicks.gif' },
 ];
 
+// Fat-loss / lean-definition plan: heavy compound lifting to retain muscle in a
+// deficit, treadmill conditioning layered on top (HIIT finishers + steady incline
+// walks), and fatigue spaced across the week — two-day training blocks separated
+// by a mid-week active-recovery day, with the leg-light conditioning circuit on
+// Saturday so it never steals from lower-body recovery.
 const DEFAULT_ROUTINES = [
   {
-    id: 'push',
-    name: 'Push Day',
-    tag: 'Chest · Shoulders · Triceps',
+    id: 'upper-power',
+    name: 'Upper Power + Intervals',
+    tag: 'Chest · Back · Shoulders · Cardio',
     colorVar: '--push',
     exerciseIds: [
       'flat-barbell-bench-press',
-      'incline-dumbbell-press',
-      'seated-dumbbell-shoulder-press',
-      'dumbbell-lateral-raise',
-      'lying-dumbbell-triceps-extension',
-      'close-grip-dumbbell-press',
-    ],
-  },
-  {
-    id: 'pull',
-    name: 'Pull Day',
-    tag: 'Back · Biceps · Rear Delts',
-    colorVar: '--pull',
-    exerciseIds: [
       'bent-over-barbell-row',
-      'one-arm-dumbbell-row',
+      'incline-dumbbell-press',
       'chest-supported-dumbbell-row',
-      'back-hyperextension',
+      'seated-dumbbell-shoulder-press',
       'preacher-curl',
-      'dumbbell-hammer-curl',
-      'rear-delt-dumbbell-fly',
+      'overhead-dumbbell-triceps-extension',
+      'treadmill-hiit-intervals',
     ],
   },
   {
-    id: 'legs',
-    name: 'Legs + Core',
-    tag: 'Quads · Hams · Glutes · Abs',
+    id: 'lower-power',
+    name: 'Lower Power + Walk',
+    tag: 'Quads · Hams · Glutes · Cardio',
     colorVar: '--legs',
     exerciseIds: [
       'goblet-squat',
-      'bulgarian-split-squat',
+      'barbell-romanian-deadlift',
       'dumbbell-reverse-lunge',
-      'dumbbell-romanian-deadlift',
+      'back-hyperextension',
       'dumbbell-calf-raise',
       'hanging-leg-raise',
-      'plank',
-      'dumbbell-russian-twist',
+      'treadmill-incline-walk',
     ],
   },
   {
-    id: 'upper',
-    name: 'Upper Body',
-    tag: 'Chest · Back · Shoulders',
-    colorVar: '--push',
+    // Mid-week deload: easy movement to aid recovery, not accumulate fatigue.
+    id: 'recovery-walk',
+    name: 'Active Recovery',
+    tag: 'Cardio · Core · Mobility',
+    colorVar: '--cardio',
+    exerciseIds: [
+      'treadmill-incline-walk',
+      'plank',
+      'side-plank',
+      'dead-bug',
+    ],
+  },
+  {
+    id: 'upper-hypertrophy',
+    name: 'Upper Hypertrophy',
+    tag: 'Push · Pull · Arms',
+    colorVar: '--pull',
     exerciseIds: [
       'incline-barbell-bench-press',
-      'bent-over-barbell-row',
+      'two-arm-dumbbell-row',
       'seated-dumbbell-shoulder-press',
-      'one-arm-dumbbell-row',
+      'dumbbell-pullover',
+      'rear-delt-dumbbell-fly',
       'dumbbell-lateral-raise',
-      'preacher-curl',
+      'standing-dumbbell-curl',
       'lying-dumbbell-triceps-extension',
     ],
   },
   {
-    id: 'lower',
-    name: 'Lower + Core',
-    tag: 'Legs · Core',
+    id: 'lower-hypertrophy',
+    name: 'Lower Hypertrophy + Walk',
+    tag: 'Legs · Glutes · Core · Cardio',
     colorVar: '--legs',
     exerciseIds: [
       'goblet-heels-elevated-squat',
-      'barbell-romanian-deadlift',
+      'dumbbell-romanian-deadlift',
+      'bulgarian-split-squat',
       'weighted-back-hyperextension',
       'dumbbell-calf-raise',
-      'weighted-crunch',
-      'dead-bug',
-      'dumbbell-russian-twist',
+      'flutter-kicks',
+      'treadmill-incline-walk',
+    ],
+  },
+  {
+    // Upper/core-biased circuit: keeps conditioning high the day after leg
+    // hypertrophy without adding more quad-dominant work (no thrusters/burpees).
+    id: 'conditioning-core',
+    name: 'Conditioning & Core',
+    tag: 'Full Body · Core · Cardio',
+    colorVar: '--cardio',
+    exerciseIds: [
+      'dumbbell-farmer-carry',
+      'renegade-row',
+      'push-up',
+      'dumbbell-swing',
+      'mountain-climber',
+      'bicycle-crunch',
+      'side-plank',
+      'treadmill-hiit-intervals',
     ],
   },
 ];
 
 const DEFAULT_SCHEDULE = {
-  '0': null,
-  '1': 'push',
-  '2': 'pull',
-  '3': 'legs',
-  '4': 'upper',
-  '5': 'lower',
-  '6': null,
+  '0': null,                 // Sunday — full rest
+  '1': 'upper-power',        // Monday
+  '2': 'lower-power',        // Tuesday
+  '3': 'recovery-walk',      // Wednesday — active recovery
+  '4': 'upper-hypertrophy',  // Thursday
+  '5': 'lower-hypertrophy',  // Friday
+  '6': 'conditioning-core',  // Saturday — leg-light circuit + HIIT
 };
 
 export function getSettings() {
@@ -174,7 +234,12 @@ export function getSettings() {
     const raw = localStorage.getItem(SETTINGS_KEY);
     if (!raw) return buildDefaults();
     const parsed = JSON.parse(raw);
-    return normalizeSettings(parsed);
+    const normalized = normalizeSettings(parsed);
+    const { settings, changed } = migrateSettings(normalized);
+    // Persist a one-time migration so it does not re-run and cannot clobber
+    // later user customizations.
+    if (changed) saveSettings(settings);
+    return settings;
   } catch {
     return buildDefaults();
   }
@@ -187,15 +252,61 @@ function normalizeSettings(settings) {
     routines: settings.routines ?? [],
     schedule: settings.schedule ?? { ...DEFAULT_SCHEDULE },
     recoveryHours: { ...DEFAULT_RECOVERY_HOURS, ...(settings.recoveryHours ?? {}) },
+    planVersion: settings.planVersion ?? 0,
   };
+}
+
+/**
+ * Bring stored settings up to the current shipped plan. Steps:
+ *   1. One-time (on plan-version bump) — refresh known default exercises' name
+ *      and gifUrl to the shipped values (bundled local assets/exercise-gifs/*
+ *      files), leaving user-added exercises and all other fields alone.
+ *   2. Non-destructive — add any newly shipped default exercises (e.g. treadmill
+ *      and conditioning moves) that the user doesn't have yet.
+ *   3. One-time — for anyone below CURRENT_PLAN_VERSION, install the new default
+ *      routines + weekly schedule, then stamp the version so it never re-runs.
+ *      Logged workout history lives under a separate key and is untouched.
+ * Returns { settings, changed } so the caller can persist only when needed.
+ */
+function migrateSettings(settings) {
+  const defaults = defaultExercises();
+  const defaultById = new Map(defaults.map(e => [e.id, e]));
+  const needsPlan = (settings.planVersion ?? 0) < CURRENT_PLAN_VERSION;
+
+  // Step 1: refresh name + gifUrl on known default exercises to the shipped
+  // values (local gif paths, corrected names like "Lying Leg Raise").
+  let exercises = settings.exercises;
+  if (needsPlan) {
+    exercises = exercises.map(e => {
+      const d = defaultById.get(e.id);
+      if (!d) return e;
+      const stale = (d.gifUrl && e.gifUrl !== d.gifUrl) || (d.name && e.name !== d.name);
+      return stale ? { ...e, name: d.name, gifUrl: d.gifUrl } : e;
+    });
+  }
+
+  // Step 2: append newly shipped default exercises the user is missing.
+  const existingIds = new Set(exercises.map(e => e.id));
+  const missing = defaults.filter(e => !existingIds.has(e.id));
+  if (missing.length) exercises = [...exercises, ...missing];
+
+  // Step 3: install the shipped plan + schedule once.
+  const routines = needsPlan
+    ? DEFAULT_ROUTINES.map(r => ({ ...r, exerciseIds: [...r.exerciseIds] }))
+    : settings.routines;
+  const schedule = needsPlan ? { ...DEFAULT_SCHEDULE } : settings.schedule;
+  const planVersion = needsPlan ? CURRENT_PLAN_VERSION : settings.planVersion;
+
+  const changed = missing.length > 0 || needsPlan;
+  return { settings: { ...settings, exercises, routines, schedule, planVersion }, changed };
 }
 
 export function saveSettings(settings) {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
 }
 
-export function buildDefaults() {
-  // Deduplicate exercise pool by id
+// The full default exercise pool, deduplicated by id, each with its muscle map.
+function defaultExercises() {
   const seen = new Set();
   const exercises = [];
   for (const ex of EXERCISE_POOL_DATA) {
@@ -207,12 +318,16 @@ export function buildDefaults() {
       });
     }
   }
+  return exercises;
+}
 
+export function buildDefaults() {
   return {
-    exercises,
+    exercises: defaultExercises(),
     routines: DEFAULT_ROUTINES.map(r => ({ ...r, exerciseIds: [...r.exerciseIds] })),
     schedule: { ...DEFAULT_SCHEDULE },
     recoveryHours: { ...DEFAULT_RECOVERY_HOURS },
+    planVersion: CURRENT_PLAN_VERSION,
   };
 }
 
