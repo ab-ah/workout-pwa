@@ -1,6 +1,8 @@
 import { mountRestTimer } from './rest-timer.js';
 import { mountWorkoutTimer } from './workout-timer.js';
-import { suggestProgression } from '../progression.js';
+import { suggestProgression, parseTopReps } from '../progression.js';
+import { warmupSets } from '../warmup.js';
+import { bestE1RM, loadForReps, roundLoad } from '../one-rep-max.js';
 
 /**
  * Renders one exercise with its sets into `container`.
@@ -14,6 +16,57 @@ import { suggestProgression } from '../progression.js';
  * `onExerciseComplete(loggedSets)` fires once the user taps "Mark Exercise
  *   Complete". `loggedSets` = [{ weight, reps }, ...].
  */
+/** A barbell lift loads a full bar, so warm-up ramps make sense. Detected from
+ *  the startWeight hint, which reads e.g. "50–60 kg bar" for barbell moves. */
+function isBarbellLift(exercise) {
+  return typeof exercise.startWeight === 'string' && /\bbar\b/i.test(exercise.startWeight);
+}
+
+/** First number in a string like "50–60 kg bar" → 50, else null. */
+function firstNumber(str) {
+  if (typeof str !== 'string') return null;
+  const m = str.match(/\d+(\.\d+)?/);
+  return m ? parseFloat(m[0]) : null;
+}
+
+/** Best guess of today's working weight: last session's heaviest set, falling
+ *  back to the low end of the startWeight hint. Used to seed the warm-up ramp. */
+function estimateWorkingWeight(exercise, previousSets) {
+  if (Array.isArray(previousSets) && previousSets.length) {
+    const top = Math.max(...previousSets.map(s => Number(s.weight) || 0));
+    if (top > 0) return top;
+  }
+  return firstNumber(exercise.startWeight);
+}
+
+/** Warm-up + estimated-1RM guidance block for barbell lifts (HTML string). */
+function coachingBlock(exercise, previousSets) {
+  if (!isBarbellLift(exercise)) return '';
+  const working = estimateWorkingWeight(exercise, previousSets);
+  if (!working) return '';
+
+  const ramp = warmupSets(working, { barWeight: 20, increment: 2.5 });
+  const rampHtml = ramp
+    .map(s => `<span class="warmup-set">${s.weight}kg × ${s.reps}</span>`)
+    .join('<span class="warmup-arrow">→</span>');
+
+  const e1rm = bestE1RM(previousSets);
+  const top = parseTopReps(exercise.repRange);
+  let target = '';
+  if (e1rm && top) {
+    const load = roundLoad(loadForReps(e1rm, top), 2.5);
+    target = `<div class="coach-e1rm">Est. 1RM ~${Math.round(e1rm)}kg · target ≈ ${load}kg for ${top} reps</div>`;
+  }
+
+  return `
+    <details class="warmup-block">
+      <summary>🔥 Warm-up to ${working}kg</summary>
+      <div class="warmup-sets">${rampHtml}</div>
+      ${target}
+    </details>
+  `;
+}
+
 export function mountExerciseCard(container, exercise, previousSets, initialSets, onExerciseComplete) {
   const loggedSets = Array.isArray(initialSets) ? initialSets.map(s => ({ ...s })) : [];
   let activeSetIndex = loggedSets.length;
@@ -59,12 +112,17 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
               <label class="input-label">Reps</label>
               <input type="number" inputmode="numeric" class="set-input" id="edit-reps-input" value="${s.reps ?? ''}">
             </div>
+            <div class="input-group">
+              <label class="input-label">RPE</label>
+              <input type="number" inputmode="decimal" step="0.5" min="1" max="10" class="set-input set-input-rpe" id="edit-rpe-input" placeholder="—" value="${s.rpe ?? ''}">
+            </div>
             <button class="btn-primary" id="edit-save-btn">Save</button>
           </div>
         `);
       } else if (i < loggedSets.length) {
         const s = loggedSets[i];
-        rows.push(`<div class="set-row done editable" data-edit-index="${i}" title="Tap to correct"><span class="set-label">Set ${i + 1}</span><span>${s.weight}kg x ${s.reps} <span class="set-edit-hint">✎</span></span></div>`);
+        const rpeTag = Number.isFinite(s.rpe) ? ` <span class="set-rpe">@${s.rpe}</span>` : '';
+        rows.push(`<div class="set-row done editable" data-edit-index="${i}" title="Tap to correct"><span class="set-label">Set ${i + 1}</span><span>${s.weight}kg x ${s.reps}${rpeTag} <span class="set-edit-hint">✎</span></span></div>`);
       } else if (i === activeSetIndex && editingIndex === null) {
         const prevSessionSet = previousSets ? previousSets[activeSetIndex] ?? previousSets[previousSets.length - 1] : null;
         const prevLoggedSet = loggedSets.length > 0 ? loggedSets[loggedSets.length - 1] : null;
@@ -80,6 +138,10 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
             <div class="input-group">
               <label class="input-label">Reps</label>
               <input type="number" inputmode="numeric" class="set-input" id="reps-input" placeholder="${exercise.repRange}" value="${defaultReps}">
+            </div>
+            <div class="input-group">
+              <label class="input-label">RPE</label>
+              <input type="number" inputmode="decimal" step="0.5" min="1" max="10" class="set-input set-input-rpe" id="rpe-input" placeholder="—" value="">
             </div>
             <button class="btn-primary" id="log-set-btn" ${restActive ? 'disabled style="opacity:.45"' : ''}>Log</button>
           </div>
@@ -101,9 +163,10 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
       >
       <p class="muted">${exercise.repRange} reps · rest ${exercise.restSeconds}s · start ~${exercise.startWeight}</p>
       ${(() => {
-        const hint = suggestProgression(previousSets, exercise.repRange);
+        const hint = suggestProgression(previousSets, exercise.repRange, { weightStep: exercise.weightStep });
         return hint ? `<p class="progression-hint">💡 ${hint.text}</p>` : '';
       })()}
+      ${coachingBlock(exercise, previousSets)}
       ${exercise.timer ? '<div id="workout-timer-slot"></div>' : ''}
       <div id="set-rows">${rows.join('')}</div>
       <div id="rest-timer-slot"></div>
@@ -157,6 +220,16 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
     }
   }
 
+  /** Optional RPE from an input; returns { rpe } to spread onto a set, or {}. */
+  function readRpe(input) {
+    if (!input) return {};
+    const raw = input.value.trim();
+    if (raw === '') return {};
+    const rpe = parseFloat(raw);
+    if (!Number.isFinite(rpe) || rpe <= 0) return {};
+    return { rpe: Math.min(10, rpe) };
+  }
+
   function handleLogSet() {
     const weightInput = container.querySelector('#weight-input');
     const repsInput = container.querySelector('#reps-input');
@@ -167,7 +240,7 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
       repsInput.style.borderColor = 'var(--push)';
       return;
     }
-    loggedSets.push({ weight, reps });
+    loggedSets.push({ weight, reps, ...readRpe(container.querySelector('#rpe-input')) });
     activeSetIndex++;
     activeDirty = false; // fresh active row for the next set
     render();
@@ -194,7 +267,7 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
       repsInput.style.borderColor = 'var(--push)';
       return;
     }
-    loggedSets[editingIndex] = { weight, reps };
+    loggedSets[editingIndex] = { weight, reps, ...readRpe(container.querySelector('#edit-rpe-input')) };
     editingIndex = null;
     render();
   }
@@ -220,7 +293,7 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
       return false;
     }
 
-    loggedSets.push({ weight, reps });
+    loggedSets.push({ weight, reps, ...readRpe(container.querySelector('#rpe-input')) });
     activeSetIndex++;
     return true;
   }

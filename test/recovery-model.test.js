@@ -5,6 +5,7 @@ import {
   sessionDepletion,
   muscleFreshness,
   routineReadiness,
+  hoursUntilFresh,
 } from '../js/recovery-model.js';
 
 const HOUR = 3600000;
@@ -190,4 +191,29 @@ test('routineReadiness uses the strongest role when a muscle appears in several 
 
 test('FULL_DEPLETION_SETS is a sane reference constant', () => {
   assert.ok(FULL_DEPLETION_SETS >= 3 && FULL_DEPLETION_SETS <= 6);
+});
+
+// ─── hoursUntilFresh ─────────────────────────────────────────────────────────
+
+test('hoursUntilFresh is 0 for a fully rested muscle', () => {
+  const settings = makeSettings([{ id: 'bench', muscles: { chest: 'prime_mover' } }], { chest: 48 });
+  assert.equal(hoursUntilFresh('chest', [], settings, 0.9, 1_000_000_000_000), 0);
+});
+
+test('hoursUntilFresh returns a positive ETA right after a hard session', () => {
+  const now = 1_000_000_000_000;
+  const settings = makeSettings([{ id: 'bench', muscles: { chest: 'prime_mover' } }], { chest: 48 });
+  const history = [{ finishedAt: now, exercises: [{ exerciseId: 'bench', sets: sets(4) }] }];
+  const eta = hoursUntilFresh('chest', history, settings, 0.9, now);
+  assert.ok(eta > 0 && eta <= 48, `expected 0<eta<=48, got ${eta}`);
+});
+
+test('hoursUntilFresh shrinks as recovery progresses', () => {
+  const now = 1_000_000_000_000;
+  const settings = makeSettings([{ id: 'bench', muscles: { chest: 'prime_mover' } }], { chest: 48 });
+  const fresh = [{ finishedAt: now, exercises: [{ exerciseId: 'bench', sets: sets(4) }] }];
+  const older = [{ finishedAt: now - 24 * HOUR, exercises: [{ exerciseId: 'bench', sets: sets(4) }] }];
+  const etaFresh = hoursUntilFresh('chest', fresh, settings, 0.9, now);
+  const etaOlder = hoursUntilFresh('chest', older, settings, 0.9, now);
+  assert.ok(etaOlder < etaFresh, `older session should have smaller ETA (${etaOlder} < ${etaFresh})`);
 });

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'leanbuild-v14';
+const CACHE_NAME = 'leanbuild-v15';
 const ASSETS = [
   './',
   './index.html',
@@ -11,6 +11,10 @@ const ASSETS = [
   './js/backup.js',
   './js/backup-io.js',
   './js/progression.js',
+  './js/one-rep-max.js',
+  './js/warmup.js',
+  './js/bodyweight.js',
+  './js/adaptive.js',
   './js/volume.js',
   './js/schedule.js',
   './js/wake-lock.js',

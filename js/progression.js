@@ -17,6 +17,11 @@ function isTimeBased(repRange) {
   return typeof repRange === 'string' && /(\d\s*s\b|sec|hold)/i.test(repRange);
 }
 
+/** Round to one decimal, dropping a trailing .0 (RPE 7.5 stays, 8.0 → 8). */
+function round1(n) {
+  return Math.round(n * 10) / 10;
+}
+
 /**
  * Suggest the next progression from the previous session's sets.
  * Double progression: once every set reaches the top of the range, add load;
@@ -44,12 +49,23 @@ export function suggestProgression(previousSets, repRange, opts = {}) {
   const top = parseTopReps(repRange);
   const bodyweight = topWeight === 0;
 
+  // Autoregulation: if the sets carried RPE, use the average to size the jump.
+  // Low RPE (lots left in the tank) → a bolder bump; high RPE → hold and grind.
+  const rpes = previousSets.map(s => Number(s.rpe)).filter(v => Number.isFinite(v) && v > 0);
+  const avgRpe = rpes.length ? rpes.reduce((a, b) => a + b, 0) / rpes.length : null;
+
   if (bodyweight) {
     if (top != null && minReps >= top) return { text: `Hit ${minReps}+ every set — add a set or load` };
     return { text: `Last best ${maxReps} — beat it` };
   }
 
   if (top != null && minReps >= top) {
+    if (avgRpe != null && avgRpe <= 7) {
+      return { text: `Maxed reps at RPE ${round1(avgRpe)} — jump to ${topWeight + step * 2}kg` };
+    }
+    if (avgRpe != null && avgRpe >= 9) {
+      return { text: `All sets ≥ ${top} but RPE ${round1(avgRpe)} — hold ${topWeight}kg, add reps` };
+    }
     return { text: `All sets ≥ ${top} reps — try ${topWeight + step}kg` };
   }
   if (top != null) {

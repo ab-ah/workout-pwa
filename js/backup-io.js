@@ -3,7 +3,7 @@
 // persist plumbing in one place; the pure assembly + validation lives in
 // backup.js.
 import { getSettings, saveSettings } from './settings-store.js';
-import { PROGRESS_KEY, HISTORY_KEY } from './store.js';
+import { PROGRESS_KEY, HISTORY_KEY, BODYWEIGHT_KEY } from './store.js';
 import { buildBackup, parseBackup } from './backup.js';
 
 const IN_PROGRESS_KEY = 'leanbuild-today-session-v2';
@@ -27,9 +27,11 @@ export async function requestPersistentStorage() {
 export function downloadBackup() {
   let history = [];
   let progress = null;
+  let bodyweight = [];
   try { history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch { /* keep [] */ }
   try { progress = JSON.parse(localStorage.getItem(PROGRESS_KEY) || 'null'); } catch { /* keep null */ }
-  const bundle = buildBackup({ settings: getSettings(), history, progress });
+  try { bodyweight = JSON.parse(localStorage.getItem(BODYWEIGHT_KEY) || '[]'); } catch { /* keep [] */ }
+  const bundle = buildBackup({ settings: getSettings(), history, progress, bodyweight });
   const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -57,6 +59,7 @@ export function restoreBackupFromFile(file) {
         saveSettings(restored.settings);
         localStorage.setItem(HISTORY_KEY, JSON.stringify(restored.history));
         if (restored.progress) localStorage.setItem(PROGRESS_KEY, JSON.stringify(restored.progress));
+        if (Array.isArray(restored.bodyweight)) localStorage.setItem(BODYWEIGHT_KEY, JSON.stringify(restored.bodyweight));
         localStorage.removeItem(IN_PROGRESS_KEY);
         sessionStorage.removeItem(IN_PROGRESS_KEY);
         resolve();

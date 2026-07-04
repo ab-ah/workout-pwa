@@ -8,10 +8,12 @@ export const SETTINGS_KEY = 'leanbuild-settings-v1';
 // v5 = corrected muscle-role maps (pullover chest, plank obliques, flutter-kick
 // quads, plus stabilizer accuracy on presses/rows/RDLs). v6 = cardio countdown
 // timers on the treadmill exercises (interval work/rest cycling for HIIT, plain
-// duration countdown for the steady walk). Existing saved settings below this
-// version are migrated once (routines/schedule reinstalled + default exercise
-// names/gifUrls/muscles/timers refreshed).
-export const CURRENT_PLAN_VERSION = 6;
+// duration countdown for the steady walk). v7 = per-exercise weightStep so the
+// progression coach jumps by a sensible increment for each lift (2.5 kg barbell,
+// 2 kg dumbbell, 1 kg small isolation) instead of a flat 2.5. Existing saved
+// settings below this version are migrated once (routines/schedule reinstalled +
+// default exercise names/gifUrls/muscles/timers/weightSteps refreshed).
+export const CURRENT_PLAN_VERSION = 7;
 
 const DEFAULT_RECOVERY_HOURS = {
   chest: 60, shoulders: 48, traps: 48, triceps: 48, lats: 72,
@@ -69,6 +71,47 @@ const DEFAULT_EXERCISE_MUSCLES = {
   'bicycle-crunch':                      { abs: 'prime_mover', obliques: 'prime_mover' },
   'side-plank':                          { obliques: 'prime_mover', abs: 'synergist', shoulders: 'stabilizer', glutes: 'stabilizer' },
   'flutter-kicks':                       { abs: 'prime_mover', quads: 'stabilizer' },
+};
+
+// Sensible progression increment (kg) per lift. Barbell moves jump 2.5, most
+// dumbbell work 2 (fixed DBs step ~2/hand), small isolation 1. Bodyweight, hold,
+// and cardio exercises are omitted — they carry no weightStep and the coach
+// chases reps/time for them instead.
+const DEFAULT_WEIGHT_STEP = {
+  'flat-barbell-bench-press': 2.5,
+  'incline-barbell-bench-press': 2.5,
+  'bent-over-barbell-row': 2.5,
+  'barbell-romanian-deadlift': 2.5,
+  'preacher-curl': 2.5,
+  'incline-dumbbell-press': 2,
+  'decline-dumbbell-press': 2,
+  'seated-dumbbell-shoulder-press': 2,
+  'close-grip-dumbbell-press': 2,
+  'one-arm-dumbbell-row': 2,
+  'two-arm-dumbbell-row': 2,
+  'chest-supported-dumbbell-row': 2,
+  'dumbbell-pullover': 2,
+  'overhead-dumbbell-triceps-extension': 2,
+  'lying-dumbbell-triceps-extension': 2,
+  'goblet-squat': 2,
+  'goblet-heels-elevated-squat': 2,
+  'dumbbell-romanian-deadlift': 2,
+  'bulgarian-split-squat': 2,
+  'dumbbell-reverse-lunge': 2,
+  'dumbbell-calf-raise': 2,
+  'dumbbell-thruster': 2,
+  'dumbbell-swing': 2,
+  'dumbbell-push-press': 2,
+  'renegade-row': 2,
+  'dumbbell-farmer-carry': 2,
+  'weighted-back-hyperextension': 2,
+  'dumbbell-lateral-raise': 1,
+  'lateral-raise-dropset': 1,
+  'rear-delt-dumbbell-fly': 1,
+  'dumbbell-hammer-curl': 1,
+  'standing-dumbbell-curl': 1,
+  'dumbbell-russian-twist': 1,
+  'weighted-crunch': 1,
 };
 
 // All exercise data self-contained
@@ -291,9 +334,14 @@ function migrateSettings(settings) {
         (d.gifUrl && e.gifUrl !== d.gifUrl) ||
         (d.name && e.name !== d.name) ||
         JSON.stringify(e.muscles ?? {}) !== JSON.stringify(d.muscles ?? {}) ||
-        JSON.stringify(e.timer ?? null) !== JSON.stringify(d.timer ?? null);
+        JSON.stringify(e.timer ?? null) !== JSON.stringify(d.timer ?? null) ||
+        (e.weightStep ?? null) !== (d.weightStep ?? null);
       return stale
-        ? { ...e, name: d.name, gifUrl: d.gifUrl, muscles: { ...d.muscles }, ...(d.timer ? { timer: { ...d.timer } } : {}) }
+        ? {
+            ...e, name: d.name, gifUrl: d.gifUrl, muscles: { ...d.muscles },
+            ...(d.timer ? { timer: { ...d.timer } } : {}),
+            ...(d.weightStep != null ? { weightStep: d.weightStep } : {}),
+          }
         : e;
     });
   }
@@ -328,6 +376,7 @@ function defaultExercises() {
       exercises.push({
         ...ex,
         muscles: DEFAULT_EXERCISE_MUSCLES[ex.id] ?? {},
+        ...(DEFAULT_WEIGHT_STEP[ex.id] != null ? { weightStep: DEFAULT_WEIGHT_STEP[ex.id] } : {}),
       });
     }
   }

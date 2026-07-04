@@ -1,5 +1,8 @@
 import { getSettings } from '../settings-store.js';
 import { buildChartSVG } from '../components/chart.js';
+import { movingAverage, weightTrend, latestEntry } from '../bodyweight.js';
+import { e1rmSeries, isE1RMPRInSession } from '../one-rep-max.js';
+import { localDateStr } from '../schedule.js';
 
 function escapeHtml(s) {
   return String(s)
@@ -92,23 +95,96 @@ export function renderHistory(container, store) {
     });
   }
 
+  let metric = 'topset'; // 'topset' | 'e1rm'
+
   function renderProgress(body) {
     const exercises = getSettings().exercises ?? [];
     const options = exercises.map((e) => `<option value="${escapeHtml(e.id)}">${escapeHtml(e.name)}</option>`).join('');
     body.innerHTML = `
-      <select id="exercise-select" class="set-input" style="width:100%;margin-bottom:14px">${options}</select>
+      ${bodyweightCardHtml()}
+      <div class="progress-section-label">Exercise progress</div>
+      <select id="exercise-select" class="set-input" style="width:100%;margin-bottom:10px">${options}</select>
+      <div class="metric-toggle">
+        <button id="metric-topset" class="${metric === 'topset' ? 'active' : ''}">Top set</button>
+        <button id="metric-e1rm" class="${metric === 'e1rm' ? 'active' : ''}">Est. 1RM</button>
+      </div>
+      <div id="pr-badge"></div>
       <div id="chart-slot"></div>
     `;
+
+    wireBodyweight(body);
+
     const select = body.querySelector('#exercise-select');
     const chartSlot = body.querySelector('#chart-slot');
+    const prBadge = body.querySelector('#pr-badge');
 
     function drawChart() {
-      const points = store.getExerciseHistory(select.value);
+      const history = store.getHistory();
+      const exId = select.value;
+      const points = metric === 'e1rm'
+        ? e1rmSeries(history, exId)
+        : store.getExerciseHistory(exId);
       chartSlot.innerHTML = buildChartSVG(points, { width: 600, height: 220 });
+
+      // PR badge: did the most recent session that trained this exercise set an
+      // all-time e1RM best?
+      const lastSession = [...history].reverse()
+        .find(s => (s.exercises ?? []).some(e => e.exerciseId === exId));
+      prBadge.innerHTML = (lastSession && isE1RMPRInSession(history, lastSession.sessionId, exId))
+        ? `<div class="pr-badge">🏆 New estimated-1RM PR on your last session</div>`
+        : '';
     }
 
     select.addEventListener('change', drawChart);
+    body.querySelector('#metric-topset').addEventListener('click', () => { metric = 'topset'; render(); });
+    body.querySelector('#metric-e1rm').addEventListener('click', () => { metric = 'e1rm'; render(); });
     drawChart();
+  }
+
+  function bodyweightCardHtml() {
+    const entries = store.getBodyweights();
+    const latest = latestEntry(entries);
+    const ma = movingAverage(entries, 7);
+    const trend = weightTrend(entries, 7, 7);
+
+    let readout = '<p class="muted" style="font-size:13px">Log your weight to see the 7-day trend that actually tracks fat loss.</p>';
+    if (latest) {
+      const trendText = trend
+        ? `<span class="bw-trend ${trend.deltaKg <= 0 ? 'down' : 'up'}">${trend.deltaKg > 0 ? '▲' : '▼'} ${Math.abs(trend.deltaKg)}kg / 7-day avg</span>`
+        : '<span class="muted" style="font-size:12px">Keep logging to build a trend</span>';
+      readout = `<div class="bw-readout"><strong>${latest.kg}kg</strong> <span class="muted">latest</span> ${trendText}</div>`;
+    }
+
+    const chart = ma.length >= 2
+      ? `<div class="bw-chart">${buildChartSVG(ma, { width: 600, height: 160 })}</div>`
+      : '';
+
+    return `
+      <div class="bodyweight-card">
+        <div class="progress-section-label">Body weight</div>
+        ${readout}
+        <div class="bw-log-row">
+          <input type="number" inputmode="decimal" step="0.1" class="set-input" id="bw-input" placeholder="kg today" style="width:120px">
+          <button class="btn-secondary" id="bw-log-btn">Log weight</button>
+        </div>
+        ${chart}
+      </div>
+    `;
+  }
+
+  function wireBodyweight(body) {
+    const btn = body.querySelector('#bw-log-btn');
+    const input = body.querySelector('#bw-input');
+    if (!btn || !input) return;
+    btn.addEventListener('click', () => {
+      const kg = parseFloat(input.value);
+      if (!Number.isFinite(kg) || kg <= 0) {
+        input.style.borderColor = 'var(--push)';
+        return;
+      }
+      store.addBodyweight({ date: localDateStr(Date.now()), kg, at: Date.now() });
+      render();
+    });
   }
 
   render();

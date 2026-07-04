@@ -6,10 +6,10 @@ export const BACKUP_VERSION = 1;
 const APP_TAG = 'leanbuild';
 
 /**
- * Assemble a backup bundle from the three storage slices.
- * @param {{ settings: object, history?: Array, progress?: object|null }} slices
+ * Assemble a backup bundle from the stored slices.
+ * @param {{ settings: object, history?: Array, progress?: object|null, bodyweight?: Array }} slices
  */
-export function buildBackup({ settings, history = [], progress = null }) {
+export function buildBackup({ settings, history = [], progress = null, bodyweight = [] }) {
   return {
     app: APP_TAG,
     version: BACKUP_VERSION,
@@ -17,6 +17,7 @@ export function buildBackup({ settings, history = [], progress = null }) {
     settings,
     history,
     progress,
+    bodyweight,
   };
 }
 
@@ -45,5 +46,6 @@ export function parseBackup(text) {
     settings: data.settings,
     history: data.history,
     progress: data.progress ?? null,
+    bodyweight: Array.isArray(data.bodyweight) ? data.bodyweight : [],
   };
 }
