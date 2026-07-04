@@ -39,6 +39,14 @@ function setCount(exercise) {
   return 0;
 }
 
+/** Per-exercise fatigue multiplier (isometric holds / cardio deposit less than a
+ *  working lift set). Defaults to 1 when the exercise or field is absent. */
+function fatigueScale(exerciseId, settings) {
+  const ex = settings.exercises?.find(e => e.id === exerciseId);
+  const scale = ex?.fatigueScale;
+  return Number.isFinite(scale) && scale > 0 ? scale : 1;
+}
+
 /**
  * Total depletion a single session inflicts on one muscle, in [0, 1).
  * Sums weighted sets across every exercise that works the muscle, then maps
@@ -56,7 +64,7 @@ export function sessionDepletion(muscle, session, settings) {
     const role = getExerciseMuscles(ex.exerciseId, settings)[muscle];
     const weight = ROLE_WEIGHT[role];
     if (!weight) continue;
-    weightedSets += weight * setCount(ex);
+    weightedSets += weight * setCount(ex) * fatigueScale(ex.exerciseId, settings);
   }
   if (weightedSets === 0) return 0;
   return 1 - Math.exp(-DECAY_K * weightedSets);

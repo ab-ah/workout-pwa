@@ -61,6 +61,21 @@ test('sessionDepletion accumulates across exercises hitting the same muscle', ()
   assert.ok(both > benchOnly, 'second exercise on same muscle adds depletion');
 });
 
+test('sessionDepletion scales down for a low-fatigue (isometric/cardio) exercise', () => {
+  const full = makeSettings([{ id: 'hold', muscles: { abs: 'prime_mover' } }]);
+  const scaled = makeSettings([{ id: 'hold', muscles: { abs: 'prime_mover' }, fatigueScale: 0.5 }]);
+  const session = { exercises: [{ exerciseId: 'hold', sets: sets(3) }] };
+  const dFull = sessionDepletion('abs', session, full);
+  const dScaled = sessionDepletion('abs', session, scaled);
+  assert.ok(dScaled > 0, 'still deposits some fatigue');
+  assert.ok(dScaled < dFull, `scaled (${dScaled}) should be below full (${dFull})`);
+  // A 0.5 scale on 3 sets should equal an unscaled 1.5 weighted sets.
+  const dEquivalent = sessionDepletion('abs', { exercises: [{ exerciseId: 'hold', sets: [{}, {}] }] },
+    makeSettings([{ id: 'hold', muscles: { abs: 'prime_mover' }, fatigueScale: 0.75 }]));
+  // 2 sets * 0.75 = 1.5 weighted, same as 3 sets * 0.5 → depletions match.
+  assert.ok(Math.abs(dScaled - dEquivalent) < 1e-9, `${dScaled} vs ${dEquivalent}`);
+});
+
 test('sessionDepletion is 0 for an uninvolved muscle', () => {
   const settings = makeSettings([{ id: 'bench', muscles: { chest: 'prime_mover' } }]);
   const d = sessionDepletion('quads', { exercises: [{ exerciseId: 'bench', sets: sets(4) }] }, settings);
