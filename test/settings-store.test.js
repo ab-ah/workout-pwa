@@ -17,7 +17,7 @@ test('default settings use lats instead of the legacy back muscle id', () => {
   const settings = getSettings();
   const row = settings.exercises.find(ex => ex.id === 'bent-over-barbell-row');
 
-  assert.equal(settings.recoveryHours.lats, 72);
+  assert.equal(settings.recoveryHours.lats, 60); // v8 recalibrated 72 → 60
   assert.equal(settings.recoveryHours.back, undefined);
   assert.equal(row.muscles.lats, 'prime_mover');
   assert.equal(row.muscles.back, undefined);
@@ -208,6 +208,55 @@ test('migration adds the interval timer to a treadmill exercise saved before v6'
   const hiit = settings.exercises.find(e => e.id === 'treadmill-hiit-intervals');
   assert.deepEqual(hiit.timer, { type: 'interval', workSeconds: 30, restSeconds: 60, rounds: 9 });
   assert.equal(settings.planVersion, CURRENT_PLAN_VERSION);
+});
+
+test('v8 migration recalibrates stale-default recovery windows but keeps tuned ones', () => {
+  globalThis.localStorage = makeMemoryStorage();
+
+  saveSettings({
+    exercises: [],
+    routines: [],
+    schedule: {},
+    // lower_back/lats/quads at OLD defaults (should migrate); chest hand-tuned (should stay).
+    recoveryHours: { lower_back: 84, lats: 72, quads: 72, hamstrings: 72, glutes: 72, chest: 90 },
+    planVersion: 5,
+  });
+
+  const s = getSettings();
+  assert.equal(s.recoveryHours.lower_back, 60, 'stale 84 → 60');
+  assert.equal(s.recoveryHours.lats, 60);
+  assert.equal(s.recoveryHours.quads, 60);
+  assert.equal(s.recoveryHours.hamstrings, 60);
+  assert.equal(s.recoveryHours.glutes, 60);
+  assert.equal(s.recoveryHours.chest, 90, 'user-tuned window is preserved');
+});
+
+test('v8 retags: preacher/standing curl forearms are stabilizer; hammer curl stays synergist', () => {
+  globalThis.localStorage = makeMemoryStorage();
+  const byId = new Map(getSettings().exercises.map(ex => [ex.id, ex]));
+  assert.equal(byId.get('preacher-curl').muscles.forearms, 'stabilizer');
+  assert.equal(byId.get('standing-dumbbell-curl').muscles.forearms, 'stabilizer');
+  assert.equal(byId.get('dumbbell-hammer-curl').muscles.forearms, 'synergist');
+  assert.equal(byId.get('dumbbell-farmer-carry').muscles.forearms, 'prime_mover');
+});
+
+test('v8 fatigueScale ships on isometric/cardio moves and not on straight lifts', () => {
+  globalThis.localStorage = makeMemoryStorage();
+  const byId = new Map(getSettings().exercises.map(ex => [ex.id, ex]));
+  assert.equal(byId.get('plank').fatigueScale, 0.4);
+  assert.equal(byId.get('treadmill-incline-walk').fatigueScale, 0.5);
+  assert.equal(byId.get('flat-barbell-bench-press').fatigueScale, undefined);
+});
+
+test('v8 schedule: HIIT off upper-power (Mon), burpee replaces swing on conditioning', () => {
+  globalThis.localStorage = makeMemoryStorage();
+  const s = getSettings();
+  const up = s.routines.find(r => r.id === 'upper-power');
+  const cc = s.routines.find(r => r.id === 'conditioning-core');
+  assert.ok(up.exerciseIds.includes('treadmill-incline-walk'));
+  assert.ok(!up.exerciseIds.includes('treadmill-hiit-intervals'));
+  assert.ok(cc.exerciseIds.includes('burpee'));
+  assert.ok(!cc.exerciseIds.includes('dumbbell-swing'));
 });
 
 test('does not overwrite routines once the plan version is current', () => {

@@ -1,4 +1,5 @@
-import { getSettings, saveSettings } from '../settings-store.js';
+import { getSettings, saveSettings, CURRENT_PLAN_VERSION } from '../settings-store.js';
+import { APP_VERSION, BUILD_DATE } from '../version.js';
 import { PROGRESS_KEY, HISTORY_KEY } from '../store.js';
 import { createMuscleAtlas, ROLE_COLORS, MUSCLE_LABELS } from '../components/muscle-atlas.js';
 import { downloadBackup, restoreBackupFromFile } from '../backup-io.js';
@@ -70,6 +71,7 @@ export function renderSettings(container, onClose) {
           <button class="${activeSection === 'recovery' ? 'active' : ''}" data-sec="recovery">Recovery</button>
         </div>
         <div class="settings-body" id="settings-body"></div>
+        <div class="settings-version">Lean Build v${APP_VERSION} · plan v${CURRENT_PLAN_VERSION} · ${BUILD_DATE}</div>
       </div>
     `;
 

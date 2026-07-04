@@ -10,16 +10,35 @@ export const SETTINGS_KEY = 'leanbuild-settings-v1';
 // timers on the treadmill exercises (interval work/rest cycling for HIIT, plain
 // duration countdown for the steady walk). v7 = per-exercise weightStep so the
 // progression coach jumps by a sensible increment for each lift (2.5 kg barbell,
-// 2 kg dumbbell, 1 kg small isolation) instead of a flat 2.5. Existing saved
-// settings below this version are migrated once (routines/schedule reinstalled +
-// default exercise names/gifUrls/muscles/timers/weightSteps refreshed).
-export const CURRENT_PLAN_VERSION = 7;
+// 2 kg dumbbell, 1 kg small isolation) instead of a flat 2.5. v8 = fatigue-model
+// audit: recalibrated recovery windows (see RECOVERY_HOURS_V8_MIGRATION),
+// corrected muscle-role tags, schedule fixes (no back-to-back posterior chain,
+// no HIIT the day before legs), and per-exercise fatigueScale so isometric/cardio
+// work deposits less fatigue than a working lift set. Existing saved settings
+// below this version are migrated once (routines/schedule reinstalled + default
+// exercise names/gifUrls/muscles/timers/weightSteps/fatigueScales refreshed +
+// stale-default recovery windows nudged to the new values).
+export const CURRENT_PLAN_VERSION = 8;
 
 const DEFAULT_RECOVERY_HOURS = {
-  chest: 60, shoulders: 48, traps: 48, triceps: 48, lats: 72,
-  lower_back: 84, biceps: 48, forearms: 40, rear_delts: 48,
-  quads: 72, hamstrings: 72, glutes: 72, calves: 48,
+  chest: 54, shoulders: 48, traps: 48, triceps: 48, lats: 60,
+  lower_back: 60, biceps: 48, forearms: 40, rear_delts: 48,
+  quads: 60, hamstrings: 60, glutes: 60, calves: 48,
   abs: 36, obliques: 36,
+};
+
+// v8 recovery-window recalibration. The old windows encoded full
+// supercompensation (up to 3.5 days), which made a sensible 2x/week split read as
+// perpetually under-recovered. These represent "recovered enough to train
+// productively again" instead. Migration only rewrites a saved window that is
+// still at its OLD default, so a user's own +/- tuning is preserved.
+const RECOVERY_HOURS_V8_MIGRATION = {
+  lower_back: { from: 84, to: 60 },
+  lats:       { from: 72, to: 60 },
+  quads:      { from: 72, to: 60 },
+  hamstrings: { from: 72, to: 60 },
+  glutes:     { from: 72, to: 60 },
+  chest:      { from: 60, to: 54 },
 };
 
 // 4-level fatigue model: prime_mover=1.0, synergist=0.35, stabilizer=0.08, absent=0.0
@@ -41,12 +60,12 @@ const DEFAULT_EXERCISE_MUSCLES = {
   'dumbbell-pullover':                   { lats: 'prime_mover', chest: 'synergist', triceps: 'stabilizer' },
   'back-hyperextension':                 { lower_back: 'prime_mover', glutes: 'synergist', hamstrings: 'synergist' },
   'weighted-back-hyperextension':        { lower_back: 'prime_mover', glutes: 'synergist', hamstrings: 'synergist' },
-  'preacher-curl':                       { biceps: 'prime_mover', forearms: 'synergist' },
+  'preacher-curl':                       { biceps: 'prime_mover', forearms: 'stabilizer' },
   'dumbbell-hammer-curl':                { biceps: 'prime_mover', forearms: 'synergist' },
-  'standing-dumbbell-curl':              { biceps: 'prime_mover', forearms: 'synergist' },
+  'standing-dumbbell-curl':              { biceps: 'prime_mover', forearms: 'stabilizer' },
   'rear-delt-dumbbell-fly':              { rear_delts: 'prime_mover', traps: 'synergist' },
-  'goblet-squat':                        { quads: 'prime_mover', glutes: 'synergist', abs: 'synergist', lower_back: 'stabilizer' },
-  'goblet-heels-elevated-squat':         { quads: 'prime_mover', glutes: 'synergist', abs: 'synergist', lower_back: 'stabilizer' },
+  'goblet-squat':                        { quads: 'prime_mover', glutes: 'synergist', abs: 'stabilizer', lower_back: 'stabilizer' },
+  'goblet-heels-elevated-squat':         { quads: 'prime_mover', glutes: 'synergist', abs: 'stabilizer', lower_back: 'stabilizer' },
   'bulgarian-split-squat':               { quads: 'prime_mover', glutes: 'prime_mover', hamstrings: 'synergist', abs: 'stabilizer' },
   'dumbbell-reverse-lunge':              { quads: 'prime_mover', glutes: 'prime_mover', hamstrings: 'synergist', abs: 'stabilizer' },
   'dumbbell-romanian-deadlift':          { hamstrings: 'prime_mover', glutes: 'prime_mover', lower_back: 'synergist', forearms: 'stabilizer', traps: 'stabilizer' },
@@ -58,10 +77,10 @@ const DEFAULT_EXERCISE_MUSCLES = {
   'weighted-crunch':                     { abs: 'prime_mover' },
   'dead-bug':                            { abs: 'prime_mover', obliques: 'synergist' },
   // --- Fat-loss conditioning & metabolic additions ---
-  'treadmill-incline-walk':              { calves: 'synergist', hamstrings: 'stabilizer', glutes: 'stabilizer', quads: 'stabilizer' },
+  'treadmill-incline-walk':              { calves: 'stabilizer', hamstrings: 'stabilizer', glutes: 'stabilizer', quads: 'stabilizer' },
   'treadmill-hiit-intervals':            { quads: 'synergist', calves: 'synergist', hamstrings: 'synergist', glutes: 'stabilizer' },
   'dumbbell-thruster':                   { quads: 'prime_mover', shoulders: 'prime_mover', glutes: 'synergist', triceps: 'synergist', abs: 'stabilizer' },
-  'dumbbell-swing':                      { glutes: 'prime_mover', hamstrings: 'prime_mover', lower_back: 'synergist', shoulders: 'synergist', forearms: 'stabilizer', abs: 'stabilizer' },
+  'dumbbell-swing':                      { glutes: 'prime_mover', hamstrings: 'prime_mover', lower_back: 'synergist', shoulders: 'stabilizer', forearms: 'stabilizer', abs: 'stabilizer' },
   'renegade-row':                        { lats: 'prime_mover', abs: 'prime_mover', obliques: 'synergist', biceps: 'synergist', shoulders: 'stabilizer', triceps: 'stabilizer' },
   'dumbbell-push-press':                 { shoulders: 'prime_mover', triceps: 'synergist', quads: 'synergist', traps: 'synergist', glutes: 'stabilizer' },
   'dumbbell-farmer-carry':               { forearms: 'prime_mover', traps: 'prime_mover', abs: 'stabilizer', obliques: 'stabilizer', glutes: 'stabilizer' },
@@ -112,6 +131,22 @@ const DEFAULT_WEIGHT_STEP = {
   'standing-dumbbell-curl': 1,
   'dumbbell-russian-twist': 1,
   'weighted-crunch': 1,
+};
+
+// Per-exercise fatigue multiplier (default 1 when absent). Isometric holds and
+// cardio don't deposit the same fatigue as a heavy working set of the same
+// nominal "sets", so they're scaled down. Applied on top of the role weight in
+// recovery-model.sessionDepletion. Only exercises that deviate from 1 are listed.
+const DEFAULT_FATIGUE_SCALE = {
+  'plank': 0.4,
+  'side-plank': 0.4,
+  'dead-bug': 0.5,
+  'flutter-kicks': 0.6,
+  'mountain-climber': 0.7,
+  'bicycle-crunch': 0.8,
+  'hanging-leg-raise': 0.8,
+  'treadmill-incline-walk': 0.5,
+  'treadmill-hiit-intervals': 0.8,
 };
 
 // All exercise data self-contained
@@ -173,7 +208,7 @@ const EXERCISE_POOL_DATA = [
 const DEFAULT_ROUTINES = [
   {
     id: 'upper-power',
-    name: 'Upper Power + Intervals',
+    name: 'Upper Power + Walk',
     tag: 'Chest · Back · Shoulders · Cardio',
     colorVar: '--push',
     exerciseIds: [
@@ -184,7 +219,7 @@ const DEFAULT_ROUTINES = [
       'seated-dumbbell-shoulder-press',
       'preacher-curl',
       'overhead-dumbbell-triceps-extension',
-      'treadmill-hiit-intervals',
+      'treadmill-incline-walk',
     ],
   },
   {
@@ -257,7 +292,7 @@ const DEFAULT_ROUTINES = [
       'dumbbell-farmer-carry',
       'renegade-row',
       'push-up',
-      'dumbbell-swing',
+      'burpee',
       'mountain-climber',
       'bicycle-crunch',
       'side-plank',
@@ -335,12 +370,14 @@ function migrateSettings(settings) {
         (d.name && e.name !== d.name) ||
         JSON.stringify(e.muscles ?? {}) !== JSON.stringify(d.muscles ?? {}) ||
         JSON.stringify(e.timer ?? null) !== JSON.stringify(d.timer ?? null) ||
-        (e.weightStep ?? null) !== (d.weightStep ?? null);
+        (e.weightStep ?? null) !== (d.weightStep ?? null) ||
+        (e.fatigueScale ?? null) !== (d.fatigueScale ?? null);
       return stale
         ? {
             ...e, name: d.name, gifUrl: d.gifUrl, muscles: { ...d.muscles },
             ...(d.timer ? { timer: { ...d.timer } } : {}),
             ...(d.weightStep != null ? { weightStep: d.weightStep } : {}),
+            ...(d.fatigueScale != null ? { fatigueScale: d.fatigueScale } : {}),
           }
         : e;
     });
@@ -358,8 +395,19 @@ function migrateSettings(settings) {
   const schedule = needsPlan ? { ...DEFAULT_SCHEDULE } : settings.schedule;
   const planVersion = needsPlan ? CURRENT_PLAN_VERSION : settings.planVersion;
 
+  // Step 4: nudge stale-default recovery windows to their recalibrated v8 values,
+  // but only where the saved window is still exactly the old default — a window
+  // the user has tuned via the Recovery tab is left untouched.
+  let recoveryHours = settings.recoveryHours;
+  if (needsPlan) {
+    recoveryHours = { ...settings.recoveryHours };
+    for (const [muscle, { from, to }] of Object.entries(RECOVERY_HOURS_V8_MIGRATION)) {
+      if (recoveryHours[muscle] === from) recoveryHours[muscle] = to;
+    }
+  }
+
   const changed = missing.length > 0 || needsPlan;
-  return { settings: { ...settings, exercises, routines, schedule, planVersion }, changed };
+  return { settings: { ...settings, exercises, routines, schedule, recoveryHours, planVersion }, changed };
 }
 
 export function saveSettings(settings) {
@@ -377,6 +425,7 @@ function defaultExercises() {
         ...ex,
         muscles: DEFAULT_EXERCISE_MUSCLES[ex.id] ?? {},
         ...(DEFAULT_WEIGHT_STEP[ex.id] != null ? { weightStep: DEFAULT_WEIGHT_STEP[ex.id] } : {}),
+        ...(DEFAULT_FATIGUE_SCALE[ex.id] != null ? { fatigueScale: DEFAULT_FATIGUE_SCALE[ex.id] } : {}),
       });
     }
   }

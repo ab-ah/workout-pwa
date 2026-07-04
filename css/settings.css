@@ -388,3 +388,10 @@
   font-size: 18px; cursor: pointer; color: var(--muted);
 }
 .settings-gear:hover { color: var(--accent); border-color: var(--accent) }
+
+.settings-version {
+  text-align: center; margin: 22px 0 4px; padding-top: 14px;
+  border-top: 1px solid var(--line);
+  font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--muted);
+  letter-spacing: .03em;
+}
