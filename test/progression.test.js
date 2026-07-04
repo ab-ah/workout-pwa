@@ -47,3 +47,23 @@ test('suggestProgression respects a custom weight step', () => {
   const { text } = suggestProgression(sets, '6-8', { weightStep: 5 });
   assert.match(text, /105kg/);
 });
+
+test('suggestProgression makes a bolder jump when maxed reps came at low RPE', () => {
+  const sets = [{ weight: 50, reps: 8, rpe: 6 }, { weight: 50, reps: 8, rpe: 7 }];
+  const { text } = suggestProgression(sets, '6-8'); // default step 2.5, so +5 → 55
+  assert.match(text, /55kg/);
+  assert.match(text, /RPE/);
+});
+
+test('suggestProgression holds load when maxed reps came at high RPE', () => {
+  const sets = [{ weight: 50, reps: 8, rpe: 9.5 }, { weight: 50, reps: 8, rpe: 9 }];
+  const { text } = suggestProgression(sets, '6-8');
+  assert.match(text, /hold 50kg/);
+  assert.doesNotMatch(text, /try \d/);
+});
+
+test('suggestProgression ignores RPE when absent (backward compatible)', () => {
+  const sets = [{ weight: 50, reps: 8 }, { weight: 50, reps: 8 }];
+  const { text } = suggestProgression(sets, '6-8');
+  assert.match(text, /52\.5kg/);
+});

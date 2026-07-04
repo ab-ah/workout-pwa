@@ -1,6 +1,7 @@
 import { mountExerciseCard } from '../components/exercise-card.js';
 import { getSettings } from '../settings-store.js';
 import { routineReadiness } from '../recovery-model.js';
+import { adaptiveSuggestion } from '../adaptive.js';
 import { MUSCLE_LABELS } from '../components/muscle-atlas-paths.js';
 import { findMissedWorkout, localDateStr } from '../schedule.js';
 import { enableWakeLock, disableWakeLock } from '../wake-lock.js';
@@ -12,6 +13,20 @@ function readinessTier(readiness) {
   if (readiness >= 0.85) return { label: 'Ready', color: '#46d160' };
   if (readiness >= 0.65) return { label: 'Mostly ready', color: '#e0b03a' };
   return { label: 'Under-recovered', color: '#e0553a' };
+}
+
+function buildAdaptiveBlock(readiness, perMuscle) {
+  const s = adaptiveSuggestion(readiness, perMuscle);
+  if (s.level === 'ready') return ''; // nothing to warn about when fully recovered
+  const lagging = s.laggingMuscles.length
+    ? `<span class="adaptive-muscles">${s.laggingMuscles.map(m => MUSCLE_LABELS[m] ?? m).join(' · ')}</span>`
+    : '';
+  return `
+    <div class="adaptive-suggestion adaptive-${s.level}">
+      <div class="adaptive-headline">${s.headline}</div>
+      <div class="adaptive-detail">${s.detail} ${lagging}</div>
+    </div>
+  `;
 }
 
 function buildReadinessBlock(readiness, perMuscle) {
@@ -198,7 +213,34 @@ export function renderToday(container, store) {
     }
 
     const { routine, exercises } = scheduled;
-    const { readiness, perMuscle } = routineReadiness(routine, settings, store.getHistory());
+
+    // Already trained today's scheduled routine? Show a completed card instead of
+    // an "Up next" prompt with (now tanked) readiness that reads as a warning.
+    const todayStr = localDateStr(Date.now());
+    const doneToday = history.find(s => s.date === todayStr && s.routineId === routine.id);
+    if (doneToday) {
+      const totalSets = (doneToday.exercises ?? []).reduce((n, e) => n + (e.sets?.length ?? 0), 0);
+      const mins = (typeof doneToday.startedAt === 'number' && typeof doneToday.finishedAt === 'number')
+        ? Math.max(1, Math.round((doneToday.finishedAt - doneToday.startedAt) / 60000))
+        : null;
+      container.innerHTML = `
+        ${restoreBanner}
+        ${banner}
+        <div class="card today-done" style="border-left:4px solid var(${routine.colorVar})">
+          <span class="muted">Today · done ✓</span>
+          <h2>${routine.name} complete</h2>
+          <p class="muted" style="margin-top:6px">${(doneToday.exercises ?? []).length} exercises · ${totalSets} sets${mins ? ` · ${mins} min` : ''}</p>
+          <p class="muted" style="margin-top:10px;font-size:13px">Nice work — recovery is underway. Check the Recovery tab for muscle status.</p>
+          <button class="btn-secondary" id="repeat-workout-btn" style="margin-top:12px">Train it again</button>
+        </div>
+      `;
+      container.querySelector('#repeat-workout-btn').addEventListener('click', () => startRoutine(routine));
+      wireMissed(missed);
+      wireRestore();
+      return;
+    }
+
+    const { readiness, perMuscle } = routineReadiness(routine, settings, history);
     container.innerHTML = `
       ${restoreBanner}
       ${banner}
@@ -208,6 +250,7 @@ export function renderToday(container, store) {
         <p class="muted">${routine.tag}</p>
         <p class="muted" style="margin-top:10px">${exercises.length} exercises</p>
         ${buildReadinessBlock(readiness, perMuscle)}
+        ${buildAdaptiveBlock(readiness, perMuscle)}
         <button class="btn-primary" id="start-workout-btn">Start Workout</button>
       </div>
     `;

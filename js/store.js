@@ -1,5 +1,6 @@
 export const PROGRESS_KEY = 'leanbuild-plan-progress-v2';
 export const HISTORY_KEY = 'leanbuild-history-v2';
+export const BODYWEIGHT_KEY = 'leanbuild-bodyweight-v1';
 
 const DEFAULT_PROGRESS = { lastCompletedDayIndex: -1, lastCompletedAt: null };
 
@@ -66,7 +67,37 @@ export function createStore(storage) {
     return points;
   }
 
-  return { getProgress, saveProgress, getHistory, saveHistory, addSession, updateSession, getExerciseHistory };
+  function getBodyweights() {
+    const raw = storage.getItem(BODYWEIGHT_KEY);
+    if (!raw) return [];
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Record a weigh-in. One entry per calendar date — logging again the same day
+   * overwrites it (the latest reading wins) rather than stacking duplicates.
+   * @param {{ date: string, kg: number, at?: number }} entry
+   */
+  function addBodyweight(entry) {
+    const kg = Number(entry?.kg);
+    if (!Number.isFinite(kg) || kg <= 0) return getBodyweights();
+    const date = entry.date;
+    const at = typeof entry.at === 'number' ? entry.at : Date.now();
+    const rest = getBodyweights().filter((e) => e.date !== date);
+    const next = [...rest, { date, kg, at }].sort((a, b) => String(a.date).localeCompare(String(b.date)));
+    storage.setItem(BODYWEIGHT_KEY, JSON.stringify(next));
+    return next;
+  }
+
+  return {
+    getProgress, saveProgress, getHistory, saveHistory, addSession, updateSession,
+    getExerciseHistory, getBodyweights, addBodyweight,
+  };
 }
 
 function normalizeSession(session) {

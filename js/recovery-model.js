@@ -98,6 +98,31 @@ export function muscleFreshness(muscle, history, settings, now = Date.now()) {
 }
 
 /**
+ * Hours from `now` until a muscle's freshness reaches `target` (default 0.9).
+ * Because freshness recovers linearly and residuals stack multiplicatively, we
+ * can't invert in closed form, so we scan forward hour by hour until the modeled
+ * freshness clears the target. Returns 0 if already there, capped at the muscle's
+ * longest recovery window.
+ *
+ * @param {string} muscle
+ * @param {Array} history
+ * @param {{ exercises: Array, recoveryHours?: Object }} settings
+ * @param {number} [target] freshness fraction to reach, 0..1
+ * @param {number} [now]
+ * @returns {number} whole hours until recovered (0 = ready now)
+ */
+export function hoursUntilFresh(muscle, history, settings, target = 0.9, now = Date.now()) {
+  const { fraction } = muscleFreshness(muscle, history, settings, now);
+  if (fraction >= target) return 0;
+  const window = settings.recoveryHours?.[muscle] ?? 48;
+  for (let h = 1; h <= Math.ceil(window); h++) {
+    const future = muscleFreshness(muscle, history, settings, now + h * 3600000);
+    if (future.fraction >= target) return h;
+  }
+  return Math.ceil(window);
+}
+
+/**
  * Freshness for every muscle in `muscleIds`, keyed by id.
  * @returns {Object<string, { fraction: number, hoursAgo: number | null }>}
  */

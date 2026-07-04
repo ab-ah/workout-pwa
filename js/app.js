@@ -35,6 +35,14 @@ navButtons.forEach((btn) => {
 
 setActiveTab('today');
 
+// Readiness and recovery are time-based: their numbers drift while the app sits
+// backgrounded. When the PWA comes back to the foreground, re-render those tabs
+// so the freshness/readiness shown is current rather than frozen at blur time.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  if (currentTab === 'today' || currentTab === 'recovery') VIEWS[currentTab]();
+});
+
 const settingsGear = document.getElementById('settings-gear-btn');
 settingsGear.addEventListener('click', () => {
   renderSettings(viewRoot, () => setActiveTab(currentTab));

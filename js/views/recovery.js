@@ -1,7 +1,10 @@
 import { getSettings, saveSettings } from '../settings-store.js';
 import { createMuscleAtlas, MUSCLE_LABELS } from '../components/muscle-atlas.js';
-import { allMuscleFreshness } from '../recovery-model.js';
+import { allMuscleFreshness, hoursUntilFresh } from '../recovery-model.js';
 import { nudgeRecoveryHours } from '../recovery-tuning.js';
+
+// A muscle at/above this freshness is treated as "ready" — no ETA shown.
+const READY_FRACTION = 0.9;
 
 function recoveryColor(fraction) {
   const r = Math.round(255 * (1 - fraction));
@@ -30,7 +33,13 @@ export function renderRecovery(container, store) {
 
   const legendItems = Object.keys(MUSCLE_LABELS).map(m => {
     const d = muscleData[m];
-    const statusText = d.hoursAgo === null ? 'Fresh' : `${d.pct}% recovered`;
+    let statusText;
+    if (d.hoursAgo === null || d.fraction >= READY_FRACTION) {
+      statusText = 'Ready';
+    } else {
+      const eta = hoursUntilFresh(m, history, settings, READY_FRACTION);
+      statusText = eta > 0 ? `${d.pct}% · ready in ${eta}h` : `${d.pct}% recovered`;
+    }
     const hrs = settings.recoveryHours?.[m] ?? 48;
     return `<div class="muscle-item">
       <div class="muscle-dot" style="background:${d.color}"></div>
