@@ -2,6 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   FULL_DEPLETION_SETS,
+  RPE_REFERENCE,
+  effortMultiplier,
   sessionDepletion,
   muscleFreshness,
   routineReadiness,
@@ -9,6 +11,11 @@ import {
 } from '../js/recovery-model.js';
 
 const HOUR = 3600000;
+
+// RPE-carrying sets, so the effort scaling has something to read.
+function setsAtRpe(n, rpe) {
+  return Array.from({ length: n }, () => ({ weight: 20, reps: 10, rpe }));
+}
 
 // Build a settings object the pure model can read (no localStorage needed).
 function makeSettings(exercises, recoveryHours = {}) {
@@ -231,4 +238,61 @@ test('hoursUntilFresh shrinks as recovery progresses', () => {
   const etaFresh = hoursUntilFresh('chest', fresh, settings, 0.9, now);
   const etaOlder = hoursUntilFresh('chest', older, settings, 0.9, now);
   assert.ok(etaOlder < etaFresh, `older session should have smaller ETA (${etaOlder} < ${etaFresh})`);
+});
+
+// ─── effortMultiplier: RPE → per-set fatigue weight ──────────────────────────
+
+test('effortMultiplier is neutral (1.0) at the reference RPE and when RPE is absent', () => {
+  assert.equal(effortMultiplier(RPE_REFERENCE), 1);
+  assert.equal(effortMultiplier(undefined), 1, 'no RPE → neutral');
+  assert.equal(effortMultiplier(null), 1);
+  assert.equal(effortMultiplier(0), 1, 'invalid RPE → neutral');
+  assert.equal(effortMultiplier(NaN), 1);
+});
+
+test('effortMultiplier rises toward failure and falls for easy sets, within clamps', () => {
+  assert.ok(effortMultiplier(10) > 1, 'a max-effort set fatigues more than the reference');
+  assert.ok(effortMultiplier(6) < 1, 'an easy set fatigues less than the reference');
+  assert.ok(effortMultiplier(10) <= 1.2 + 1e-9, 'clamped at the ceiling');
+  assert.ok(effortMultiplier(1) >= 0.6 - 1e-9, 'clamped at the floor');
+  assert.ok(effortMultiplier(9) > effortMultiplier(7), 'monotonic in RPE');
+});
+
+// ─── intensity-aware depletion ───────────────────────────────────────────────
+
+test('sessionDepletion: harder sets (higher RPE) deplete more than easy ones', () => {
+  const settings = makeSettings([{ id: 'bench', muscles: { chest: 'prime_mover' } }]);
+  const hard = sessionDepletion('chest', { exercises: [{ exerciseId: 'bench', sets: setsAtRpe(3, 10) }] }, settings);
+  const easy = sessionDepletion('chest', { exercises: [{ exerciseId: 'bench', sets: setsAtRpe(3, 6) }] }, settings);
+  const neutral = sessionDepletion('chest', { exercises: [{ exerciseId: 'bench', sets: sets(3) }] }, settings);
+  assert.ok(hard > easy, `RPE10 (${hard}) should exceed RPE6 (${easy})`);
+  // A set with no RPE sits between: it matches RPE 8 (the reference).
+  const ref = sessionDepletion('chest', { exercises: [{ exerciseId: 'bench', sets: setsAtRpe(3, RPE_REFERENCE) }] }, settings);
+  assert.ok(Math.abs(neutral - ref) < 1e-9, 'no-RPE equals reference-RPE depletion');
+});
+
+// ─── volume extends the recovery window ──────────────────────────────────────
+
+test('a high-volume session recovers slower than a normal one at the same base window', () => {
+  const now = 1_000_000_000_000;
+  const settings = makeSettings([{ id: 'bench', muscles: { chest: 'prime_mover' } }], { chest: 48 });
+  // Both are fully past the *base* window (60h > 48h). The normal session (4
+  // weighted sets, stretch 1×) is fully fresh; the big one (10 sets, stretched
+  // window) is not yet.
+  const normal = [{ finishedAt: now - 60 * HOUR, exercises: [{ exerciseId: 'bench', sets: sets(4) }] }];
+  const big = [{ finishedAt: now - 60 * HOUR, exercises: [{ exerciseId: 'bench', sets: sets(10) }] }];
+  const fNormal = muscleFreshness('chest', normal, settings, now).fraction;
+  const fBig = muscleFreshness('chest', big, settings, now).fraction;
+  assert.equal(fNormal, 1, 'a normal session has fully cleared its base window');
+  assert.ok(fBig < 1, `the big session's window is stretched, so it is not yet fresh (got ${fBig})`);
+});
+
+test('window stretch leaves normal-volume sessions on the base window (regression)', () => {
+  const now = 1_000_000_000_000;
+  const settings = makeSettings([{ id: 'bench', muscles: { chest: 'prime_mover' } }], { chest: 48 });
+  // Exactly at FULL_DEPLETION_SETS → stretch is 1×, so a 48h-old 4-set session
+  // is exactly half-recovered, matching the pre-stretch model.
+  const history = [{ finishedAt: now - 24 * HOUR, exercises: [{ exerciseId: 'bench', sets: sets(4) }] }];
+  const { fraction } = muscleFreshness('chest', history, settings, now);
+  assert.ok(Math.abs(fraction - 0.55) < 0.03, `got ${fraction}`);
 });

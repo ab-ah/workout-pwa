@@ -56,7 +56,7 @@ export function renderRecovery(container, store) {
   container.innerHTML = `
     <div class="recovery-view">
       <div class="recovery-header">Recovery</div>
-      <div class="recovery-sub">Color shows recovery status. Tap + / − to tune a muscle's window to how you actually feel.</div>
+      <div class="recovery-sub">Color shows recovery status. Harder sets (higher logged RPE) and bigger sessions take longer to clear. Tap + / − to tune a muscle's window to how you actually feel.</div>
       <div id="atlas-slot"></div>
       <div class="muscle-legend">${legendItems}</div>
     </div>
