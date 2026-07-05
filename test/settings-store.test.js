@@ -259,6 +259,55 @@ test('v8 schedule: HIIT off upper-power (Mon), burpee replaces swing on conditio
   assert.ok(!cc.exerciseIds.includes('dumbbell-swing'));
 });
 
+test('v10 remaps an orphaned "shoulders" tag on a user exercise onto front_delts', () => {
+  globalThis.localStorage = makeMemoryStorage();
+  saveSettings({
+    exercises: [{
+      id: 'my-custom-press', name: 'My Press',
+      muscles: { chest: 'prime_mover', shoulders: 'synergist' }, // pre-v9 orphan tag
+    }],
+    routines: [], schedule: {}, recoveryHours: {}, planVersion: 9,
+  });
+  const ex = getSettings().exercises.find(e => e.id === 'my-custom-press');
+  assert.equal(ex.muscles.shoulders, undefined, 'orphan shoulders removed');
+  assert.equal(ex.muscles.front_delts, 'synergist', 'remapped onto front_delts');
+  assert.equal(ex.muscles.chest, 'prime_mover', 'other tags untouched');
+});
+
+test('v10 remap keeps the stronger role when front_delts already present', () => {
+  globalThis.localStorage = makeMemoryStorage();
+  saveSettings({
+    exercises: [{
+      id: 'my-ohp', name: 'My OHP',
+      muscles: { front_delts: 'stabilizer', shoulders: 'prime_mover' },
+    }],
+    routines: [], schedule: {}, recoveryHours: {}, planVersion: 9,
+  });
+  const ex = getSettings().exercises.find(e => e.id === 'my-ohp');
+  assert.equal(ex.muscles.front_delts, 'prime_mover', 'stronger of the two roles wins');
+  assert.equal(ex.muscles.shoulders, undefined);
+});
+
+test('v10 refreshes heavy-compound rest to the longer defaults on the bump', () => {
+  globalThis.localStorage = makeMemoryStorage();
+  saveSettings({
+    exercises: [{
+      id: 'flat-barbell-bench-press', name: 'Flat Barbell Bench Press',
+      restSeconds: 90, // stale pre-v10 rest
+      gifUrl: 'assets/exercise-gifs/flat-barbell-bench-press.gif', muscles: {},
+    }],
+    routines: [], schedule: {}, recoveryHours: {}, planVersion: 9,
+  });
+  const ex = getSettings().exercises.find(e => e.id === 'flat-barbell-bench-press');
+  assert.equal(ex.restSeconds, 150);
+});
+
+test('v10 schedule: lateral raises added to Monday for side-delt volume', () => {
+  globalThis.localStorage = makeMemoryStorage();
+  const up = getSettings().routines.find(r => r.id === 'upper-power');
+  assert.ok(up.exerciseIds.includes('dumbbell-lateral-raise'));
+});
+
 test('v9 splits shoulders into front/side delts and carries a tuned window onto both', () => {
   globalThis.localStorage = makeMemoryStorage();
   saveSettings({
