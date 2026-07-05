@@ -32,12 +32,12 @@ test('default exercise roles follow the recovery-focused fatigue categories', ()
   assert.deepEqual(byId.get('flat-barbell-bench-press').muscles, {
     chest: 'prime_mover',
     triceps: 'synergist',
-    shoulders: 'synergist',
+    front_delts: 'synergist',
     lats: 'stabilizer',
   });
   assert.deepEqual(byId.get('incline-dumbbell-press').muscles, {
     chest: 'prime_mover',
-    shoulders: 'prime_mover',
+    front_delts: 'prime_mover',
     triceps: 'synergist',
   });
   assert.deepEqual(byId.get('dumbbell-romanian-deadlift').muscles, {
@@ -50,7 +50,7 @@ test('default exercise roles follow the recovery-focused fatigue categories', ()
   assert.deepEqual(byId.get('plank').muscles, {
     abs: 'prime_mover',
     obliques: 'synergist',
-    shoulders: 'stabilizer',
+    front_delts: 'stabilizer',
     glutes: 'stabilizer',
     lower_back: 'stabilizer',
   });
@@ -66,7 +66,7 @@ test('fat-loss plan ships the new conditioning exercises with muscle maps', () =
     assert.ok(byId.has(id), `expected default exercise "${id}" to exist`);
   }
   assert.equal(byId.get('dumbbell-thruster').muscles.quads, 'prime_mover');
-  assert.equal(byId.get('dumbbell-thruster').muscles.shoulders, 'prime_mover');
+  assert.equal(byId.get('dumbbell-thruster').muscles.front_delts, 'prime_mover');
 });
 
 test('treadmill exercises ship a cardio countdown timer config', () => {
@@ -257,6 +257,35 @@ test('v8 schedule: HIIT off upper-power (Mon), burpee replaces swing on conditio
   assert.ok(!up.exerciseIds.includes('treadmill-hiit-intervals'));
   assert.ok(cc.exerciseIds.includes('burpee'));
   assert.ok(!cc.exerciseIds.includes('dumbbell-swing'));
+});
+
+test('v9 splits shoulders into front/side delts and carries a tuned window onto both', () => {
+  globalThis.localStorage = makeMemoryStorage();
+  saveSettings({
+    exercises: [],
+    routines: [],
+    schedule: {},
+    recoveryHours: { shoulders: 66 }, // user-tuned single shoulder window
+    planVersion: 8,
+  });
+  const s = getSettings();
+  assert.equal(s.recoveryHours.front_delts, 66, 'tuned shoulders window carried to front');
+  assert.equal(s.recoveryHours.side_delts, 66, 'tuned shoulders window carried to side');
+  assert.equal(s.recoveryHours.shoulders, undefined, 'orphan shoulders key removed');
+});
+
+test('v9 default exercises tag deltoid heads, never legacy shoulders', () => {
+  globalThis.localStorage = makeMemoryStorage();
+  const s = getSettings();
+  for (const ex of s.exercises) {
+    assert.equal(ex.muscles.shoulders, undefined, `${ex.id} still tags legacy "shoulders"`);
+  }
+  const byId = new Map(s.exercises.map(e => [e.id, e]));
+  assert.equal(byId.get('dumbbell-lateral-raise').muscles.side_delts, 'prime_mover');
+  assert.equal(byId.get('seated-dumbbell-shoulder-press').muscles.front_delts, 'prime_mover');
+  assert.equal(byId.get('seated-dumbbell-shoulder-press').muscles.side_delts, 'synergist');
+  assert.equal(s.recoveryHours.front_delts, 48);
+  assert.equal(s.recoveryHours.side_delts, 48);
 });
 
 test('does not overwrite routines once the plan version is current', () => {

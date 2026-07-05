@@ -67,7 +67,7 @@ Model change so holds/cardio don't deposit working-set fatigue.
 - ⬜ Tests in `test/recovery-model.test.js`: a scaled exercise deposits proportionally less; default (no scale) unchanged (regression guard on existing numbers).
 - ⬜ Bump `CACHE_NAME`; `APP_VERSION` → 1.2.0. Commit + push checkpoint here (deployable, verifiable on phone).
 
-## Phase 5 — Tier C5: split "shoulders" → front_delts + side_delts (LARGEST; may be a later session) ⬜
+## Phase 5 — Tier C5: split "shoulders" → front_delts + side_delts ✅ (plan v9, app v1.2.0)
 Under `CURRENT_PLAN_VERSION = 9`.
 - ⬜ `muscle-atlas-paths.js`: add `front_delts` + `side_delts` labels; subdivide the single `shoulders` deltoid-cap
   path (line ~128) into two sub-paths (front slice + lateral slice). Keep `rear_delts` as-is. Cleanest is to REPLACE
@@ -89,3 +89,14 @@ Under `CURRENT_PLAN_VERSION = 9`.
 - Deploy branch = **master** (Pages source); active work branch = **workout-pwa-redesign**.
 - Current `CURRENT_PLAN_VERSION` before this work = 7. Phases 1–4 → 8. Phase 5 → 9.
 - Attribution disabled in commits (user global setting) — no Co-Authored-By trailer.
+
+## Completion status (all phases done)
+- Phases 0–4 shipped in commit 563e80d (plan v8, app v1.1.0, sw v16).
+- Phase 5 (shoulder split) + PWA auto-refresh shipped at plan v9, app v1.2.0, sw v17.
+  - Auto-refresh: sw.js already had skipWaiting()+clients.claim(); added
+    controllerchange→reload in app.js (guarded against first-install + reload loop)
+    plus proactive registration.update() on load and on foreground. So every new
+    deploy now force-refreshes the PWA. Full cycle only observable across the NEXT
+    deploy (v17 installs now; v18 will trigger the auto-reload).
+- All 120 tests green. Muscle model now: front_delts/side_delts/rear_delts split,
+  recalibrated windows, corrected role tags, fatigueScale, schedule fixes.

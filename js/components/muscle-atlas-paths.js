@@ -7,7 +7,8 @@
 
 export const MUSCLE_LABELS = {
   chest: 'Chest',
-  shoulders: 'Shoulders',
+  front_delts: 'Front Delts',
+  side_delts: 'Side Delts',
   traps: 'Traps',
   biceps: 'Biceps',
   triceps: 'Triceps',
@@ -124,8 +125,10 @@ const GLUTE_PLATE = `<path class="body-base" d="
 const FRONT_LEFT_MUSCLES =
   // Trapezius (front slope, neck to shoulder)
   muscle('traps', `M87,76 C80,79 71,84 64,89 C70,93 79,94 86,92 C87,87 87,81 87,76 Z`) +
-  // Front/side deltoid cap
-  muscle('shoulders', `M55,95 C47,98 41,106 40,116 C40,124 43,130 48,131 C54,131 59,124 61,114 C61,105 60,98 58,95 C57,93 56,94 55,95 Z`) +
+  // Deltoid cap, split into anterior (front) and lateral (side) heads. Front is
+  // the upper-inner slice (toward the clavicle/chest); side is the outer bulge.
+  muscle('front_delts', `M55,95 C50,97 45,102 43,109 C46,113 52,114 58,112 C60,108 61,102 60,98 C59,95 57,94 55,95 Z`) +
+  muscle('side_delts', `M43,109 C41,116 40,124 42,130 C46,133 53,132 58,127 C60,122 60,116 58,112 C52,114 46,113 43,109 Z`) +
   // Pectoral
   muscle('chest', `M99,100 C88,98 76,100 68,106 C63,112 63,122 67,130 C73,139 85,143 95,142 C97,141 99,138 99,133 L99,104 Z`) +
   // Biceps
