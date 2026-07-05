@@ -48,8 +48,33 @@ settingsGear.addEventListener('click', () => {
   renderSettings(viewRoot, () => setActiveTab(currentTab));
 });
 
+// Service worker + auto-update. The worker calls skipWaiting()/clients.claim(),
+// so a freshly deployed version activates immediately and takes control. When it
+// does, the browser fires `controllerchange`; we reload once to swap the running
+// page onto the new code. This guarantees every deployment refreshes the PWA
+// without a manual hard-reload. In-progress workout state is persisted to
+// localStorage, so the reload restores it rather than losing it.
 if ('serviceWorker' in navigator) {
+  // True only when a worker is already in control (a repeat visit / update),
+  // so we skip the reload on the very first install (initial claim).
+  const hadController = !!navigator.serviceWorker.controller;
+  let reloading = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (reloading || !hadController) return;
+    reloading = true;
+    window.location.reload();
+  });
+
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
+    navigator.serviceWorker.register('sw.js')
+      .then((reg) => { reg.update?.(); })
+      .catch(() => {});
+  });
+
+  // Check for a newer worker whenever the app returns to the foreground, so a
+  // long-lived installed PWA still picks up deploys promptly.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+    navigator.serviceWorker.getRegistration().then((reg) => reg?.update?.()).catch(() => {});
   });
 }

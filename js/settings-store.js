@@ -17,11 +17,15 @@ export const SETTINGS_KEY = 'leanbuild-settings-v1';
 // work deposits less fatigue than a working lift set. Existing saved settings
 // below this version are migrated once (routines/schedule reinstalled + default
 // exercise names/gifUrls/muscles/timers/weightSteps/fatigueScales refreshed +
-// stale-default recovery windows nudged to the new values).
-export const CURRENT_PLAN_VERSION = 8;
+// stale-default recovery windows nudged to the new values). v9 = the single
+// "shoulders" muscle is split into front_delts + side_delts so pressing and
+// lateral-raise fatigue no longer pile onto one bucket; exercise tags are
+// refreshed on the bump and any tuned "shoulders" recovery window is copied onto
+// both new heads.
+export const CURRENT_PLAN_VERSION = 9;
 
 const DEFAULT_RECOVERY_HOURS = {
-  chest: 54, shoulders: 48, traps: 48, triceps: 48, lats: 60,
+  chest: 54, front_delts: 48, side_delts: 48, traps: 48, triceps: 48, lats: 60,
   lower_back: 60, biceps: 48, forearms: 40, rear_delts: 48,
   quads: 60, hamstrings: 60, glutes: 60, calves: 48,
   abs: 36, obliques: 36,
@@ -43,15 +47,15 @@ const RECOVERY_HOURS_V8_MIGRATION = {
 
 // 4-level fatigue model: prime_mover=1.0, synergist=0.35, stabilizer=0.08, absent=0.0
 const DEFAULT_EXERCISE_MUSCLES = {
-  'flat-barbell-bench-press':            { chest: 'prime_mover', triceps: 'synergist', shoulders: 'synergist', lats: 'stabilizer' },
-  'incline-dumbbell-press':              { chest: 'prime_mover', shoulders: 'prime_mover', triceps: 'synergist' },
-  'incline-barbell-bench-press':         { chest: 'prime_mover', shoulders: 'prime_mover', triceps: 'synergist' },
-  'decline-dumbbell-press':              { chest: 'prime_mover', triceps: 'synergist', shoulders: 'stabilizer' },
-  'seated-dumbbell-shoulder-press':      { shoulders: 'prime_mover', triceps: 'synergist', traps: 'synergist' },
-  'dumbbell-lateral-raise':              { shoulders: 'prime_mover', traps: 'stabilizer' },
-  'lateral-raise-dropset':               { shoulders: 'prime_mover', traps: 'stabilizer' },
+  'flat-barbell-bench-press':            { chest: 'prime_mover', triceps: 'synergist', front_delts: 'synergist', lats: 'stabilizer' },
+  'incline-dumbbell-press':              { chest: 'prime_mover', front_delts: 'prime_mover', triceps: 'synergist' },
+  'incline-barbell-bench-press':         { chest: 'prime_mover', front_delts: 'prime_mover', triceps: 'synergist' },
+  'decline-dumbbell-press':              { chest: 'prime_mover', triceps: 'synergist', front_delts: 'stabilizer' },
+  'seated-dumbbell-shoulder-press':      { front_delts: 'prime_mover', side_delts: 'synergist', triceps: 'synergist', traps: 'synergist' },
+  'dumbbell-lateral-raise':              { side_delts: 'prime_mover', traps: 'stabilizer' },
+  'lateral-raise-dropset':               { side_delts: 'prime_mover', traps: 'stabilizer' },
   'lying-dumbbell-triceps-extension':    { triceps: 'prime_mover' },
-  'close-grip-dumbbell-press':           { triceps: 'prime_mover', chest: 'synergist', shoulders: 'synergist' },
+  'close-grip-dumbbell-press':           { triceps: 'prime_mover', chest: 'synergist', front_delts: 'synergist' },
   'overhead-dumbbell-triceps-extension': { triceps: 'prime_mover' },
   'bent-over-barbell-row':               { lats: 'prime_mover', traps: 'synergist', rear_delts: 'synergist', biceps: 'synergist', lower_back: 'synergist', forearms: 'stabilizer', hamstrings: 'stabilizer' },
   'one-arm-dumbbell-row':                { lats: 'prime_mover', traps: 'synergist', rear_delts: 'synergist', biceps: 'synergist', forearms: 'stabilizer', obliques: 'stabilizer' },
@@ -72,23 +76,23 @@ const DEFAULT_EXERCISE_MUSCLES = {
   'barbell-romanian-deadlift':           { hamstrings: 'prime_mover', glutes: 'prime_mover', lower_back: 'synergist', forearms: 'stabilizer', traps: 'stabilizer' },
   'dumbbell-calf-raise':                 { calves: 'prime_mover' },
   'hanging-leg-raise':                   { abs: 'prime_mover' },
-  'plank':                               { abs: 'prime_mover', obliques: 'synergist', shoulders: 'stabilizer', glutes: 'stabilizer', lower_back: 'stabilizer' },
+  'plank':                               { abs: 'prime_mover', obliques: 'synergist', front_delts: 'stabilizer', glutes: 'stabilizer', lower_back: 'stabilizer' },
   'dumbbell-russian-twist':              { obliques: 'prime_mover', abs: 'synergist' },
   'weighted-crunch':                     { abs: 'prime_mover' },
   'dead-bug':                            { abs: 'prime_mover', obliques: 'synergist' },
   // --- Fat-loss conditioning & metabolic additions ---
   'treadmill-incline-walk':              { calves: 'stabilizer', hamstrings: 'stabilizer', glutes: 'stabilizer', quads: 'stabilizer' },
   'treadmill-hiit-intervals':            { quads: 'synergist', calves: 'synergist', hamstrings: 'synergist', glutes: 'stabilizer' },
-  'dumbbell-thruster':                   { quads: 'prime_mover', shoulders: 'prime_mover', glutes: 'synergist', triceps: 'synergist', abs: 'stabilizer' },
-  'dumbbell-swing':                      { glutes: 'prime_mover', hamstrings: 'prime_mover', lower_back: 'synergist', shoulders: 'stabilizer', forearms: 'stabilizer', abs: 'stabilizer' },
-  'renegade-row':                        { lats: 'prime_mover', abs: 'prime_mover', obliques: 'synergist', biceps: 'synergist', shoulders: 'stabilizer', triceps: 'stabilizer' },
-  'dumbbell-push-press':                 { shoulders: 'prime_mover', triceps: 'synergist', quads: 'synergist', traps: 'synergist', glutes: 'stabilizer' },
+  'dumbbell-thruster':                   { quads: 'prime_mover', front_delts: 'prime_mover', side_delts: 'synergist', glutes: 'synergist', triceps: 'synergist', abs: 'stabilizer' },
+  'dumbbell-swing':                      { glutes: 'prime_mover', hamstrings: 'prime_mover', lower_back: 'synergist', front_delts: 'stabilizer', forearms: 'stabilizer', abs: 'stabilizer' },
+  'renegade-row':                        { lats: 'prime_mover', abs: 'prime_mover', obliques: 'synergist', biceps: 'synergist', front_delts: 'stabilizer', triceps: 'stabilizer' },
+  'dumbbell-push-press':                 { front_delts: 'prime_mover', side_delts: 'synergist', triceps: 'synergist', quads: 'synergist', traps: 'synergist', glutes: 'stabilizer' },
   'dumbbell-farmer-carry':               { forearms: 'prime_mover', traps: 'prime_mover', abs: 'stabilizer', obliques: 'stabilizer', glutes: 'stabilizer' },
-  'burpee':                              { quads: 'synergist', chest: 'synergist', shoulders: 'synergist', abs: 'synergist', hamstrings: 'stabilizer', triceps: 'stabilizer' },
-  'mountain-climber':                    { abs: 'prime_mover', obliques: 'synergist', quads: 'synergist', shoulders: 'stabilizer' },
-  'push-up':                             { chest: 'prime_mover', triceps: 'synergist', shoulders: 'synergist', abs: 'stabilizer' },
+  'burpee':                              { quads: 'synergist', chest: 'synergist', front_delts: 'synergist', abs: 'synergist', hamstrings: 'stabilizer', triceps: 'stabilizer' },
+  'mountain-climber':                    { abs: 'prime_mover', obliques: 'synergist', quads: 'synergist', front_delts: 'stabilizer' },
+  'push-up':                             { chest: 'prime_mover', triceps: 'synergist', front_delts: 'synergist', abs: 'stabilizer' },
   'bicycle-crunch':                      { abs: 'prime_mover', obliques: 'prime_mover' },
-  'side-plank':                          { obliques: 'prime_mover', abs: 'synergist', shoulders: 'stabilizer', glutes: 'stabilizer' },
+  'side-plank':                          { obliques: 'prime_mover', abs: 'synergist', side_delts: 'stabilizer', glutes: 'stabilizer' },
   'flutter-kicks':                       { abs: 'prime_mover', quads: 'stabilizer' },
 };
 
@@ -403,6 +407,15 @@ function migrateSettings(settings) {
     recoveryHours = { ...settings.recoveryHours };
     for (const [muscle, { from, to }] of Object.entries(RECOVERY_HOURS_V8_MIGRATION)) {
       if (recoveryHours[muscle] === from) recoveryHours[muscle] = to;
+    }
+    // v9 split: carry any saved "shoulders" window (default or tuned) onto both
+    // new deltoid heads, then drop the now-orphaned key. The heads are brand new
+    // in v9, so whatever normalize just seeded them (the default 48) is safe to
+    // overwrite with the user's actual shoulders value.
+    if (recoveryHours.shoulders != null) {
+      recoveryHours.front_delts = recoveryHours.shoulders;
+      recoveryHours.side_delts = recoveryHours.shoulders;
+      delete recoveryHours.shoulders;
     }
   }
 
