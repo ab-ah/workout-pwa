@@ -125,10 +125,11 @@ const GLUTE_PLATE = `<path class="body-base" d="
 const FRONT_LEFT_MUSCLES =
   // Trapezius (front slope, neck to shoulder)
   muscle('traps', `M87,76 C80,79 71,84 64,89 C70,93 79,94 86,92 C87,87 87,81 87,76 Z`) +
-  // Deltoid cap, split into anterior (front) and lateral (side) heads. Front is
-  // the upper-inner slice (toward the clavicle/chest); side is the outer bulge.
-  muscle('front_delts', `M55,95 C50,97 45,102 43,109 C46,113 52,114 58,112 C60,108 61,102 60,98 C59,95 57,94 55,95 Z`) +
-  muscle('side_delts', `M43,109 C41,116 40,124 42,130 C46,133 53,132 58,127 C60,122 60,116 58,112 C52,114 46,113 43,109 Z`) +
+  // Deltoid cap, split into anterior (front) and lateral (side) heads and kept
+  // above the biceps (which begins ~y108). Side is the outer bulge (lower x,
+  // away from torso centre); front is the inner slice toward the clavicle/chest.
+  muscle('side_delts', `M50,90 C44,92 40,97 40,103 C40,106 43,107 46,106 C49,104 51,100 52,95 C52,92 51,89 50,90 Z`) +
+  muscle('front_delts', `M52,90 C51,94 52,99 55,103 C58,106 61,104 61,99 C61,94 59,90 56,89 C54,89 53,89 52,90 Z`) +
   // Pectoral
   muscle('chest', `M99,100 C88,98 76,100 68,106 C63,112 63,122 67,130 C73,139 85,143 95,142 C97,141 99,138 99,133 L99,104 Z`) +
   // Biceps
@@ -165,10 +166,10 @@ const TRAPS_KITE = muscle('traps', `
   C118,77 107,68 100,64 Z`);
 
 const BACK_LEFT_MUSCLES =
-  // Rear deltoid cap
-  muscle('rear_delts', `M55,95 C47,98 41,106 40,116 C40,124 43,130 48,131 C54,131 59,124 61,114 C61,105 60,98 58,95 C57,93 56,94 55,95 Z`) +
-  // Latissimus dorsi fan
-  muscle('lats', `M63,120 C61,134 61,148 64,162 C67,176 73,188 81,196 C86,200 91,198 93,192 C94,180 94,166 93,152 C92,138 89,126 85,118 C78,113 69,115 63,120 Z`) +
+  // Rear deltoid cap, trimmed to sit above the triceps (which begins ~y108)
+  muscle('rear_delts', `M50,90 C44,92 40,97 40,103 C40,105 44,106 49,105 C54,104 59,102 61,97 C61,92 58,90 55,89 C52,89 51,89 50,90 Z`) +
+  // Latissimus dorsi fan (inner edge held at x<=88 to clear the erector column)
+  muscle('lats', `M63,120 C61,134 61,148 64,162 C67,176 73,188 80,195 C84,199 87,197 88,190 C88,178 88,164 88,150 C87,137 84,126 81,118 C75,113 68,115 63,120 Z`) +
   // Erector spinae column
   muscleRect('lower_back', 89, 156, 9, 78, 4.5) +
   // Triceps

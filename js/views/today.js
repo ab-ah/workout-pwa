@@ -9,9 +9,13 @@ import { downloadBackup, promptRestore } from '../backup-io.js';
 
 const READINESS_LOW = 0.6; // prime movers below this get a warning
 
+// Tiers mirror the adaptive-suggestion bands (adaptive.js READY 0.85 / CAUTION
+// 0.60) so the bar's colour/label and the advice below it never disagree:
+// green "Ready" = train as planned, amber "Mostly ready" = trim a set, red
+// "Under-recovered" = go light / swap.
 function readinessTier(readiness) {
   if (readiness >= 0.85) return { label: 'Ready', color: '#46d160' };
-  if (readiness >= 0.65) return { label: 'Mostly ready', color: '#e0b03a' };
+  if (readiness >= 0.6) return { label: 'Mostly ready', color: '#e0b03a' };
   return { label: 'Under-recovered', color: '#e0553a' };
 }
 
