@@ -308,6 +308,65 @@ test('v10 schedule: lateral raises added to Monday for side-delt volume', () => 
   assert.ok(up.exerciseIds.includes('dumbbell-lateral-raise'));
 });
 
+test('v11 ships the barbell back squat with quad-focused roles and a barbell weight step', () => {
+  globalThis.localStorage = makeMemoryStorage();
+  const byId = new Map(getSettings().exercises.map(ex => [ex.id, ex]));
+  const squat = byId.get('barbell-back-squat');
+  assert.ok(squat, 'barbell-back-squat exists in the default pool');
+  assert.deepEqual(squat.muscles, {
+    quads: 'prime_mover',
+    glutes: 'synergist',
+    lower_back: 'synergist',
+    hamstrings: 'stabilizer',
+    abs: 'stabilizer',
+  });
+  assert.equal(squat.weightStep, 2.5, 'barbell moves step 2.5 kg');
+  assert.match(squat.gifUrl, /^assets\/exercise-gifs\/barbell-back-squat\.gif$/);
+});
+
+test('v11 Lower Power squats with the barbell, not the goblet', () => {
+  globalThis.localStorage = makeMemoryStorage();
+  const lp = getSettings().routines.find(r => r.id === 'lower-power');
+  assert.ok(lp.exerciseIds.includes('barbell-back-squat'));
+  assert.ok(!lp.exerciseIds.includes('goblet-squat'));
+});
+
+test('v11 Lower Hypertrophy trades the weighted hyperextension for lateral raises', () => {
+  globalThis.localStorage = makeMemoryStorage();
+  const lh = getSettings().routines.find(r => r.id === 'lower-hypertrophy');
+  assert.ok(lh.exerciseIds.includes('dumbbell-lateral-raise'));
+  assert.ok(!lh.exerciseIds.includes('weighted-back-hyperextension'));
+});
+
+test('v11 keeps the retired exercises in the library, just off the schedule', () => {
+  globalThis.localStorage = makeMemoryStorage();
+  const s = getSettings();
+  const exIds = new Set(s.exercises.map(e => e.id));
+  // Still available to pick from the exercise library...
+  assert.ok(exIds.has('goblet-squat'));
+  assert.ok(exIds.has('weighted-back-hyperextension'));
+  // ...but no default routine schedules them anymore.
+  const scheduled = new Set(s.routines.flatMap(r => r.exerciseIds));
+  assert.ok(!scheduled.has('goblet-squat'));
+  assert.ok(!scheduled.has('weighted-back-hyperextension'));
+});
+
+test('v11 migrates a v10 saved plan onto the new squat/lateral routines', () => {
+  globalThis.localStorage = makeMemoryStorage();
+  saveSettings({
+    exercises: [{ id: 'flat-barbell-bench-press', name: 'Flat Barbell Bench Press', muscles: {} }],
+    routines: [{ id: 'lower-power', name: 'Lower Power + Walk', tag: 't', colorVar: '--legs', exerciseIds: ['goblet-squat'] }],
+    schedule: { '0': null, '1': 'lower-power', '2': null, '3': null, '4': null, '5': null, '6': null },
+    recoveryHours: {},
+    planVersion: 10,
+  });
+  const s = getSettings();
+  assert.equal(s.planVersion, CURRENT_PLAN_VERSION);
+  const lp = s.routines.find(r => r.id === 'lower-power');
+  assert.ok(lp.exerciseIds.includes('barbell-back-squat'), 'new routine reinstalled');
+  assert.ok(s.exercises.some(e => e.id === 'barbell-back-squat'), 'new exercise appended to the pool');
+});
+
 test('v9 splits shoulders into front/side delts and carries a tuned window onto both', () => {
   globalThis.localStorage = makeMemoryStorage();
   saveSettings({
