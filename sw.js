@@ -1,4 +1,4 @@
-const CACHE_NAME = 'leanbuild-v19';
+const CACHE_NAME = 'leanbuild-v20';
 const ASSETS = [
   './',
   './index.html',
@@ -41,6 +41,7 @@ const ASSETS = [
 // hosts. Precached best-effort (see install) so they also work fully offline.
 const GIFS = [
   './assets/exercise-gifs/back-hyperextension.gif',
+  './assets/exercise-gifs/barbell-back-squat.gif',
   './assets/exercise-gifs/barbell-romanian-deadlift.gif',
   './assets/exercise-gifs/bent-over-barbell-row.gif',
   './assets/exercise-gifs/bicycle-crunch.gif',

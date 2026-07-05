@@ -26,7 +26,16 @@ export const SETTINGS_KEY = 'leanbuild-settings-v1';
 // Monday routine so side-delt weekly volume clears maintenance, and a one-time
 // remap of any orphaned "shoulders" muscle tag (e.g. on a user-made exercise)
 // onto front_delts.
-export const CURRENT_PLAN_VERSION = 10;
+// v11 = load/balance revision: the Lower Power squat is now a Barbell Back Squat
+// (uncaps quad loading — the goblet variant tops out at the heaviest dumbbell,
+// trivial for a trained squat) instead of the Goblet Squat, and the Lower
+// Hypertrophy day trades its weighted back-hyperextension (removing a second day
+// of dynamic loaded lumbar flexion) for lateral raises (lifting the
+// under-served side-delt weekly volume). Goblet Squat and Weighted Back
+// Hyperextension stay in the exercise library — they're just no longer on the
+// default schedule. On the bump, the new routines reinstall and the new
+// Barbell Back Squat exercise is appended to any existing pool.
+export const CURRENT_PLAN_VERSION = 11;
 
 const DEFAULT_RECOVERY_HOURS = {
   chest: 54, front_delts: 48, side_delts: 48, traps: 48, triceps: 48, lats: 60,
@@ -74,6 +83,7 @@ const DEFAULT_EXERCISE_MUSCLES = {
   'rear-delt-dumbbell-fly':              { rear_delts: 'prime_mover', traps: 'synergist' },
   'goblet-squat':                        { quads: 'prime_mover', glutes: 'synergist', abs: 'stabilizer', lower_back: 'stabilizer' },
   'goblet-heels-elevated-squat':         { quads: 'prime_mover', glutes: 'synergist', abs: 'stabilizer', lower_back: 'stabilizer' },
+  'barbell-back-squat':                  { quads: 'prime_mover', glutes: 'synergist', lower_back: 'synergist', hamstrings: 'stabilizer', abs: 'stabilizer' },
   'bulgarian-split-squat':               { quads: 'prime_mover', glutes: 'prime_mover', hamstrings: 'synergist', abs: 'stabilizer' },
   'dumbbell-reverse-lunge':              { quads: 'prime_mover', glutes: 'prime_mover', hamstrings: 'synergist', abs: 'stabilizer' },
   'dumbbell-romanian-deadlift':          { hamstrings: 'prime_mover', glutes: 'prime_mover', lower_back: 'synergist', forearms: 'stabilizer', traps: 'stabilizer' },
@@ -110,6 +120,7 @@ const DEFAULT_WEIGHT_STEP = {
   'bent-over-barbell-row': 2.5,
   'barbell-romanian-deadlift': 2.5,
   'preacher-curl': 2.5,
+  'barbell-back-squat': 2.5,
   'incline-dumbbell-press': 2,
   'decline-dumbbell-press': 2,
   'seated-dumbbell-shoulder-press': 2,
@@ -173,6 +184,7 @@ const EXERCISE_POOL_DATA = [
   { id: 'dumbbell-hammer-curl', name: 'Dumbbell Hammer Curl', setsCount: 3, repRange: '10–12', restSeconds: 60, startWeight: '10–14 kg / hand', gifUrl: 'assets/exercise-gifs/dumbbell-hammer-curl.gif' },
   { id: 'rear-delt-dumbbell-fly', name: 'Rear-Delt Dumbbell Fly', setsCount: 3, repRange: '12–15', restSeconds: 60, startWeight: '6–9 kg / hand', gifUrl: 'assets/exercise-gifs/rear-delt-dumbbell-fly.gif' },
   { id: 'goblet-squat', name: 'Goblet Squat (or DB Front Squat)', setsCount: 4, repRange: '8–10', restSeconds: 90, startWeight: '24–32 kg DB', gifUrl: 'assets/exercise-gifs/goblet-squat.gif' },
+  { id: 'barbell-back-squat', name: 'Barbell Back Squat', setsCount: 4, repRange: '6–8', restSeconds: 150, startWeight: 'bar + moderate load', gifUrl: 'assets/exercise-gifs/barbell-back-squat.gif' },
   { id: 'dumbbell-romanian-deadlift', name: 'Dumbbell Romanian Deadlift', setsCount: 3, repRange: '8–10', restSeconds: 75, startWeight: '22–28 kg / hand', gifUrl: 'assets/exercise-gifs/dumbbell-romanian-deadlift.gif' },
   { id: 'bulgarian-split-squat', name: 'Walking / Bulgarian Split Squat', setsCount: 3, repRange: '10 / leg', restSeconds: 60, startWeight: '12–18 kg / hand', gifUrl: 'assets/exercise-gifs/bulgarian-split-squat.gif' },
   { id: 'dumbbell-calf-raise', name: 'Dumbbell Calf Raise', setsCount: 4, repRange: '15–20', restSeconds: 45, startWeight: '20–30 kg / hand', gifUrl: 'assets/exercise-gifs/dumbbell-calf-raise.gif' },
@@ -237,7 +249,7 @@ const DEFAULT_ROUTINES = [
     tag: 'Quads · Hams · Glutes · Cardio',
     colorVar: '--legs',
     exerciseIds: [
-      'goblet-squat',
+      'barbell-back-squat',
       'barbell-romanian-deadlift',
       'dumbbell-reverse-lunge',
       'back-hyperextension',
@@ -278,13 +290,13 @@ const DEFAULT_ROUTINES = [
   {
     id: 'lower-hypertrophy',
     name: 'Lower Hypertrophy + Walk',
-    tag: 'Legs · Glutes · Core · Cardio',
+    tag: 'Legs · Glutes · Delts · Cardio',
     colorVar: '--legs',
     exerciseIds: [
       'goblet-heels-elevated-squat',
       'dumbbell-romanian-deadlift',
       'bulgarian-split-squat',
-      'weighted-back-hyperextension',
+      'dumbbell-lateral-raise',
       'dumbbell-calf-raise',
       'flutter-kicks',
       'treadmill-incline-walk',
