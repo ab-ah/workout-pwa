@@ -16,10 +16,18 @@ import { bestE1RM, loadForReps, roundLoad } from '../one-rep-max.js';
  * `onExerciseComplete(loggedSets)` fires once the user taps "Mark Exercise
  *   Complete". `loggedSets` = [{ weight, reps }, ...].
  */
-/** A barbell lift loads a full bar, so warm-up ramps make sense. Detected from
- *  the startWeight hint, which reads e.g. "50–60 kg bar" for barbell moves. */
-function isBarbellLift(exercise) {
-  return typeof exercise.startWeight === 'string' && /\bbar\b/i.test(exercise.startWeight);
+// Heavy multi-joint barbell lifts where a warm-up ramp actually matters. Kept as
+// an explicit list rather than sniffing the startWeight hint for "bar", because
+// e.g. a preacher curl is a bar lift but too light to warrant ramp sets.
+const WARMUP_EXERCISES = new Set([
+  'flat-barbell-bench-press',
+  'incline-barbell-bench-press',
+  'bent-over-barbell-row',
+  'barbell-romanian-deadlift',
+]);
+
+function isHeavyCompound(exercise) {
+  return WARMUP_EXERCISES.has(exercise.id);
 }
 
 /** First number in a string like "50–60 kg bar" → 50, else null. */
@@ -39,9 +47,9 @@ function estimateWorkingWeight(exercise, previousSets) {
   return firstNumber(exercise.startWeight);
 }
 
-/** Warm-up + estimated-1RM guidance block for barbell lifts (HTML string). */
+/** Warm-up + estimated-1RM guidance block for heavy compounds (HTML string). */
 function coachingBlock(exercise, previousSets) {
-  if (!isBarbellLift(exercise)) return '';
+  if (!isHeavyCompound(exercise)) return '';
   const working = estimateWorkingWeight(exercise, previousSets);
   if (!working) return '';
 
@@ -54,8 +62,11 @@ function coachingBlock(exercise, previousSets) {
   const top = parseTopReps(exercise.repRange);
   let target = '';
   if (e1rm && top) {
-    const load = roundLoad(loadForReps(e1rm, top), 2.5);
-    target = `<div class="coach-e1rm">Est. 1RM ~${Math.round(e1rm)}kg · target ≈ ${load}kg for ${top} reps</div>`;
+    // loadForReps(e1rm, top) is the load you'd fail at exactly `top` reps. Show
+    // the load for a couple more reps instead, so the target leaves ~2 in reserve
+    // rather than telling you to grind to failure every session.
+    const targetLoad = roundLoad(loadForReps(e1rm, top + 2), 2.5);
+    target = `<div class="coach-e1rm">Est. 1RM ~${Math.round(e1rm)}kg · work ~${targetLoad}kg for ${top} (≈2 in reserve)</div>`;
   }
 
   return `

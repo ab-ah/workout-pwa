@@ -23,10 +23,27 @@ const VIEWS = {
 
 let currentTab = 'today';
 
+// A new service worker may take control while a workout is in progress. Reloading
+// then would drop a half-typed set and reset the rest timer, so we defer the
+// update until no in-progress session exists (checked on tab changes and when the
+// app returns to the foreground). Logged sets are already persisted regardless.
+const IN_PROGRESS_KEY = 'leanbuild-today-session-v2';
+let swUpdatePending = false;
+function hasActiveWorkout() {
+  return !!(localStorage.getItem(IN_PROGRESS_KEY) || sessionStorage.getItem(IN_PROGRESS_KEY));
+}
+function applyPendingUpdate() {
+  if (swUpdatePending && !hasActiveWorkout()) {
+    swUpdatePending = false;
+    window.location.reload();
+  }
+}
+
 function setActiveTab(tab) {
   currentTab = tab;
   navButtons.forEach((btn) => btn.classList.toggle('active', btn.dataset.tab === tab));
   VIEWS[tab]();
+  applyPendingUpdate();
 }
 
 navButtons.forEach((btn) => {
@@ -61,6 +78,8 @@ if ('serviceWorker' in navigator) {
   let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (reloading || !hadController) return;
+    // Mid-workout: defer the reload until the session ends (see applyPendingUpdate).
+    if (hasActiveWorkout()) { swUpdatePending = true; return; }
     reloading = true;
     window.location.reload();
   });
@@ -72,9 +91,11 @@ if ('serviceWorker' in navigator) {
   });
 
   // Check for a newer worker whenever the app returns to the foreground, so a
-  // long-lived installed PWA still picks up deploys promptly.
+  // long-lived installed PWA still picks up deploys promptly — and apply any
+  // reload that was deferred because a workout was running.
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'visible') return;
     navigator.serviceWorker.getRegistration().then((reg) => reg?.update?.()).catch(() => {});
+    applyPendingUpdate();
   });
 }

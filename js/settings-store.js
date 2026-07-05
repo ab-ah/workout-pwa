@@ -21,8 +21,12 @@ export const SETTINGS_KEY = 'leanbuild-settings-v1';
 // "shoulders" muscle is split into front_delts + side_delts so pressing and
 // lateral-raise fatigue no longer pile onto one bucket; exercise tags are
 // refreshed on the bump and any tuned "shoulders" recovery window is copied onto
-// both new heads.
-export const CURRENT_PLAN_VERSION = 9;
+// both new heads. v10 = audit follow-ups: longer rest on the heavy barbell
+// compounds (restSeconds now refreshed on the bump), lateral raises added to the
+// Monday routine so side-delt weekly volume clears maintenance, and a one-time
+// remap of any orphaned "shoulders" muscle tag (e.g. on a user-made exercise)
+// onto front_delts.
+export const CURRENT_PLAN_VERSION = 10;
 
 const DEFAULT_RECOVERY_HOURS = {
   chest: 54, front_delts: 48, side_delts: 48, traps: 48, triceps: 48, lats: 60,
@@ -155,13 +159,13 @@ const DEFAULT_FATIGUE_SCALE = {
 
 // All exercise data self-contained
 const EXERCISE_POOL_DATA = [
-  { id: 'flat-barbell-bench-press', name: 'Flat Barbell Bench Press', setsCount: 4, repRange: '6–8', restSeconds: 90, startWeight: '50–60 kg bar', gifUrl: 'assets/exercise-gifs/flat-barbell-bench-press.gif' },
+  { id: 'flat-barbell-bench-press', name: 'Flat Barbell Bench Press', setsCount: 4, repRange: '6–8', restSeconds: 150, startWeight: '50–60 kg bar', gifUrl: 'assets/exercise-gifs/flat-barbell-bench-press.gif' },
   { id: 'incline-dumbbell-press', name: 'Incline Dumbbell Press', setsCount: 3, repRange: '8–10', restSeconds: 75, startWeight: '18–22 kg / hand', gifUrl: 'assets/exercise-gifs/incline-dumbbell-press.gif' },
   { id: 'seated-dumbbell-shoulder-press', name: 'Seated Dumbbell Shoulder Press', setsCount: 3, repRange: '8–10', restSeconds: 75, startWeight: '16–20 kg / hand', gifUrl: 'assets/exercise-gifs/seated-dumbbell-shoulder-press.gif' },
   { id: 'dumbbell-lateral-raise', name: 'Dumbbell Lateral Raise', setsCount: 3, repRange: '12–15', restSeconds: 60, startWeight: '7–10 kg / hand', gifUrl: 'assets/exercise-gifs/dumbbell-lateral-raise.gif' },
   { id: 'lying-dumbbell-triceps-extension', name: 'Lying Dumbbell Triceps Extension', setsCount: 3, repRange: '10–12', restSeconds: 60, startWeight: '8–12 kg / hand', gifUrl: 'assets/exercise-gifs/lying-dumbbell-triceps-extension.gif' },
   { id: 'close-grip-dumbbell-press', name: 'Close-Grip Dumbbell Press', setsCount: 2, repRange: '10–12', restSeconds: 60, startWeight: '14–18 kg / hand', gifUrl: 'assets/exercise-gifs/close-grip-dumbbell-press.gif' },
-  { id: 'bent-over-barbell-row', name: 'Bent-Over Barbell Row', setsCount: 4, repRange: '6–8', restSeconds: 90, startWeight: '40–50 kg bar', gifUrl: 'assets/exercise-gifs/bent-over-barbell-row.gif' },
+  { id: 'bent-over-barbell-row', name: 'Bent-Over Barbell Row', setsCount: 4, repRange: '6–8', restSeconds: 150, startWeight: '40–50 kg bar', gifUrl: 'assets/exercise-gifs/bent-over-barbell-row.gif' },
   { id: 'one-arm-dumbbell-row', name: 'One-Arm Dumbbell Row', setsCount: 3, repRange: '8–10', restSeconds: 75, startWeight: '22–28 kg / hand', gifUrl: 'assets/exercise-gifs/one-arm-dumbbell-row.gif' },
   { id: 'chest-supported-dumbbell-row', name: 'Chest-Supported Dumbbell Row (incline bench)', setsCount: 3, repRange: '10–12', restSeconds: 60, startWeight: '14–18 kg / hand', gifUrl: 'assets/exercise-gifs/chest-supported-dumbbell-row.gif' },
   { id: 'back-hyperextension', name: 'Back Hyperextension', setsCount: 3, repRange: '12–15', restSeconds: 60, startWeight: 'bodyweight → hold plate', gifUrl: 'assets/exercise-gifs/back-hyperextension.gif' },
@@ -174,14 +178,14 @@ const EXERCISE_POOL_DATA = [
   { id: 'dumbbell-calf-raise', name: 'Dumbbell Calf Raise', setsCount: 4, repRange: '15–20', restSeconds: 45, startWeight: '20–30 kg / hand', gifUrl: 'assets/exercise-gifs/dumbbell-calf-raise.gif' },
   { id: 'hanging-leg-raise', name: 'Lying Leg Raise', setsCount: 3, repRange: '12–15', restSeconds: 60, startWeight: 'bodyweight', gifUrl: 'assets/exercise-gifs/hanging-leg-raise.gif' },
   { id: 'plank', name: 'Plank', setsCount: 3, repRange: '45–60s hold', restSeconds: 45, startWeight: 'bodyweight', gifUrl: 'assets/exercise-gifs/plank.gif' },
-  { id: 'incline-barbell-bench-press', name: 'Incline Barbell Bench Press', setsCount: 4, repRange: '8–10', restSeconds: 90, startWeight: '40–50 kg bar', gifUrl: 'assets/exercise-gifs/incline-barbell-bench-press.gif' },
+  { id: 'incline-barbell-bench-press', name: 'Incline Barbell Bench Press', setsCount: 4, repRange: '8–10', restSeconds: 120, startWeight: '40–50 kg bar', gifUrl: 'assets/exercise-gifs/incline-barbell-bench-press.gif' },
   { id: 'decline-dumbbell-press', name: 'Decline Dumbbell Press', setsCount: 3, repRange: '10–12', restSeconds: 75, startWeight: '16–20 kg / hand', gifUrl: 'assets/exercise-gifs/decline-dumbbell-press.gif' },
   { id: 'two-arm-dumbbell-row', name: 'Two-Arm Dumbbell Row', setsCount: 4, repRange: '10–12', restSeconds: 75, startWeight: '18–24 kg / hand', gifUrl: 'assets/exercise-gifs/two-arm-dumbbell-row.gif' },
   { id: 'dumbbell-pullover', name: 'Dumbbell Pullover (lat/chest)', setsCount: 3, repRange: '12', restSeconds: 60, startWeight: '16–22 kg', gifUrl: 'assets/exercise-gifs/dumbbell-pullover.gif' },
   { id: 'standing-dumbbell-curl', name: 'Standing Dumbbell Curl', setsCount: 3, repRange: '10–12', restSeconds: 60, startWeight: '12–16 kg / hand', gifUrl: 'assets/exercise-gifs/standing-dumbbell-curl.gif' },
   { id: 'overhead-dumbbell-triceps-extension', name: 'Overhead Dumbbell Triceps Extension', setsCount: 3, repRange: '10–12', restSeconds: 60, startWeight: '14–18 kg', gifUrl: 'assets/exercise-gifs/overhead-dumbbell-triceps-extension.gif' },
   { id: 'lateral-raise-dropset', name: 'Lateral Raise (drop set last set)', setsCount: 3, repRange: '15', restSeconds: 60, startWeight: '6–9 kg / hand', gifUrl: 'assets/exercise-gifs/lateral-raise-dropset.gif' },
-  { id: 'barbell-romanian-deadlift', name: 'Barbell Romanian Deadlift', setsCount: 4, repRange: '8–10', restSeconds: 90, startWeight: '50–60 kg bar', gifUrl: 'assets/exercise-gifs/barbell-romanian-deadlift.gif' },
+  { id: 'barbell-romanian-deadlift', name: 'Barbell Romanian Deadlift', setsCount: 4, repRange: '8–10', restSeconds: 120, startWeight: '50–60 kg bar', gifUrl: 'assets/exercise-gifs/barbell-romanian-deadlift.gif' },
   { id: 'goblet-heels-elevated-squat', name: 'Goblet / Heels-Elevated Squat', setsCount: 3, repRange: '10–12', restSeconds: 75, startWeight: '24–30 kg DB', gifUrl: 'assets/exercise-gifs/goblet-heels-elevated-squat.gif' },
   { id: 'dumbbell-reverse-lunge', name: 'Dumbbell Reverse Lunge', setsCount: 3, repRange: '10 / leg', restSeconds: 60, startWeight: '12–16 kg / hand', gifUrl: 'assets/exercise-gifs/dumbbell-reverse-lunge.gif' },
   { id: 'weighted-back-hyperextension', name: 'Back Hyperextension (weighted)', setsCount: 3, repRange: '12', restSeconds: 60, startWeight: 'hold 10–20 kg plate', gifUrl: 'assets/exercise-gifs/weighted-back-hyperextension.gif' },
@@ -221,6 +225,7 @@ const DEFAULT_ROUTINES = [
       'incline-dumbbell-press',
       'chest-supported-dumbbell-row',
       'seated-dumbbell-shoulder-press',
+      'dumbbell-lateral-raise',
       'preacher-curl',
       'overhead-dumbbell-triceps-extension',
       'treadmill-incline-walk',
@@ -356,6 +361,21 @@ function normalizeSettings(settings) {
  *      Logged workout history lives under a separate key and is untouched.
  * Returns { settings, changed } so the caller can persist only when needed.
  */
+const ROLE_RANK = { prime_mover: 3, synergist: 2, stabilizer: 1 };
+
+/** Move a legacy `shoulders` muscle tag onto `front_delts`, keeping the stronger
+ *  role if the exercise already tags front_delts. Used to clean up user-created
+ *  exercises that predate the v9 deltoid split. */
+function remapShouldersTag(exercise) {
+  const m = exercise?.muscles;
+  if (!m || m.shoulders == null) return exercise;
+  const { shoulders, ...rest } = m;
+  const front = rest.front_delts != null
+    ? ((ROLE_RANK[rest.front_delts] ?? 0) >= (ROLE_RANK[shoulders] ?? 0) ? rest.front_delts : shoulders)
+    : shoulders;
+  return { ...exercise, muscles: { ...rest, front_delts: front } };
+}
+
 function migrateSettings(settings) {
   const defaults = defaultExercises();
   const defaultById = new Map(defaults.map(e => [e.id, e]));
@@ -375,17 +395,24 @@ function migrateSettings(settings) {
         JSON.stringify(e.muscles ?? {}) !== JSON.stringify(d.muscles ?? {}) ||
         JSON.stringify(e.timer ?? null) !== JSON.stringify(d.timer ?? null) ||
         (e.weightStep ?? null) !== (d.weightStep ?? null) ||
-        (e.fatigueScale ?? null) !== (d.fatigueScale ?? null);
+        (e.fatigueScale ?? null) !== (d.fatigueScale ?? null) ||
+        (d.restSeconds != null && e.restSeconds !== d.restSeconds);
       return stale
         ? {
             ...e, name: d.name, gifUrl: d.gifUrl, muscles: { ...d.muscles },
             ...(d.timer ? { timer: { ...d.timer } } : {}),
             ...(d.weightStep != null ? { weightStep: d.weightStep } : {}),
             ...(d.fatigueScale != null ? { fatigueScale: d.fatigueScale } : {}),
+            ...(d.restSeconds != null ? { restSeconds: d.restSeconds } : {}),
           }
         : e;
     });
   }
+
+  // Step 1b: remap orphaned "shoulders" tags (pre-v9 split) onto front_delts
+  // across ALL exercises — including user-created ones that Step 1 leaves alone —
+  // so no invisible, un-editable muscle keeps depositing fatigue.
+  if (needsPlan) exercises = exercises.map(remapShouldersTag);
 
   // Step 2: append newly shipped default exercises the user is missing.
   const existingIds = new Set(exercises.map(e => e.id));
