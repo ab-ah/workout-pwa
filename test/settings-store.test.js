@@ -367,6 +367,51 @@ test('v11 migrates a v10 saved plan onto the new squat/lateral routines', () => 
   assert.ok(s.exercises.some(e => e.id === 'barbell-back-squat'), 'new exercise appended to the pool');
 });
 
+test('v12 rebalance: Lower Power drops the back hyperextension', () => {
+  globalThis.localStorage = makeMemoryStorage();
+  const lp = getSettings().routines.find(r => r.id === 'lower-power');
+  assert.ok(!lp.exerciseIds.includes('back-hyperextension'), 'lumbar direct work removed from Tuesday');
+  assert.ok(lp.exerciseIds.includes('barbell-back-squat'));
+});
+
+test('v12 rebalance: Upper Power swaps the shoulder press for a rear-delt fly', () => {
+  globalThis.localStorage = makeMemoryStorage();
+  const up = getSettings().routines.find(r => r.id === 'upper-power');
+  assert.ok(up.exerciseIds.includes('rear-delt-dumbbell-fly'), 'rear-delt work added to Monday');
+  assert.ok(!up.exerciseIds.includes('seated-dumbbell-shoulder-press'), 'front-delt press pulled from Monday');
+});
+
+test('v12 keeps overhead pressing on Upper Hypertrophy and the moves in the library', () => {
+  globalThis.localStorage = makeMemoryStorage();
+  const s = getSettings();
+  const uh = s.routines.find(r => r.id === 'upper-hypertrophy');
+  assert.ok(uh.exerciseIds.includes('seated-dumbbell-shoulder-press'), 'still press overhead Thursday');
+  const exIds = new Set(s.exercises.map(e => e.id));
+  assert.ok(exIds.has('back-hyperextension'), 'retired move stays pickable');
+  assert.ok(exIds.has('seated-dumbbell-shoulder-press'));
+});
+
+test('v12 migrates an older saved plan onto the rebalanced routines', () => {
+  globalThis.localStorage = makeMemoryStorage();
+  saveSettings({
+    exercises: [{ id: 'flat-barbell-bench-press', name: 'Flat Barbell Bench Press', muscles: {} }],
+    routines: [
+      { id: 'upper-power', name: 'Upper Power + Walk', tag: 't', colorVar: '--push', exerciseIds: ['seated-dumbbell-shoulder-press'] },
+      { id: 'lower-power', name: 'Lower Power + Walk', tag: 't', colorVar: '--legs', exerciseIds: ['back-hyperextension', 'barbell-back-squat'] },
+    ],
+    schedule: { '0': null, '1': 'upper-power', '2': 'lower-power', '3': null, '4': null, '5': null, '6': null },
+    recoveryHours: {},
+    planVersion: 11,
+  });
+  const s = getSettings();
+  assert.equal(s.planVersion, CURRENT_PLAN_VERSION);
+  const up = s.routines.find(r => r.id === 'upper-power');
+  const lp = s.routines.find(r => r.id === 'lower-power');
+  assert.ok(up.exerciseIds.includes('rear-delt-dumbbell-fly'));
+  assert.ok(!up.exerciseIds.includes('seated-dumbbell-shoulder-press'));
+  assert.ok(!lp.exerciseIds.includes('back-hyperextension'));
+});
+
 test('v9 splits shoulders into front/side delts and carries a tuned window onto both', () => {
   globalThis.localStorage = makeMemoryStorage();
   saveSettings({
