@@ -117,6 +117,32 @@ export function e1rmSeries(history, exerciseId) {
 }
 
 /**
+ * How many of the most recent sessions failed to set a new e1RM best — i.e. the
+ * length of the current plateau. 0 means the last session was a PR (no stall).
+ * Reps-within-range progress still moves e1RM, so a genuine double-progression
+ * week reads as improvement; a true plateau (same or worse top set for several
+ * sessions running) is what accumulates here.
+ * @param {Array} history
+ * @param {string} exerciseId
+ * @returns {number}
+ */
+export function stallCount(history, exerciseId) {
+  const series = e1rmSeries(history, exerciseId).map(p => p.weight);
+  if (series.length < 2) return 0;
+  let best = series[0];
+  let stall = 0;
+  for (let i = 1; i < series.length; i++) {
+    if (series[i] > best + 1e-9) {
+      best = series[i];
+      stall = 0;
+    } else {
+      stall++;
+    }
+  }
+  return stall;
+}
+
+/**
  * Was `session` an e1RM PR for `exerciseId` — i.e. did it beat the best e1RM of
  * every earlier session in `history`? `history` should be the full, ordered log.
  * @param {Array} history

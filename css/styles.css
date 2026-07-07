@@ -252,3 +252,59 @@ body{
   background:rgba(214,255,63,.1);border:1px solid var(--accent-dim);border-radius:8px;
   padding:8px 10px;margin-bottom:10px;font-size:13px;color:var(--accent);
 }
+
+/* ── v1.6.0 additions ─────────────────────────────────────────────── */
+
+/* Deload nudge (meso-cycle) */
+.deload-banner{
+  display:flex;align-items:center;gap:12px;
+  background:rgba(106,140,255,.10);border:1px solid rgba(106,140,255,.4);
+  border-radius:14px;padding:12px 16px;margin-bottom:14px;
+}
+.deload-banner-icon{font-size:22px;flex-shrink:0}
+.deload-banner-text strong{font-size:14px}
+.deload-banner-text .muted{font-size:12px;line-height:1.5;margin-top:2px}
+
+/* Rest-day mobility card */
+.mobility-card{margin-top:14px}
+.mobility-list{list-style:none;padding:0;margin:0}
+.mobility-list li{
+  padding:7px 0;border-bottom:1px solid var(--panel-2);font-size:14px;
+}
+.mobility-list li:last-child{border-bottom:none}
+.mobility-list .muted{font-size:12px}
+
+/* End-workout prompt */
+.exercise-end-btn{
+  background:transparent;border:1px solid var(--line);border-radius:8px;
+  color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:12px;
+  padding:5px 10px;cursor:pointer;white-space:nowrap;
+}
+.exercise-end-btn:hover{color:#e0553a;border-color:#e0553a}
+.end-prompt-actions{display:flex;flex-direction:column;gap:10px;margin-top:8px}
+.end-prompt-actions .btn-primary,
+.end-prompt-actions .btn-secondary{margin-top:0}
+.end-prompt-actions .end-discard{color:#e0553a;border-color:rgba(224,85,58,.5)}
+
+/* Unilateral cue */
+.unilateral-note{font-size:12px;color:var(--muted);margin-top:-2px}
+.set-side{color:var(--muted);font-size:12px}
+
+/* Week: per-routine readiness preview */
+.week-readiness{margin:10px 0 4px;padding:10px 0 2px}
+.week-readiness-track{
+  height:7px;border-radius:6px;background:rgba(255,255,255,.08);overflow:hidden;
+}
+.week-readiness-fill{height:100%;border-radius:6px;transition:width .3s ease}
+.week-readiness-row{
+  display:flex;justify-content:space-between;align-items:baseline;margin-top:6px;font-size:12px;
+}
+.week-readiness-warn{font-size:12px;color:#e0b03a;margin-top:5px}
+
+/* Volume: MEV/MRV landmarks */
+.volume-track{position:relative}
+.volume-mev{
+  position:absolute;top:-2px;bottom:-2px;width:2px;
+  background:rgba(255,255,255,.55);border-radius:1px;pointer-events:none;
+}
+.volume-range{font-size:10px;flex-shrink:0;white-space:nowrap;margin-left:2px}

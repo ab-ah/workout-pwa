@@ -2,6 +2,9 @@ import { mountExerciseCard } from '../components/exercise-card.js';
 import { getSettings } from '../settings-store.js';
 import { routineReadiness } from '../recovery-model.js';
 import { adaptiveSuggestion } from '../adaptive.js';
+import { stallCount } from '../one-rep-max.js';
+import { deloadStatus } from '../deload.js';
+import { mobilitySuggestions } from '../mobility.js';
 import { MUSCLE_LABELS } from '../components/muscle-atlas-paths.js';
 import { findMissedWorkout, localDateStr } from '../schedule.js';
 import { enableWakeLock, disableWakeLock } from '../wake-lock.js';
@@ -52,6 +55,37 @@ function buildReadinessBlock(readiness, perMuscle) {
         <span class="today-readiness-pct">${pct}% recovered</span>
       </div>
       ${warn}
+    </div>
+  `;
+}
+
+// Multi-week deload nudge (recovery-model handles day-to-day; this is the
+// meso-cycle layer). Rendered on the Today intro when a run of hard weeks stacks.
+function deloadBannerHtml(history) {
+  const { deloadDue, message } = deloadStatus(history);
+  if (!deloadDue) return '';
+  return `
+    <div class="deload-banner">
+      <div class="deload-banner-icon">🌙</div>
+      <div class="deload-banner-text">
+        <strong>Deload suggested</strong>
+        <div class="muted">${message}</div>
+      </div>
+    </div>
+  `;
+}
+
+// Rest-day mobility card: turns a blank rest slot into a light recovery nudge.
+function mobilityCardHtml() {
+  const items = mobilitySuggestions(new Date().getDate(), 4)
+    .map(m => `<li><strong>${m.name}</strong> <span class="muted">${m.detail}</span></li>`)
+    .join('');
+  return `
+    <div class="card mobility-card">
+      <span class="muted">Recovery</span>
+      <h3 style="margin:4px 0 8px">Mobility &amp; easy movement</h3>
+      <ul class="mobility-list">${items}</ul>
+      <p class="muted" style="font-size:12px;margin-top:6px">Optional — keeps you loose without adding training fatigue.</p>
     </div>
   `;
 }
@@ -200,16 +234,19 @@ export function renderToday(container, store) {
     const missed = findMissedWorkout(settings.schedule, settings.routines, history);
     const banner = missedBannerHtml(missed, settings.routines);
     const restoreBanner = restoreBannerHtml(history.length === 0);
+    const deloadBanner = deloadBannerHtml(history);
 
     if (!scheduled) {
       container.innerHTML = `
         ${restoreBanner}
         ${banner}
+        ${deloadBanner}
         <div class="card">
           <span class="muted">Today</span>
           <h2>Rest Day</h2>
           <p class="muted">No workout scheduled for today. Recovery in progress.</p>
         </div>
+        ${mobilityCardHtml()}
       `;
       wireMissed(missed);
       wireRestore();
@@ -230,6 +267,7 @@ export function renderToday(container, store) {
       container.innerHTML = `
         ${restoreBanner}
         ${banner}
+        ${deloadBanner}
         <div class="card today-done" style="border-left:4px solid var(${routine.colorVar})">
           <span class="muted">Today · done ✓</span>
           <h2>${routine.name} complete</h2>
@@ -248,6 +286,7 @@ export function renderToday(container, store) {
     container.innerHTML = `
       ${restoreBanner}
       ${banner}
+      ${deloadBanner}
       <div class="card" style="border-left:4px solid var(${routine.colorVar})">
         <span class="muted">Up next</span>
         <h2>${routine.name}</h2>
@@ -257,6 +296,7 @@ export function renderToday(container, store) {
         ${buildAdaptiveBlock(readiness, perMuscle)}
         <button class="btn-primary" id="start-workout-btn">Start Workout</button>
       </div>
+      ${routine.id === 'recovery-walk' ? mobilityCardHtml() : ''}
     `;
     container.querySelector('#start-workout-btn').addEventListener('click', () => startRoutine(routine));
     wireMissed(missed);
@@ -291,21 +331,26 @@ export function renderToday(container, store) {
 
     enableWakeLock(); // keep the screen on while training
     const exercise = exercises[exerciseIndex];
-    container.innerHTML = `<div class="card" id="exercise-card-slot"></div>`;
-    const slot = container.querySelector('#exercise-card-slot');
-
-    const header = document.createElement('div');
-    header.className = 'exercise-flow-header';
-    header.innerHTML = `
-      ${exerciseIndex > 0 ? '<button class="exercise-back-btn" id="exercise-back-btn">← Previous</button>' : '<span></span>'}
-      <span class="exercise-progress">Exercise ${exerciseIndex + 1} of ${exercises.length}</span>
+    // The header lives OUTSIDE the card slot so the Previous/End controls survive
+    // the card re-rendering its own innerHTML on every logged set.
+    container.innerHTML = `
+      <div class="exercise-flow-header">
+        ${exerciseIndex > 0 ? '<button class="exercise-back-btn" id="exercise-back-btn">← Previous</button>' : '<span></span>'}
+        <span class="exercise-progress">Exercise ${exerciseIndex + 1} of ${exercises.length}</span>
+        <button class="exercise-end-btn" id="exercise-end-btn" title="End this workout">✕ End</button>
+      </div>
+      <div class="card" id="exercise-card-slot"></div>
     `;
+    const slot = container.querySelector('#exercise-card-slot');
 
     const history = store.getHistory();
     const lastSets = getLastSetsForExercise(exercise.id, history);
     // Sets already logged for this exercise this session (present when the user
     // navigated back), so the card can pre-fill them for editing.
     const alreadyLogged = loggedExercises[exerciseIndex]?.sets ?? null;
+    // Plateau length for this lift, so the coach can reframe a stall instead of
+    // pushing a load jump that isn't there.
+    const stall = stallCount(history, exercise.id);
 
     const card = mountExerciseCard(slot, exercise, lastSets, alreadyLogged, (sets) => {
       const updatedLogged = loggedExercises.slice();
@@ -313,9 +358,26 @@ export function renderToday(container, store) {
       const state = { routineId, exerciseIndex: exerciseIndex + 1, loggedExercises: updatedLogged, startedAt };
       saveInProgressSession(state);
       renderExerciseFlow(routineId, exerciseIndex + 1, updatedLogged, startedAt);
-    });
+    }, { stallCount: stall });
 
-    slot.prepend(header);
+    // Snapshot everything logged so far, folding in any sets typed on the current
+    // card (even if not yet "logged"), so an early exit can save exactly what's on
+    // screen. Used by both the End prompt and its "Save & finish" action.
+    function snapshotLogged() {
+      const updated = loggedExercises.slice();
+      const current = card.getLoggedSets();
+      if (current.length > 0) {
+        updated[exerciseIndex] = { exerciseId: exercise.id, name: exercise.name, sets: current };
+      }
+      return updated;
+    }
+
+    const endBtn = container.querySelector('#exercise-end-btn');
+    if (endBtn) {
+      endBtn.addEventListener('click', () => {
+        renderEndPrompt(routineId, routine, snapshotLogged(), startedAt, exerciseIndex);
+      });
+    }
 
     const backBtn = container.querySelector('#exercise-back-btn');
     if (backBtn) {
@@ -332,6 +394,44 @@ export function renderToday(container, store) {
         renderExerciseFlow(routineId, exerciseIndex - 1, updatedLogged, startedAt);
       });
     }
+  }
+
+  // End-workout prompt: reached from the ✕ End control mid-session. Offers to
+  // save what's been logged so far (as a normal, shorter session) or throw the
+  // whole thing away, plus a way back into the flow.
+  function renderEndPrompt(routineId, routine, loggedExercises, startedAt, exerciseIndex) {
+    disableWakeLock();
+    const logged = loggedExercises.filter(Boolean);
+    const totalSets = logged.reduce((n, e) => n + (e.sets?.length ?? 0), 0);
+    const nothingLogged = totalSets === 0;
+
+    container.innerHTML = `
+      <div class="card end-prompt">
+        <h2>End workout?</h2>
+        <p class="muted">${nothingLogged
+          ? 'Nothing logged yet — there is nothing to save.'
+          : `You've logged <strong>${totalSets} set${totalSets === 1 ? '' : 's'}</strong> across <strong>${logged.length} exercise${logged.length === 1 ? '' : 's'}</strong>.`}</p>
+        <div class="end-prompt-actions">
+          ${nothingLogged ? '' : '<button class="btn-primary" id="end-save-btn">Save logged sets &amp; finish</button>'}
+          <button class="btn-secondary end-discard" id="end-discard-btn">Discard workout</button>
+          <button class="btn-secondary" id="end-keep-btn">Keep training</button>
+        </div>
+      </div>
+    `;
+
+    const saveBtn = container.querySelector('#end-save-btn');
+    if (saveBtn) {
+      saveBtn.addEventListener('click', () => renderSummary(routineId, routine, loggedExercises, startedAt));
+    }
+    container.querySelector('#end-discard-btn').addEventListener('click', () => {
+      clearInProgressSession();
+      renderDayIntro();
+    });
+    container.querySelector('#end-keep-btn').addEventListener('click', () => {
+      const state = { routineId, exerciseIndex, loggedExercises, startedAt };
+      saveInProgressSession(state);
+      renderExerciseFlow(routineId, exerciseIndex, loggedExercises, startedAt);
+    });
   }
 
   function renderSummary(routineId, routine, loggedExercises, startedAt) {

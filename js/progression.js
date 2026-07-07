@@ -3,6 +3,12 @@
 
 const DEFAULT_WEIGHT_STEP = 2.5; // kg
 
+// Sessions of flat/declining e1RM before the coach stops chasing load and calls
+// the plateau instead. On a cut, a stall is expected — holding strength while
+// bodyweight drops is a win, not a failure, so the message reframes rather than
+// pushing a jump that isn't there.
+const STALL_THRESHOLD = 3;
+
 /** Top of a rep range: "8–12"→12, "6-8"→8, "10 / leg"→10, "12 (8/side)"→12. */
 export function parseTopReps(repRange) {
   if (typeof repRange !== 'string') return null;
@@ -29,7 +35,7 @@ function round1(n) {
  *
  * @param {Array<{weight:number,reps:number}>} previousSets
  * @param {string} repRange
- * @param {{ weightStep?: number }} [opts]
+ * @param {{ weightStep?: number, stallCount?: number }} [opts]
  * @returns {{ text: string } | null}
  */
 export function suggestProgression(previousSets, repRange, opts = {}) {
@@ -48,6 +54,14 @@ export function suggestProgression(previousSets, repRange, opts = {}) {
 
   const top = parseTopReps(repRange);
   const bodyweight = topWeight === 0;
+
+  // A loaded lift that's plateaued for several sessions: stop prescribing a jump
+  // that hasn't been there and reframe. Bodyweight/time work is chased by reps,
+  // so a stall there just means "beat it", handled below.
+  const stall = Number(opts.stallCount) || 0;
+  if (!bodyweight && stall >= STALL_THRESHOLD) {
+    return { text: `Stalled ${stall} sessions — hold ${topWeight}kg and grind the reps, or drop ~10% and rebuild. In a deficit, keeping strength is the win.` };
+  }
 
   // Autoregulation: if the sets carried RPE, use the average to size the jump.
   // Low RPE (lots left in the tank) → a bolder bump; high RPE → hold and grind.
