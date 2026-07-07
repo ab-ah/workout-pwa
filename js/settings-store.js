@@ -35,7 +35,16 @@ export const SETTINGS_KEY = 'leanbuild-settings-v1';
 // Hyperextension stay in the exercise library — they're just no longer on the
 // default schedule. On the bump, the new routines reinstall and the new
 // Barbell Back Squat exercise is appended to any existing pool.
-export const CURRENT_PLAN_VERSION = 11;
+// v12 = weekly-volume rebalance from the MEV/MAV/MRV landmark audit. The Lower
+// Power day drops its Back Hyperextension (the only direct lumbar work, stacked
+// on back squat + barbell RDL — pulls lower_back back under MRV and de-loads the
+// most axially-taxing session), and the Upper Power day swaps its Seated DB
+// Shoulder Press for a Rear-Delt DB Fly (front delts were over MRV from all the
+// pressing; rear delts sat on the MEV floor — this trims one and lifts the other
+// to 2x/week). Overhead pressing stays on the Upper Hypertrophy day. Both
+// exercises remain in the library, just off the default schedule. Routines
+// reinstall on the bump.
+export const CURRENT_PLAN_VERSION = 12;
 
 const DEFAULT_RECOVERY_HOURS = {
   chest: 54, front_delts: 48, side_delts: 48, traps: 48, triceps: 48, lats: 60,
@@ -236,7 +245,7 @@ const DEFAULT_ROUTINES = [
       'bent-over-barbell-row',
       'incline-dumbbell-press',
       'chest-supported-dumbbell-row',
-      'seated-dumbbell-shoulder-press',
+      'rear-delt-dumbbell-fly',
       'dumbbell-lateral-raise',
       'preacher-curl',
       'overhead-dumbbell-triceps-extension',
@@ -252,7 +261,6 @@ const DEFAULT_ROUTINES = [
       'barbell-back-squat',
       'barbell-romanian-deadlift',
       'dumbbell-reverse-lunge',
-      'back-hyperextension',
       'dumbbell-calf-raise',
       'hanging-leg-raise',
       'treadmill-incline-walk',
