@@ -19,15 +19,44 @@ import { bestE1RM, loadForReps, roundLoad } from '../one-rep-max.js';
 // Heavy multi-joint barbell lifts where a warm-up ramp actually matters. Kept as
 // an explicit list rather than sniffing the startWeight hint for "bar", because
 // e.g. a preacher curl is a bar lift but too light to warrant ramp sets.
-const WARMUP_EXERCISES = new Set([
+const BARBELL_WARMUP = new Set([
   'flat-barbell-bench-press',
   'incline-barbell-bench-press',
   'bent-over-barbell-row',
   'barbell-romanian-deadlift',
+  'barbell-back-squat',
 ]);
 
-function isHeavyCompound(exercise) {
-  return WARMUP_EXERCISES.has(exercise.id);
+// Heavy dumbbell compounds also deserve a ramp, but the load is per hand, so the
+// primer floor and increment differ from a barbell (see coachingBlock).
+const DUMBBELL_WARMUP = new Set([
+  'incline-dumbbell-press',
+  'seated-dumbbell-shoulder-press',
+  'dumbbell-romanian-deadlift',
+  'dumbbell-push-press',
+  'one-arm-dumbbell-row',
+  'bulgarian-split-squat',
+]);
+
+// Exercises trained one side at a time — the logged weight × reps is PER SIDE,
+// which the card makes explicit so entries and the e1RM/progression math agree.
+const UNILATERAL_EXERCISES = new Set([
+  'bulgarian-split-squat',
+  'dumbbell-reverse-lunge',
+  'one-arm-dumbbell-row',
+  'renegade-row',
+  'side-plank',
+]);
+
+/** 'barbell' | 'dumbbell' | null — which warm-up ramp style, if any. */
+function warmupKind(exercise) {
+  if (BARBELL_WARMUP.has(exercise.id)) return 'barbell';
+  if (DUMBBELL_WARMUP.has(exercise.id)) return 'dumbbell';
+  return null;
+}
+
+function isUnilateral(exercise) {
+  return UNILATERAL_EXERCISES.has(exercise.id);
 }
 
 /** First number in a string like "50–60 kg bar" → 50, else null. */
@@ -49,11 +78,19 @@ function estimateWorkingWeight(exercise, previousSets) {
 
 /** Warm-up + estimated-1RM guidance block for heavy compounds (HTML string). */
 function coachingBlock(exercise, previousSets) {
-  if (!isHeavyCompound(exercise)) return '';
+  const kind = warmupKind(exercise);
+  if (!kind) return '';
   const working = estimateWorkingWeight(exercise, previousSets);
   if (!working) return '';
 
-  const ramp = warmupSets(working, { barWeight: 20, increment: 2.5 });
+  // Dumbbell loads are per hand: ramp from a light DB (not an empty 20 kg bar)
+  // and step by 2 kg; barbell work ramps from the empty bar by 2.5 kg.
+  const perHand = kind === 'dumbbell';
+  const barWeight = perHand ? 6 : 20;
+  const increment = perHand ? 2 : 2.5;
+  const unit = perHand ? ' / hand' : '';
+
+  const ramp = warmupSets(working, { barWeight, increment });
   const rampHtml = ramp
     .map(s => `<span class="warmup-set">${s.weight}kg × ${s.reps}</span>`)
     .join('<span class="warmup-arrow">→</span>');
@@ -65,20 +102,22 @@ function coachingBlock(exercise, previousSets) {
     // loadForReps(e1rm, top) is the load you'd fail at exactly `top` reps. Show
     // the load for a couple more reps instead, so the target leaves ~2 in reserve
     // rather than telling you to grind to failure every session.
-    const targetLoad = roundLoad(loadForReps(e1rm, top + 2), 2.5);
-    target = `<div class="coach-e1rm">Est. 1RM ~${Math.round(e1rm)}kg · work ~${targetLoad}kg for ${top} (≈2 in reserve)</div>`;
+    const targetLoad = roundLoad(loadForReps(e1rm, top + 2), increment);
+    target = `<div class="coach-e1rm">Est. 1RM ~${Math.round(e1rm)}kg${unit} · work ~${targetLoad}kg${unit} for ${top} (≈2 in reserve)</div>`;
   }
 
   return `
     <details class="warmup-block">
-      <summary>🔥 Warm-up to ${working}kg</summary>
+      <summary>🔥 Warm-up to ${working}kg${unit}</summary>
       <div class="warmup-sets">${rampHtml}</div>
       ${target}
     </details>
   `;
 }
 
-export function mountExerciseCard(container, exercise, previousSets, initialSets, onExerciseComplete) {
+export function mountExerciseCard(container, exercise, previousSets, initialSets, onExerciseComplete, coach = {}) {
+  const perSide = isUnilateral(exercise);
+  const sideTag = perSide ? ' <span class="set-side">/side</span>' : '';
   const loggedSets = Array.isArray(initialSets) ? initialSets.map(s => ({ ...s })) : [];
   let activeSetIndex = loggedSets.length;
   let editingIndex = null; // index of a logged set being corrected, or null
@@ -133,7 +172,7 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
       } else if (i < loggedSets.length) {
         const s = loggedSets[i];
         const rpeTag = Number.isFinite(s.rpe) ? ` <span class="set-rpe">@${s.rpe}</span>` : '';
-        rows.push(`<div class="set-row done editable" data-edit-index="${i}" title="Tap to correct"><span class="set-label">Set ${i + 1}</span><span>${s.weight}kg x ${s.reps}${rpeTag} <span class="set-edit-hint">✎</span></span></div>`);
+        rows.push(`<div class="set-row done editable" data-edit-index="${i}" title="Tap to correct"><span class="set-label">Set ${i + 1}</span><span>${s.weight}kg x ${s.reps}${sideTag}${rpeTag} <span class="set-edit-hint">✎</span></span></div>`);
       } else if (i === activeSetIndex && editingIndex === null) {
         const prevSessionSet = previousSets ? previousSets[activeSetIndex] ?? previousSets[previousSets.length - 1] : null;
         const prevLoggedSet = loggedSets.length > 0 ? loggedSets[loggedSets.length - 1] : null;
@@ -173,8 +212,9 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
         onerror="this.style.display='none'"
       >
       <p class="muted">${exercise.repRange} reps · rest ${exercise.restSeconds}s · start ~${exercise.startWeight}</p>
+      ${perSide ? '<p class="muted unilateral-note">↔ One side at a time — log the weight &amp; reps for a single side.</p>' : ''}
       ${(() => {
-        const hint = suggestProgression(previousSets, exercise.repRange, { weightStep: exercise.weightStep });
+        const hint = suggestProgression(previousSets, exercise.repRange, { weightStep: exercise.weightStep, stallCount: coach.stallCount });
         return hint ? `<p class="progression-hint">💡 ${hint.text}</p>` : '';
       })()}
       ${coachingBlock(exercise, previousSets)}

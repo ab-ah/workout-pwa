@@ -67,3 +67,23 @@ test('suggestProgression ignores RPE when absent (backward compatible)', () => {
   const { text } = suggestProgression(sets, '6-8');
   assert.match(text, /52\.5kg/);
 });
+
+test('suggestProgression reframes a loaded lift once it has stalled for 3+ sessions', () => {
+  const sets = [{ weight: 50, reps: 8 }, { weight: 50, reps: 7 }];
+  const { text } = suggestProgression(sets, '6-8', { stallCount: 3 });
+  assert.match(text, /stall/i);
+  assert.match(text, /50kg/); // holds the current load
+  assert.doesNotMatch(text, /try \d/);
+});
+
+test('suggestProgression keeps normal advice below the stall threshold', () => {
+  const sets = [{ weight: 50, reps: 8 }, { weight: 50, reps: 8 }];
+  const { text } = suggestProgression(sets, '6-8', { stallCount: 2 });
+  assert.match(text, /52\.5kg/); // still prescribes the jump
+});
+
+test('suggestProgression does not apply the stall reframe to bodyweight work', () => {
+  const { text } = suggestProgression([{ weight: 0, reps: 10 }], '12–15', { stallCount: 5 });
+  assert.doesNotMatch(text, /stall/i);
+  assert.match(text, /beat/i);
+});

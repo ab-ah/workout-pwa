@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { weeklyVolumeByMuscle } from '../js/volume.js';
+import { weeklyVolumeByMuscle, volumeStatus, VOLUME_LANDMARKS } from '../js/volume.js';
 
 const exercises = [
   { id: 'bench', setsCount: 4, muscles: { chest: 'prime_mover', triceps: 'synergist' } },
@@ -50,4 +50,25 @@ test('weeklyVolumeByMuscle returns muscles sorted by descending volume', () => {
 test('weeklyVolumeByMuscle handles empty / rest-only schedules', () => {
   assert.deepEqual(weeklyVolumeByMuscle({}, routines, exercises), []);
   assert.deepEqual(weeklyVolumeByMuscle({ '0': null }, routines, exercises), []);
+});
+
+test('volumeStatus classifies sets against a muscle\'s MEV/MAV/MRV', () => {
+  // chest landmarks: mev 8, mav 14, mrv 20
+  assert.equal(volumeStatus('chest', 5).tier, 'below');        // < mev
+  assert.equal(volumeStatus('chest', 8).tier, 'maintenance');  // at mev
+  assert.equal(volumeStatus('chest', 12).tier, 'maintenance'); // mev..mav
+  assert.equal(volumeStatus('chest', 14).tier, 'optimal');     // at mav
+  assert.equal(volumeStatus('chest', 20).tier, 'optimal');     // at mrv
+  assert.equal(volumeStatus('chest', 25).tier, 'high');        // > mrv
+});
+
+test('volumeStatus returns the landmarks alongside the tier', () => {
+  const { landmarks } = volumeStatus('side_delts', 10);
+  assert.deepEqual(landmarks, VOLUME_LANDMARKS.side_delts);
+});
+
+test('volumeStatus is unknown for a muscle without landmarks', () => {
+  const r = volumeStatus('nonexistent-muscle', 5);
+  assert.equal(r.tier, 'unknown');
+  assert.equal(r.landmarks, null);
 });
