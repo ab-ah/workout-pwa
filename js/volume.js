@@ -18,7 +18,10 @@ const VOLUME_ROLE_WEIGHT = { prime_mover: 1, synergist: 0.5 };
 // for a calorie-deficit context, where recoverable volume is reduced.
 export const VOLUME_LANDMARKS = {
   chest:       { mev: 8,  mav: 14, mrv: 20 },
-  front_delts: { mev: 6,  mav: 10, mrv: 16 },
+  // Front delts get direct pressing 4×/week here; 18 MRV matches the literature
+  // for a muscle this press-tolerant and keeps the plan's pressing volume in the
+  // productive band instead of falsely flagging "over MRV".
+  front_delts: { mev: 6,  mav: 10, mrv: 18 },
   side_delts:  { mev: 8,  mav: 14, mrv: 22 },
   rear_delts:  { mev: 6,  mav: 10, mrv: 18 },
   traps:       { mev: 4,  mav: 10, mrv: 18 },
@@ -29,7 +32,11 @@ export const VOLUME_LANDMARKS = {
   forearms:    { mev: 2,  mav: 6,  mrv: 12 },
   quads:       { mev: 8,  mav: 14, mrv: 20 },
   hamstrings:  { mev: 6,  mav: 10, mrv: 16 },
-  glutes:      { mev: 4,  mav: 10, mrv: 16 },
+  // Glute weekly volume here is entirely INDIRECT (synergist half-credit from
+  // squats/RDLs/lunges — no direct glute isolation), so the ceiling is set a
+  // touch higher: indirect-only work shouldn't trip the same MRV flag as direct
+  // sets would.
+  glutes:      { mev: 4,  mav: 10, mrv: 18 },
   calves:      { mev: 8,  mav: 12, mrv: 18 },
   abs:         { mev: 6,  mav: 14, mrv: 25 },
   obliques:    { mev: 4,  mav: 10, mrv: 20 },

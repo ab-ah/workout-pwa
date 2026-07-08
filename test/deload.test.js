@@ -68,3 +68,49 @@ test('deloadStatus handles empty history', () => {
   assert.equal(weeksTrained, 0);
   assert.equal(deloadDue, false);
 });
+
+/** Weeks ending `weeksBack` from `now`, each with `sessions` sessions of
+ *  `setsEach` logged sets — so the volume-aware detector has real set data. */
+function weeksWithSets(now, specs) {
+  const h = [];
+  for (const { weeksBack, sessions = 3, setsEach } of specs) {
+    for (let d = 0; d < sessions; d++) {
+      const ts = now - weeksBack * 7 * DAY - d * DAY;
+      h.push({
+        date: new Date(ts).toISOString().slice(0, 10),
+        finishedAt: ts,
+        exercises: [{ exerciseId: 'x', sets: Array.from({ length: setsEach }, () => ({ weight: 50, reps: 8 })) }],
+      });
+    }
+  }
+  return h;
+}
+
+test('a completed deload week (same sessions, ~half the sets) resets the streak', () => {
+  const now = thursday(new Date('2026-07-15T12:00:00').getTime());
+  const history = weeksWithSets(now, [
+    { weeksBack: 1, setsEach: 2 },  // most recent COMPLETED week: deload volume
+    { weeksBack: 2, setsEach: 15 }, // five hard weeks before it
+    { weeksBack: 3, setsEach: 15 },
+    { weeksBack: 4, setsEach: 15 },
+    { weeksBack: 5, setsEach: 15 },
+    { weeksBack: 6, setsEach: 15 },
+  ]);
+  const { weeksTrained, deloadDue } = deloadStatus(history, now);
+  assert.equal(deloadDue, false, 'the deload week breaks the streak');
+  assert.equal(weeksTrained, 0, 'streak counted back only to the deload dip');
+});
+
+test('same layout but a full-volume recent week keeps the deload due', () => {
+  const now = thursday(new Date('2026-07-15T12:00:00').getTime());
+  const history = weeksWithSets(now, [
+    { weeksBack: 1, setsEach: 15 }, // recent week trained at full volume
+    { weeksBack: 2, setsEach: 15 },
+    { weeksBack: 3, setsEach: 15 },
+    { weeksBack: 4, setsEach: 15 },
+    { weeksBack: 5, setsEach: 15 },
+    { weeksBack: 6, setsEach: 15 },
+  ]);
+  const { deloadDue } = deloadStatus(history, now);
+  assert.equal(deloadDue, true, 'six full-volume weeks still flags a deload');
+});

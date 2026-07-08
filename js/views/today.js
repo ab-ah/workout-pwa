@@ -5,6 +5,7 @@ import { adaptiveSuggestion } from '../adaptive.js';
 import { stallCount } from '../one-rep-max.js';
 import { deloadStatus } from '../deload.js';
 import { mobilitySuggestions } from '../mobility.js';
+import { generalPrimer } from '../warmup.js';
 import { MUSCLE_LABELS } from '../components/muscle-atlas-paths.js';
 import { findMissedWorkout, localDateStr } from '../schedule.js';
 import { enableWakeLock, disableWakeLock } from '../wake-lock.js';
@@ -72,6 +73,31 @@ function deloadBannerHtml(history) {
         <div class="muted">${message}</div>
       </div>
     </div>
+  `;
+}
+
+// Name of an exercise's antagonist-superset partner in a routine, or null. The
+// routine's `supersets` are [idA, idB] pairs; the partner is the other id.
+function supersetPartnerName(routine, exerciseId, exercises) {
+  const pair = (routine?.supersets ?? []).find(p => p.includes(exerciseId));
+  if (!pair) return null;
+  const partnerId = pair[0] === exerciseId ? pair[1] : pair[0];
+  return exercises.find(e => e.id === partnerId)?.name ?? null;
+}
+
+// Movement-prep primer, shown once above the first exercise on a routine that
+// opens with a heavy barbell lift (cold-start injury guard, see warmup.js).
+function primerHtml(routine) {
+  const primer = generalPrimer(routine);
+  if (!primer) return '';
+  const items = primer.items
+    .map(i => `<li><strong>${i.name}</strong> <span class="muted">${i.detail}</span></li>`)
+    .join('');
+  return `
+    <details class="primer-block">
+      <summary>🩹 Prime first — ~5 min before you load the bar</summary>
+      <ul class="primer-list">${items}</ul>
+    </details>
   `;
 }
 
@@ -339,6 +365,7 @@ export function renderToday(container, store) {
         <span class="exercise-progress">Exercise ${exerciseIndex + 1} of ${exercises.length}</span>
         <button class="exercise-end-btn" id="exercise-end-btn" title="End this workout">✕ End</button>
       </div>
+      ${exerciseIndex === 0 ? primerHtml(routine) : ''}
       <div class="card" id="exercise-card-slot"></div>
     `;
     const slot = container.querySelector('#exercise-card-slot');
@@ -351,6 +378,7 @@ export function renderToday(container, store) {
     // Plateau length for this lift, so the coach can reframe a stall instead of
     // pushing a load jump that isn't there.
     const stall = stallCount(history, exercise.id);
+    const supersetPartner = supersetPartnerName(routine, exercise.id, exercises);
 
     const card = mountExerciseCard(slot, exercise, lastSets, alreadyLogged, (sets) => {
       const updatedLogged = loggedExercises.slice();
@@ -358,7 +386,7 @@ export function renderToday(container, store) {
       const state = { routineId, exerciseIndex: exerciseIndex + 1, loggedExercises: updatedLogged, startedAt };
       saveInProgressSession(state);
       renderExerciseFlow(routineId, exerciseIndex + 1, updatedLogged, startedAt);
-    }, { stallCount: stall });
+    }, { stallCount: stall, supersetPartner });
 
     // Snapshot everything logged so far, folding in any sets typed on the current
     // card (even if not yet "logged"), so an early exit can save exactly what's on

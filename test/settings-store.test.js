@@ -248,15 +248,81 @@ test('v8 fatigueScale ships on isometric/cardio moves and not on straight lifts'
   assert.equal(byId.get('flat-barbell-bench-press').fatigueScale, undefined);
 });
 
-test('v8 schedule: HIIT off upper-power (Mon), burpee replaces swing on conditioning', () => {
+test('v8 schedule: HIIT off upper-power (Mon), no swing on conditioning', () => {
   globalThis.localStorage = makeMemoryStorage();
   const s = getSettings();
   const up = s.routines.find(r => r.id === 'upper-power');
   const cc = s.routines.find(r => r.id === 'conditioning-core');
   assert.ok(up.exerciseIds.includes('treadmill-incline-walk'));
   assert.ok(!up.exerciseIds.includes('treadmill-hiit-intervals'));
-  assert.ok(cc.exerciseIds.includes('burpee'));
   assert.ok(!cc.exerciseIds.includes('dumbbell-swing'));
+});
+
+test('v13 ships a lying leg curl (knee-flexion hamstrings) with a weight step', () => {
+  globalThis.localStorage = makeMemoryStorage();
+  const byId = new Map(getSettings().exercises.map(ex => [ex.id, ex]));
+  const curl = byId.get('dumbbell-lying-leg-curl');
+  assert.ok(curl, 'leg curl exists in the pool');
+  assert.equal(curl.muscles.hamstrings, 'prime_mover');
+  assert.equal(curl.muscles.glutes, undefined, 'no hip load — pure knee flexion');
+  assert.equal(curl.weightStep, 2);
+});
+
+test('v13 Lower Hypertrophy swaps flutter kicks for the leg curl', () => {
+  globalThis.localStorage = makeMemoryStorage();
+  const lh = getSettings().routines.find(r => r.id === 'lower-hypertrophy');
+  assert.ok(lh.exerciseIds.includes('dumbbell-lying-leg-curl'));
+  assert.ok(!lh.exerciseIds.includes('flutter-kicks'));
+});
+
+test('v13 bumps lateral-raise volume to 4 sets and uses the dropset on Thursday', () => {
+  globalThis.localStorage = makeMemoryStorage();
+  const s = getSettings();
+  const byId = new Map(s.exercises.map(ex => [ex.id, ex]));
+  assert.equal(byId.get('dumbbell-lateral-raise').setsCount, 4);
+  assert.equal(byId.get('lateral-raise-dropset').setsCount, 4);
+  const uh = s.routines.find(r => r.id === 'upper-hypertrophy');
+  assert.ok(uh.exerciseIds.includes('lateral-raise-dropset'));
+  assert.ok(!uh.exerciseIds.includes('dumbbell-lateral-raise'));
+});
+
+test('v13 retires burpees for the dumbbell push press on Conditioning & Core', () => {
+  globalThis.localStorage = makeMemoryStorage();
+  const s = getSettings();
+  const cc = s.routines.find(r => r.id === 'conditioning-core');
+  assert.ok(cc.exerciseIds.includes('dumbbell-push-press'));
+  assert.ok(!cc.exerciseIds.includes('burpee'));
+  // burpee stays in the library, just off the schedule
+  assert.ok(s.exercises.some(e => e.id === 'burpee'));
+});
+
+test('v13 declares antagonist supersets on both upper days', () => {
+  globalThis.localStorage = makeMemoryStorage();
+  const s = getSettings();
+  const up = s.routines.find(r => r.id === 'upper-power');
+  const uh = s.routines.find(r => r.id === 'upper-hypertrophy');
+  assert.ok(Array.isArray(up.supersets) && up.supersets.length >= 1);
+  // each pair references exercises actually in the routine
+  for (const routine of [up, uh]) {
+    for (const [a, b] of routine.supersets) {
+      assert.ok(routine.exerciseIds.includes(a), `${a} in ${routine.id}`);
+      assert.ok(routine.exerciseIds.includes(b), `${b} in ${routine.id}`);
+    }
+  }
+});
+
+test('v13 refreshes setsCount on default exercises during the plan bump', () => {
+  globalThis.localStorage = makeMemoryStorage();
+  saveSettings({
+    exercises: [{
+      id: 'dumbbell-lateral-raise', name: 'Dumbbell Lateral Raise',
+      setsCount: 3, // stale pre-v13 set count
+      gifUrl: 'assets/exercise-gifs/dumbbell-lateral-raise.gif', muscles: {},
+    }],
+    routines: [], schedule: {}, recoveryHours: {}, planVersion: 12,
+  });
+  const ex = getSettings().exercises.find(e => e.id === 'dumbbell-lateral-raise');
+  assert.equal(ex.setsCount, 4, 'programmed set count refreshed on the bump');
 });
 
 test('v10 remaps an orphaned "shoulders" tag on a user exercise onto front_delts', () => {

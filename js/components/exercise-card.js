@@ -1,7 +1,7 @@
 import { mountRestTimer } from './rest-timer.js';
 import { mountWorkoutTimer } from './workout-timer.js';
 import { suggestProgression, parseTopReps } from '../progression.js';
-import { warmupSets } from '../warmup.js';
+import { warmupSets, HEAVY_BARBELL_LIFTS } from '../warmup.js';
 import { bestE1RM, loadForReps, roundLoad } from '../one-rep-max.js';
 
 /**
@@ -16,16 +16,11 @@ import { bestE1RM, loadForReps, roundLoad } from '../one-rep-max.js';
  * `onExerciseComplete(loggedSets)` fires once the user taps "Mark Exercise
  *   Complete". `loggedSets` = [{ weight, reps }, ...].
  */
-// Heavy multi-joint barbell lifts where a warm-up ramp actually matters. Kept as
-// an explicit list rather than sniffing the startWeight hint for "bar", because
-// e.g. a preacher curl is a bar lift but too light to warrant ramp sets.
-const BARBELL_WARMUP = new Set([
-  'flat-barbell-bench-press',
-  'incline-barbell-bench-press',
-  'bent-over-barbell-row',
-  'barbell-romanian-deadlift',
-  'barbell-back-squat',
-]);
+// Heavy multi-joint barbell lifts where a warm-up ramp actually matters. Shared
+// with warmup.js (which also uses the set for the routine-level movement primer)
+// rather than sniffing the startWeight hint for "bar", because e.g. a preacher
+// curl is a bar lift but too light to warrant ramp sets.
+const BARBELL_WARMUP = HEAVY_BARBELL_LIFTS;
 
 // Heavy dumbbell compounds also deserve a ramp, but the load is per hand, so the
 // primer floor and increment differ from a barbell (see coachingBlock).
@@ -217,6 +212,9 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
         const hint = suggestProgression(previousSets, exercise.repRange, { weightStep: exercise.weightStep, stallCount: coach.stallCount });
         return hint ? `<p class="progression-hint">💡 ${hint.text}</p>` : '';
       })()}
+      ${coach.supersetPartner
+        ? `<p class="superset-hint">🔁 Superset with <strong>${coach.supersetPartner}</strong> — do a set of each back-to-back, rest once after the pair.</p>`
+        : ''}
       ${coachingBlock(exercise, previousSets)}
       ${exercise.timer ? '<div id="workout-timer-slot"></div>' : ''}
       <div id="set-rows">${rows.join('')}</div>
