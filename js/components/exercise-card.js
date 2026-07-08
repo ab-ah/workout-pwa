@@ -72,7 +72,7 @@ function estimateWorkingWeight(exercise, previousSets) {
 }
 
 /** Warm-up + estimated-1RM guidance block for heavy compounds (HTML string). */
-function coachingBlock(exercise, previousSets) {
+export function coachingBlock(exercise, previousSets) {
   const kind = warmupKind(exercise);
   if (!kind) return '';
   const working = estimateWorkingWeight(exercise, previousSets);
@@ -212,9 +212,6 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
         const hint = suggestProgression(previousSets, exercise.repRange, { weightStep: exercise.weightStep, stallCount: coach.stallCount });
         return hint ? `<p class="progression-hint">💡 ${hint.text}</p>` : '';
       })()}
-      ${coach.supersetPartner
-        ? `<p class="superset-hint">🔁 Superset with <strong>${coach.supersetPartner}</strong> — do a set of each back-to-back, rest once after the pair.</p>`
-        : ''}
       ${coachingBlock(exercise, previousSets)}
       ${exercise.timer ? '<div id="workout-timer-slot"></div>' : ''}
       <div id="set-rows">${rows.join('')}</div>
