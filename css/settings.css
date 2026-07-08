@@ -395,3 +395,9 @@
   font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--muted);
   letter-spacing: .03em;
 }
+.settings-update {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  margin: 0 0 10px; text-align: center;
+}
+.settings-update .btn-data { width: auto; min-width: 180px; }
+.settings-update-status { font-size: 11px; min-height: 14px; }
