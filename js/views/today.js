@@ -6,7 +6,8 @@ import { routineReadiness } from '../recovery-model.js';
 import { adaptiveSuggestion } from '../adaptive.js';
 import { stallCount } from '../one-rep-max.js';
 import { deloadStatus } from '../deload.js';
-import { mobilitySuggestions } from '../mobility.js';
+import { mobilitySuggestions, allMobility } from '../mobility.js';
+import { mountMobilityFlow } from '../components/mobility-flow.js';
 import { generalPrimer } from '../warmup.js';
 import { MUSCLE_LABELS } from '../components/muscle-atlas-paths.js';
 import { findMissedWorkout, localDateStr } from '../schedule.js';
@@ -107,7 +108,8 @@ function mobilityCardHtml() {
       <span class="muted">Recovery</span>
       <h3 style="margin:4px 0 8px">Mobility &amp; easy movement</h3>
       <ul class="mobility-list">${items}</ul>
-      <p class="muted" style="font-size:12px;margin-top:6px">Optional — keeps you loose without adding training fatigue.</p>
+      <button class="btn-primary" id="start-mobility-btn" style="margin-top:10px">▶ Start mobility flow</button>
+      <p class="muted" style="font-size:12px;margin-top:8px">Optional, follow-along — not logged and adds no training fatigue.</p>
     </div>
   `;
 }
@@ -248,6 +250,22 @@ export function renderToday(container, store) {
     });
   }
 
+  // Wire the mobility card's "Start mobility flow" button, where present. The
+  // flow is a followed-along stepper (mobility-flow.js) — not logged and not part
+  // of the recovery model — so it just takes over the screen and returns to the
+  // day intro when done. Keep the screen awake while it runs.
+  function wireMobilityFlow() {
+    const btn = container.querySelector('#start-mobility-btn');
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+      enableWakeLock();
+      mountMobilityFlow(container, allMobility(), () => {
+        disableWakeLock();
+        renderDayIntro();
+      });
+    });
+  }
+
   function renderDayIntro() {
     disableWakeLock(); // not in a session on the intro screen
     const settings = getSettings();
@@ -272,6 +290,7 @@ export function renderToday(container, store) {
       `;
       wireMissed(missed);
       wireRestore();
+      wireMobilityFlow();
       return;
     }
 
@@ -323,6 +342,7 @@ export function renderToday(container, store) {
     container.querySelector('#start-workout-btn').addEventListener('click', () => startRoutine(routine));
     wireMissed(missed);
     wireRestore();
+    wireMobilityFlow();
   }
 
   function getLastSetsForExercise(exerciseId, history) {

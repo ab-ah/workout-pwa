@@ -331,6 +331,15 @@ body{
 .mobility-list li:last-child{border-bottom:none}
 .mobility-gif{width:56px;height:56px;flex-shrink:0;object-fit:cover;border-radius:8px;background:var(--bg)}
 .mobility-item-text{min-width:0}
+/* Followable mobility flow (non-logged stepper) */
+.mobility-flow-card{text-align:center}
+.mobility-flow-gif{width:auto;max-width:100%;max-height:220px;object-fit:contain;border-radius:12px;margin:4px auto 12px;display:block;background:var(--bg)}
+.mobility-flow-name{font-family:'Anton',sans-serif;font-size:26px;text-transform:uppercase;margin-bottom:4px}
+.mobility-flow-detail{font-size:14px;margin-bottom:14px}
+.mobility-flow-actions{display:flex;gap:10px}
+.mobility-flow-actions .btn-primary{flex:1}
+.mobility-flow-actions .btn-secondary{flex:0 0 auto;min-width:96px}
+.mobility-flow-note{text-align:center;font-size:12px;margin-top:10px}
 .mobility-list .muted{font-size:12px}
 
 /* End-workout prompt */
