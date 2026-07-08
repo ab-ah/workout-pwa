@@ -97,7 +97,10 @@ function primerHtml(routine) {
 // Rest-day mobility card: turns a blank rest slot into a light recovery nudge.
 function mobilityCardHtml() {
   const items = mobilitySuggestions(new Date().getDate(), 4)
-    .map(m => `<li><strong>${m.name}</strong> <span class="muted">${m.detail}</span></li>`)
+    .map(m => `<li>
+        ${m.gifUrl ? `<img src="${m.gifUrl}" alt="${m.name} demonstration" class="mobility-gif" loading="lazy" onerror="this.style.display='none'">` : ''}
+        <div class="mobility-item-text"><strong>${m.name}</strong> <span class="muted">${m.detail}</span></div>
+      </li>`)
     .join('');
   return `
     <div class="card mobility-card">

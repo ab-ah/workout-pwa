@@ -5,14 +5,16 @@
 // light mobility, stretching, and easy activity. The set is deliberately short
 // so it reads as a nudge, not a second workout.
 
+// Each movement carries a demo gif (bundled locally, like the exercise pool) so
+// the recovery card is visual and followable, not just a text list.
 const MOBILITY_ITEMS = [
-  { name: 'Cat–cow + thoracic rotations', detail: '1–2 min, spine mobility' },
-  { name: '90/90 hip switches', detail: '10 / side, open the hips' },
-  { name: 'Deep squat hold', detail: '3 × 30s, ankles & hips' },
-  { name: 'Doorway chest / pec stretch', detail: '2 × 30s / side' },
-  { name: 'Standing hamstring & hip-flexor stretch', detail: '30s / side' },
-  { name: 'Easy 15–25 min walk', detail: 'blood flow, no incline needed' },
-  { name: 'Foam roll quads, back & calves', detail: '5 min if you have a roller' },
+  { name: 'Cat–cow', detail: '8–10 slow reps, spine mobility', gifUrl: 'assets/exercise-gifs/mobility-cat-cow.gif' },
+  { name: 'Cobra / abdominal stretch', detail: '2 × 20–30s, opens the front', gifUrl: 'assets/exercise-gifs/mobility-cobra-stretch.gif' },
+  { name: "Child's pose", detail: '2 × 30s, lats & lower back', gifUrl: 'assets/exercise-gifs/mobility-childs-pose.gif' },
+  { name: 'Doorway chest / pec stretch', detail: '2 × 30s / side', gifUrl: 'assets/exercise-gifs/mobility-chest-stretch.gif' },
+  { name: 'Standing hamstring stretch', detail: '2 × 30s / side', gifUrl: 'assets/exercise-gifs/mobility-hamstring-stretch.gif' },
+  { name: 'Kneeling hip-flexor stretch', detail: '30s / side, opens the hips', gifUrl: 'assets/exercise-gifs/mobility-hip-flexor-stretch.gif' },
+  { name: '90/90 hip stretch', detail: '10 / side, hip rotation', gifUrl: 'assets/exercise-gifs/mobility-90-90-hip.gif' },
 ];
 
 /**

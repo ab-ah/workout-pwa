@@ -107,6 +107,7 @@ export function mountSupersetCard(container, exA, exB, prevSets = [], initialSet
         <div class="ss-panel-head">
           <span class="ss-tag">${side === 0 ? 'A' : 'B'}</span>
           <span class="exercise-name">${ex.name}</span>
+          ${ex.gifUrl ? `<img src="${ex.gifUrl}" alt="${ex.name} demonstration" class="ss-gif" loading="lazy" onerror="this.style.display='none'">` : ''}
         </div>
         <p class="muted">${ex.repRange} reps · rest ${ex.restSeconds}s${ex.startWeight ? ` · start ~${ex.startWeight}` : ''}</p>
         ${hint ? `<p class="progression-hint">💡 ${hint.text}</p>` : ''}
