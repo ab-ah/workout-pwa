@@ -1,4 +1,4 @@
-const CACHE_NAME = 'leanbuild-v24';
+const CACHE_NAME = 'leanbuild-v25';
 const ASSETS = [
   './',
   './index.html',
@@ -77,6 +77,13 @@ const GIFS = [
   './assets/exercise-gifs/incline-dumbbell-press.gif',
   './assets/exercise-gifs/lateral-raise-dropset.gif',
   './assets/exercise-gifs/lying-dumbbell-triceps-extension.gif',
+  './assets/exercise-gifs/mobility-cat-cow.gif',
+  './assets/exercise-gifs/mobility-cobra-stretch.gif',
+  './assets/exercise-gifs/mobility-childs-pose.gif',
+  './assets/exercise-gifs/mobility-chest-stretch.gif',
+  './assets/exercise-gifs/mobility-hamstring-stretch.gif',
+  './assets/exercise-gifs/mobility-hip-flexor-stretch.gif',
+  './assets/exercise-gifs/mobility-90-90-hip.gif',
   './assets/exercise-gifs/mountain-climber.gif',
   './assets/exercise-gifs/one-arm-dumbbell-row.gif',
   './assets/exercise-gifs/overhead-dumbbell-triceps-extension.gif',
