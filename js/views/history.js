@@ -1,6 +1,7 @@
 import { getSettings } from '../settings-store.js';
 import { buildChartSVG } from '../components/chart.js';
 import { movingAverage, weightTrend, latestEntry } from '../bodyweight.js';
+import { weightCoach, proteinTarget } from '../weight-coach.js';
 import { e1rmSeries, isE1RMPRInSession } from '../one-rep-max.js';
 import { localDateStr } from '../schedule.js';
 
@@ -159,6 +160,16 @@ export function renderHistory(container, store) {
       ? `<div class="bw-chart">${buildChartSVG(ma, { width: 600, height: 160 })}</div>`
       : '';
 
+    const coach = latest ? weightCoach(trend, latest.kg) : null;
+    const protein = latest ? proteinTarget(latest.kg) : null;
+    const coachHtml = coach
+      ? `<div class="bw-coach bw-coach-${coach.level}">
+           <strong>${coach.headline}</strong>
+           <div class="muted">${coach.detail}</div>
+           ${protein ? `<div class="bw-protein muted">Protein target: <strong>${protein.low}–${protein.high} g/day</strong> to hold muscle in the deficit.</div>` : ''}
+         </div>`
+      : '';
+
     return `
       <div class="bodyweight-card">
         <div class="progress-section-label">Body weight</div>
@@ -167,6 +178,7 @@ export function renderHistory(container, store) {
           <input type="number" inputmode="decimal" step="0.1" class="set-input" id="bw-input" placeholder="kg today" style="width:120px">
           <button class="btn-secondary" id="bw-log-btn">Log weight</button>
         </div>
+        ${coachHtml}
         ${chart}
       </div>
     `;

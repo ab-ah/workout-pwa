@@ -44,7 +44,24 @@ export const SETTINGS_KEY = 'leanbuild-settings-v1';
 // to 2x/week). Overhead pressing stays on the Upper Hypertrophy day. Both
 // exercises remain in the library, just off the default schedule. Routines
 // reinstall on the bump.
-export const CURRENT_PLAN_VERSION = 12;
+// v13 = trainer-review follow-ups (weekly-volume + programming):
+//   • Hamstring knee-flexion gap closed — a new Lying Dumbbell Leg Curl joins the
+//     Lower Hypertrophy day (every other ham move here is a hip hinge; the biceps
+//     femoris short head only works under knee flexion). It replaces Friday's
+//     Flutter Kicks, whose ab volume was redundant (abs sat near MRV).
+//   • Side-delt volume finally cleared maintenance: the Dumbbell Lateral Raise and
+//     Lateral-Raise Dropset step to 4 working sets, and Upper Hypertrophy trades
+//     its plain lateral raise for the intensity-boosting dropset variant.
+//   • Burpees retired (worst joint cost / least progressible move for a 40 y/o at
+//     90 kg) — Conditioning & Core now finishes on the Dumbbell Push Press, an
+//     explosive, loadable, low-impact conditioner. front_delts MRV was lifted
+//     16→18 in volume.js to keep the added pressing inside the productive band.
+//   • Antagonist supersets declared on both upper days (bench↔row, press↔pullover,
+//     curl↔triceps) so the ~26-set upper sessions can be run in ~half the time.
+//   Because setsCount now ships as a programmed variable, the migration refreshes
+//   it on default exercises on the bump (same one-time overwrite trade-off as
+//   name/muscles/rest). Routines reinstall; new leg-curl exercise is appended.
+export const CURRENT_PLAN_VERSION = 13;
 
 const DEFAULT_RECOVERY_HOURS = {
   chest: 54, front_delts: 48, side_delts: 48, traps: 48, triceps: 48, lats: 60,
@@ -97,6 +114,10 @@ const DEFAULT_EXERCISE_MUSCLES = {
   'dumbbell-reverse-lunge':              { quads: 'prime_mover', glutes: 'prime_mover', hamstrings: 'synergist', abs: 'stabilizer' },
   'dumbbell-romanian-deadlift':          { hamstrings: 'prime_mover', glutes: 'prime_mover', lower_back: 'synergist', forearms: 'stabilizer', traps: 'stabilizer' },
   'barbell-romanian-deadlift':           { hamstrings: 'prime_mover', glutes: 'prime_mover', lower_back: 'synergist', forearms: 'stabilizer', traps: 'stabilizer' },
+  // Knee-flexion hamstring work (biceps-femoris short head), the one pattern every
+  // other ham move in the plan misses. Gastrocnemius assists at the knee → calves
+  // stabilizer. No hip load, so glutes/lower back stay out of it.
+  'dumbbell-lying-leg-curl':             { hamstrings: 'prime_mover', calves: 'stabilizer' },
   'dumbbell-calf-raise':                 { calves: 'prime_mover' },
   'hanging-leg-raise':                   { abs: 'prime_mover' },
   'plank':                               { abs: 'prime_mover', obliques: 'synergist', front_delts: 'stabilizer', glutes: 'stabilizer', lower_back: 'stabilizer' },
@@ -145,6 +166,7 @@ const DEFAULT_WEIGHT_STEP = {
   'dumbbell-romanian-deadlift': 2,
   'bulgarian-split-squat': 2,
   'dumbbell-reverse-lunge': 2,
+  'dumbbell-lying-leg-curl': 2,
   'dumbbell-calf-raise': 2,
   'dumbbell-thruster': 2,
   'dumbbell-swing': 2,
@@ -182,7 +204,7 @@ const EXERCISE_POOL_DATA = [
   { id: 'flat-barbell-bench-press', name: 'Flat Barbell Bench Press', setsCount: 4, repRange: '6–8', restSeconds: 150, startWeight: '50–60 kg bar', gifUrl: 'assets/exercise-gifs/flat-barbell-bench-press.gif' },
   { id: 'incline-dumbbell-press', name: 'Incline Dumbbell Press', setsCount: 3, repRange: '8–10', restSeconds: 75, startWeight: '18–22 kg / hand', gifUrl: 'assets/exercise-gifs/incline-dumbbell-press.gif' },
   { id: 'seated-dumbbell-shoulder-press', name: 'Seated Dumbbell Shoulder Press', setsCount: 3, repRange: '8–10', restSeconds: 75, startWeight: '16–20 kg / hand', gifUrl: 'assets/exercise-gifs/seated-dumbbell-shoulder-press.gif' },
-  { id: 'dumbbell-lateral-raise', name: 'Dumbbell Lateral Raise', setsCount: 3, repRange: '12–15', restSeconds: 60, startWeight: '7–10 kg / hand', gifUrl: 'assets/exercise-gifs/dumbbell-lateral-raise.gif' },
+  { id: 'dumbbell-lateral-raise', name: 'Dumbbell Lateral Raise', setsCount: 4, repRange: '12–15', restSeconds: 60, startWeight: '7–10 kg / hand', gifUrl: 'assets/exercise-gifs/dumbbell-lateral-raise.gif' },
   { id: 'lying-dumbbell-triceps-extension', name: 'Lying Dumbbell Triceps Extension', setsCount: 3, repRange: '10–12', restSeconds: 60, startWeight: '8–12 kg / hand', gifUrl: 'assets/exercise-gifs/lying-dumbbell-triceps-extension.gif' },
   { id: 'close-grip-dumbbell-press', name: 'Close-Grip Dumbbell Press', setsCount: 2, repRange: '10–12', restSeconds: 60, startWeight: '14–18 kg / hand', gifUrl: 'assets/exercise-gifs/close-grip-dumbbell-press.gif' },
   { id: 'bent-over-barbell-row', name: 'Bent-Over Barbell Row', setsCount: 4, repRange: '6–8', restSeconds: 150, startWeight: '40–50 kg bar', gifUrl: 'assets/exercise-gifs/bent-over-barbell-row.gif' },
@@ -205,10 +227,11 @@ const EXERCISE_POOL_DATA = [
   { id: 'dumbbell-pullover', name: 'Dumbbell Pullover (lat/chest)', setsCount: 3, repRange: '12', restSeconds: 60, startWeight: '16–22 kg', gifUrl: 'assets/exercise-gifs/dumbbell-pullover.gif' },
   { id: 'standing-dumbbell-curl', name: 'Standing Dumbbell Curl', setsCount: 3, repRange: '10–12', restSeconds: 60, startWeight: '12–16 kg / hand', gifUrl: 'assets/exercise-gifs/standing-dumbbell-curl.gif' },
   { id: 'overhead-dumbbell-triceps-extension', name: 'Overhead Dumbbell Triceps Extension', setsCount: 3, repRange: '10–12', restSeconds: 60, startWeight: '14–18 kg', gifUrl: 'assets/exercise-gifs/overhead-dumbbell-triceps-extension.gif' },
-  { id: 'lateral-raise-dropset', name: 'Lateral Raise (drop set last set)', setsCount: 3, repRange: '15', restSeconds: 60, startWeight: '6–9 kg / hand', gifUrl: 'assets/exercise-gifs/lateral-raise-dropset.gif' },
+  { id: 'lateral-raise-dropset', name: 'Lateral Raise (drop set last set)', setsCount: 4, repRange: '15', restSeconds: 60, startWeight: '6–9 kg / hand', gifUrl: 'assets/exercise-gifs/lateral-raise-dropset.gif' },
   { id: 'barbell-romanian-deadlift', name: 'Barbell Romanian Deadlift', setsCount: 4, repRange: '8–10', restSeconds: 120, startWeight: '50–60 kg bar', gifUrl: 'assets/exercise-gifs/barbell-romanian-deadlift.gif' },
   { id: 'goblet-heels-elevated-squat', name: 'Goblet / Heels-Elevated Squat', setsCount: 3, repRange: '10–12', restSeconds: 75, startWeight: '24–30 kg DB', gifUrl: 'assets/exercise-gifs/goblet-heels-elevated-squat.gif' },
   { id: 'dumbbell-reverse-lunge', name: 'Dumbbell Reverse Lunge', setsCount: 3, repRange: '10 / leg', restSeconds: 60, startWeight: '12–16 kg / hand', gifUrl: 'assets/exercise-gifs/dumbbell-reverse-lunge.gif' },
+  { id: 'dumbbell-lying-leg-curl', name: 'Lying Dumbbell Leg Curl', setsCount: 3, repRange: '10–12', restSeconds: 75, startWeight: 'DB between feet, 6–12 kg', gifUrl: 'assets/exercise-gifs/dumbbell-lying-leg-curl.gif' },
   { id: 'weighted-back-hyperextension', name: 'Back Hyperextension (weighted)', setsCount: 3, repRange: '12', restSeconds: 60, startWeight: 'hold 10–20 kg plate', gifUrl: 'assets/exercise-gifs/weighted-back-hyperextension.gif' },
   { id: 'dumbbell-russian-twist', name: 'Dumbbell Russian Twist', setsCount: 3, repRange: '16 (8/side)', restSeconds: 45, startWeight: '8–12 kg', gifUrl: 'assets/exercise-gifs/dumbbell-russian-twist.gif' },
   { id: 'weighted-crunch', name: 'Weighted Crunch / Cable-free Crunch', setsCount: 3, repRange: '15', restSeconds: 45, startWeight: 'hold 5–10 kg DB', gifUrl: 'assets/exercise-gifs/weighted-crunch.gif' },
@@ -251,6 +274,13 @@ const DEFAULT_ROUTINES = [
       'overhead-dumbbell-triceps-extension',
       'treadmill-incline-walk',
     ],
+    // Antagonist pairs — alternate a set of each and rest once after the pair to
+    // roughly halve this ~26-set session without losing hypertrophy.
+    supersets: [
+      ['flat-barbell-bench-press', 'bent-over-barbell-row'],
+      ['incline-dumbbell-press', 'chest-supported-dumbbell-row'],
+      ['preacher-curl', 'overhead-dumbbell-triceps-extension'],
+    ],
   },
   {
     id: 'lower-power',
@@ -290,9 +320,15 @@ const DEFAULT_ROUTINES = [
       'seated-dumbbell-shoulder-press',
       'dumbbell-pullover',
       'rear-delt-dumbbell-fly',
-      'dumbbell-lateral-raise',
+      'lateral-raise-dropset',
       'standing-dumbbell-curl',
       'lying-dumbbell-triceps-extension',
+    ],
+    // Antagonist pairs to compress the session (see upper-power).
+    supersets: [
+      ['incline-barbell-bench-press', 'two-arm-dumbbell-row'],
+      ['seated-dumbbell-shoulder-press', 'dumbbell-pullover'],
+      ['standing-dumbbell-curl', 'lying-dumbbell-triceps-extension'],
     ],
   },
   {
@@ -303,16 +339,20 @@ const DEFAULT_ROUTINES = [
     exerciseIds: [
       'goblet-heels-elevated-squat',
       'dumbbell-romanian-deadlift',
+      'dumbbell-lying-leg-curl',
       'bulgarian-split-squat',
       'dumbbell-lateral-raise',
       'dumbbell-calf-raise',
-      'flutter-kicks',
       'treadmill-incline-walk',
     ],
   },
   {
     // Upper/core-biased circuit: keeps conditioning high the day after leg
-    // hypertrophy without adding more quad-dominant work (no thrusters/burpees).
+    // hypertrophy without adding quad-dominant work. The finisher is a Dumbbell
+    // Push Press (explosive, loadable, low-impact) rather than burpees — same
+    // metabolic hit, far kinder to a 40 y/o's knees and wrists, and actually
+    // progressible. Its overhead press adds front-delt volume, kept in-band by
+    // the front_delts MRV bump (see volume.js).
     id: 'conditioning-core',
     name: 'Conditioning & Core',
     tag: 'Full Body · Core · Cardio',
@@ -321,7 +361,7 @@ const DEFAULT_ROUTINES = [
       'dumbbell-farmer-carry',
       'renegade-row',
       'push-up',
-      'burpee',
+      'dumbbell-push-press',
       'mountain-climber',
       'bicycle-crunch',
       'side-plank',
@@ -416,7 +456,8 @@ function migrateSettings(settings) {
         JSON.stringify(e.timer ?? null) !== JSON.stringify(d.timer ?? null) ||
         (e.weightStep ?? null) !== (d.weightStep ?? null) ||
         (e.fatigueScale ?? null) !== (d.fatigueScale ?? null) ||
-        (d.restSeconds != null && e.restSeconds !== d.restSeconds);
+        (d.restSeconds != null && e.restSeconds !== d.restSeconds) ||
+        (d.setsCount != null && e.setsCount !== d.setsCount);
       return stale
         ? {
             ...e, name: d.name, gifUrl: d.gifUrl, muscles: { ...d.muscles },
@@ -424,6 +465,7 @@ function migrateSettings(settings) {
             ...(d.weightStep != null ? { weightStep: d.weightStep } : {}),
             ...(d.fatigueScale != null ? { fatigueScale: d.fatigueScale } : {}),
             ...(d.restSeconds != null ? { restSeconds: d.restSeconds } : {}),
+            ...(d.setsCount != null ? { setsCount: d.setsCount } : {}),
           }
         : e;
     });

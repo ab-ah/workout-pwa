@@ -17,6 +17,16 @@ const MIN_TRAINING_SESSIONS = 3;
 // Recommend a deload once this many consecutive hard weeks have stacked up.
 const DELOAD_AFTER_WEEKS = 5;
 
+// A week whose logged SET volume drops below this fraction of a typical hard
+// week is treated as a deload/light week and resets the streak — even if it
+// still has enough sessions. Without this, following the deload advice ("cut
+// each exercise to ~2 sets") keeps the same 5–6 sessions, so a session-count
+// definition would never see the deload and the banner would never clear. The
+// prescribed ~40–50% volume cut lands well under this threshold; normal
+// week-to-week variation does not. Only applied when a week actually carries set
+// data (older history without per-set logs falls back to the session count).
+const DELOAD_SET_RATIO = 0.65;
+
 /** ISO-8601 week key ("2026-W27") for a timestamp — weeks start Monday. */
 export function isoWeekKey(ts) {
   const d = new Date(ts);
@@ -36,6 +46,23 @@ function sessionTimestamp(session) {
   return Number.isFinite(t) ? t : null;
 }
 
+/** Working sets logged in one session (summing each exercise's set rows). */
+function sessionSetCount(session) {
+  let total = 0;
+  for (const ex of (session?.exercises ?? [])) {
+    if (Array.isArray(ex?.sets)) total += ex.sets.length;
+  }
+  return total;
+}
+
+/** Median of a numeric list, or 0 when empty. */
+function median(nums) {
+  if (!nums.length) return 0;
+  const sorted = [...nums].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
 /**
  * Count of hard training weeks the log ends on, and whether a deload is due.
  *
@@ -52,15 +79,31 @@ function sessionTimestamp(session) {
 export function deloadStatus(history, now = Date.now(), opts = {}) {
   const minSessions = opts.minSessions ?? MIN_TRAINING_SESSIONS;
   const deloadAfter = opts.deloadAfterWeeks ?? DELOAD_AFTER_WEEKS;
+  const setRatio = opts.deloadSetRatio ?? DELOAD_SET_RATIO;
 
-  // Tally sessions per ISO week.
+  // Tally per ISO week: session count, total logged sets, and whether the week
+  // carried any per-set data at all (older logs may not).
   const perWeek = new Map();
   for (const s of (history ?? [])) {
     const ts = sessionTimestamp(s);
     if (ts == null || ts > now) continue;
     const key = isoWeekKey(ts);
-    perWeek.set(key, (perWeek.get(key) ?? 0) + 1);
+    const w = perWeek.get(key) ?? { count: 0, sets: 0, hasSets: false };
+    w.count += 1;
+    const sets = sessionSetCount(s);
+    w.sets += sets;
+    if (sets > 0) w.hasSets = true;
+    perWeek.set(key, w);
   }
+
+  // A "typical hard week" volume, used to spot a deload dip. Median over weeks
+  // that both trained enough and logged real set data, so it isn't skewed by
+  // light weeks or by history with no per-set logs.
+  const referenceSets = median(
+    [...perWeek.values()]
+      .filter(w => w.count >= minSessions && w.hasSets && w.sets > 0)
+      .map(w => w.sets)
+  );
 
   let weeksTrained = 0;
   const currentKey = isoWeekKey(now);
@@ -70,12 +113,19 @@ export function deloadStatus(history, now = Date.now(), opts = {}) {
   // Walk back week by week (step 7 days) counting the consecutive hard-week run.
   for (let guard = 0; guard < 104; guard++) {
     const key = isoWeekKey(cursor);
-    const count = perWeek.get(key) ?? 0;
+    const w = perWeek.get(key) ?? { count: 0, sets: 0, hasSets: false };
+    const isCurrent = isCurrentWeek && key === currentKey;
 
-    if (count >= minSessions) {
+    // A completed week with logged sets whose volume collapsed well below a
+    // typical hard week is a deload/light week — it ends the streak. The current
+    // (unfinished) week is exempt: its volume is just "not done yet".
+    const volumeDip = w.hasSets && referenceSets > 0 &&
+      w.sets < setRatio * referenceSets && !isCurrent;
+
+    if (w.count >= minSessions && !volumeDip) {
       weeksTrained++;
-    } else if (!(isCurrentWeek && key === currentKey)) {
-      break; // a completed light/break week ends the streak
+    } else if (!isCurrent) {
+      break; // a completed light / break / deload week ends the streak
     }
 
     cursor -= 7 * MS_PER_DAY;

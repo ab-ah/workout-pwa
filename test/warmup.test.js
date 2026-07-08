@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { warmupSets } from '../js/warmup.js';
+import { warmupSets, generalPrimer, HEAVY_BARBELL_LIFTS } from '../js/warmup.js';
 
 test('warmupSets returns empty for non-positive load', () => {
   assert.deepEqual(warmupSets(0), []);
@@ -28,4 +28,22 @@ test('warmupSets never emits duplicate loads after rounding', () => {
   const weights = sets.map(s => s.weight);
   assert.equal(new Set(weights).size, weights.length);
   for (const w of weights) assert.ok(w < 30);
+});
+
+test('generalPrimer fires when a routine opens with a heavy barbell lift', () => {
+  const primer = generalPrimer({ exerciseIds: ['barbell-back-squat', 'dumbbell-calf-raise'] });
+  assert.ok(primer);
+  assert.ok(Array.isArray(primer.items) && primer.items.length > 0);
+});
+
+test('generalPrimer stays null for dumbbell/conditioning-led routines', () => {
+  assert.equal(generalPrimer({ exerciseIds: ['dumbbell-farmer-carry', 'push-up'] }), null);
+  assert.equal(generalPrimer({ exerciseIds: [] }), null);
+  assert.equal(generalPrimer({}), null);
+});
+
+test('the heavy-barbell set is shared with the exercise card ramp list', () => {
+  assert.ok(HEAVY_BARBELL_LIFTS.has('flat-barbell-bench-press'));
+  assert.ok(HEAVY_BARBELL_LIFTS.has('barbell-back-squat'));
+  assert.ok(!HEAVY_BARBELL_LIFTS.has('preacher-curl')); // bar lift, too light to ramp
 });
