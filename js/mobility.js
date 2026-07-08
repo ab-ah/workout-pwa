@@ -18,11 +18,20 @@ const MOBILITY_ITEMS = [
 ];
 
 /**
+ * The full mobility set, in order — used by the followable mobility flow (which
+ * runs the whole routine, not just the day's rotating preview slice).
+ * @returns {Array<{name:string, detail:string, gifUrl?:string}>}
+ */
+export function allMobility() {
+  return MOBILITY_ITEMS.map(m => ({ ...m }));
+}
+
+/**
  * A short rotating slice of mobility suggestions. Rotating by day keeps the card
  * from showing the same list every rest day without needing any stored state.
  * @param {number} [seed]  day-of-month or similar rotation index
  * @param {number} [count]
- * @returns {Array<{name:string, detail:string}>}
+ * @returns {Array<{name:string, detail:string, gifUrl?:string}>}
  */
 export function mobilitySuggestions(seed = 0, count = 4) {
   const n = MOBILITY_ITEMS.length;
