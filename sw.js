@@ -1,4 +1,4 @@
-const CACHE_NAME = 'leanbuild-v23';
+const CACHE_NAME = 'leanbuild-v24';
 const ASSETS = [
   './',
   './index.html',
@@ -20,6 +20,7 @@ const ASSETS = [
   './js/volume.js',
   './js/deload.js',
   './js/mobility.js',
+  './js/supersets.js',
   './js/schedule.js',
   './js/wake-lock.js',
   './js/views/today.js',
@@ -31,6 +32,7 @@ const ASSETS = [
   './js/views/settings.js',
   './css/settings.css',
   './js/components/exercise-card.js',
+  './js/components/superset-card.js',
   './js/components/rest-timer.js',
   './js/components/workout-timer.js',
   './js/components/chart.js',
@@ -58,6 +60,7 @@ const GIFS = [
   './assets/exercise-gifs/dumbbell-farmer-carry.gif',
   './assets/exercise-gifs/dumbbell-hammer-curl.gif',
   './assets/exercise-gifs/dumbbell-lateral-raise.gif',
+  './assets/exercise-gifs/dumbbell-lying-leg-curl.gif',
   './assets/exercise-gifs/dumbbell-pullover.gif',
   './assets/exercise-gifs/dumbbell-push-press.gif',
   './assets/exercise-gifs/dumbbell-reverse-lunge.gif',

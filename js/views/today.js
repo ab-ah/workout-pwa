@@ -1,4 +1,6 @@
 import { mountExerciseCard } from '../components/exercise-card.js';
+import { mountSupersetCard } from '../components/superset-card.js';
+import { buildFlowSteps } from '../supersets.js';
 import { getSettings } from '../settings-store.js';
 import { routineReadiness } from '../recovery-model.js';
 import { adaptiveSuggestion } from '../adaptive.js';
@@ -74,15 +76,6 @@ function deloadBannerHtml(history) {
       </div>
     </div>
   `;
-}
-
-// Name of an exercise's antagonist-superset partner in a routine, or null. The
-// routine's `supersets` are [idA, idB] pairs; the partner is the other id.
-function supersetPartnerName(routine, exerciseId, exercises) {
-  const pair = (routine?.supersets ?? []).find(p => p.includes(exerciseId));
-  if (!pair) return null;
-  const partnerId = pair[0] === exerciseId ? pair[1] : pair[0];
-  return exercises.find(e => e.id === partnerId)?.name ?? null;
 }
 
 // Movement-prep primer, shown once above the first exercise on a routine that
@@ -337,6 +330,10 @@ export function renderToday(container, store) {
     return null;
   }
 
+  // Walks the routine as "steps": a step is one exercise, or a superset of two
+  // adjacent ones (see supersets.js). `exerciseIndex` is any exercise position
+  // within the current step — it snaps to the step start — so the saved-session
+  // shape is unchanged and resume stays backward-compatible.
   function renderExerciseFlow(routineId, exerciseIndex, loggedExercises, startedAt) {
     const settings = getSettings();
     const routine = settings.routines?.find(r => r.id === routineId);
@@ -355,71 +352,96 @@ export function renderToday(container, store) {
       return;
     }
 
+    // Group into steps over the RESOLVED list so indices line up with `exercises`.
+    const steps = buildFlowSteps({ exerciseIds: exercises.map(e => e.id), supersets: routine.supersets })
+      .map(s => ({ indices: s.exerciseIds.map(id => exercises.findIndex(e => e.id === id)) }));
+    const stepPos = Math.max(0, steps.findIndex(st => st.indices.includes(exerciseIndex)));
+    const step = steps[stepPos];
+    const firstIndex = step.indices[0];
+    const lastIndex = step.indices[step.indices.length - 1];
+    const nextIndex = lastIndex + 1;
+    const prevFirstIndex = stepPos > 0 ? steps[stepPos - 1].indices[0] : null;
+    const isSuperset = step.indices.length === 2;
+
     enableWakeLock(); // keep the screen on while training
-    const exercise = exercises[exerciseIndex];
+    const history = store.getHistory();
+
     // The header lives OUTSIDE the card slot so the Previous/End controls survive
     // the card re-rendering its own innerHTML on every logged set.
     container.innerHTML = `
       <div class="exercise-flow-header">
-        ${exerciseIndex > 0 ? '<button class="exercise-back-btn" id="exercise-back-btn">← Previous</button>' : '<span></span>'}
-        <span class="exercise-progress">Exercise ${exerciseIndex + 1} of ${exercises.length}</span>
+        ${prevFirstIndex !== null ? '<button class="exercise-back-btn" id="exercise-back-btn">← Previous</button>' : '<span></span>'}
+        <span class="exercise-progress">${isSuperset ? 'Superset' : 'Exercise'} ${stepPos + 1} of ${steps.length}</span>
         <button class="exercise-end-btn" id="exercise-end-btn" title="End this workout">✕ End</button>
       </div>
-      ${exerciseIndex === 0 ? primerHtml(routine) : ''}
+      ${firstIndex === 0 ? primerHtml(routine) : ''}
       <div class="card" id="exercise-card-slot"></div>
     `;
     const slot = container.querySelector('#exercise-card-slot');
 
-    const history = store.getHistory();
-    const lastSets = getLastSetsForExercise(exercise.id, history);
-    // Sets already logged for this exercise this session (present when the user
-    // navigated back), so the card can pre-fill them for editing.
-    const alreadyLogged = loggedExercises[exerciseIndex]?.sets ?? null;
-    // Plateau length for this lift, so the coach can reframe a stall instead of
-    // pushing a load jump that isn't there.
-    const stall = stallCount(history, exercise.id);
-    const supersetPartner = supersetPartnerName(routine, exercise.id, exercises);
-
-    const card = mountExerciseCard(slot, exercise, lastSets, alreadyLogged, (sets) => {
-      const updatedLogged = loggedExercises.slice();
-      updatedLogged[exerciseIndex] = { exerciseId: exercise.id, name: exercise.name, sets };
-      const state = { routineId, exerciseIndex: exerciseIndex + 1, loggedExercises: updatedLogged, startedAt };
-      saveInProgressSession(state);
-      renderExerciseFlow(routineId, exerciseIndex + 1, updatedLogged, startedAt);
-    }, { stallCount: stall, supersetPartner });
-
-    // Snapshot everything logged so far, folding in any sets typed on the current
-    // card (even if not yet "logged"), so an early exit can save exactly what's on
-    // screen. Used by both the End prompt and its "Save & finish" action.
-    function snapshotLogged() {
-      const updated = loggedExercises.slice();
-      const current = card.getLoggedSets();
-      if (current.length > 0) {
-        updated[exerciseIndex] = { exerciseId: exercise.id, name: exercise.name, sets: current };
+    // Fold logged entries for this step's exercises back into the flat
+    // loggedExercises array (indexed by exercise position).
+    function writeEntries(base, entries) {
+      const updated = base.slice();
+      for (const idx of step.indices) {
+        const ex = exercises[idx];
+        const entry = (entries ?? []).find(e => e.exerciseId === ex.id);
+        if (entry && entry.sets.length > 0) updated[idx] = entry;
       }
       return updated;
+    }
+
+    const advance = (updated) => {
+      const state = { routineId, exerciseIndex: nextIndex, loggedExercises: updated, startedAt };
+      saveInProgressSession(state);
+      renderExerciseFlow(routineId, nextIndex, updated, startedAt);
+    };
+
+    // `snapshot()` returns loggedExercises with anything on-screen folded in, for
+    // the End prompt and the Previous control.
+    let snapshot;
+
+    if (isSuperset) {
+      const [exA, exB] = step.indices.map(i => exercises[i]);
+      const prev = [getLastSetsForExercise(exA.id, history), getLastSetsForExercise(exB.id, history)];
+      const init = [loggedExercises[step.indices[0]]?.sets ?? null, loggedExercises[step.indices[1]]?.sets ?? null];
+      const stall = [stallCount(history, exA.id), stallCount(history, exB.id)];
+      const card = mountSupersetCard(slot, exA, exB, prev, init,
+        (entries) => advance(writeEntries(loggedExercises, entries)),
+        { stall });
+      snapshot = () => writeEntries(loggedExercises, card.snapshotEntries());
+    } else {
+      const exercise = exercises[firstIndex];
+      const lastSets = getLastSetsForExercise(exercise.id, history);
+      const alreadyLogged = loggedExercises[firstIndex]?.sets ?? null;
+      const stall = stallCount(history, exercise.id);
+      const card = mountExerciseCard(slot, exercise, lastSets, alreadyLogged, (sets) => {
+        const updated = loggedExercises.slice();
+        updated[firstIndex] = { exerciseId: exercise.id, name: exercise.name, sets };
+        advance(updated);
+      }, { stallCount: stall });
+      snapshot = () => {
+        const updated = loggedExercises.slice();
+        const current = card.getLoggedSets();
+        if (current.length > 0) updated[firstIndex] = { exerciseId: exercise.id, name: exercise.name, sets: current };
+        return updated;
+      };
     }
 
     const endBtn = container.querySelector('#exercise-end-btn');
     if (endBtn) {
       endBtn.addEventListener('click', () => {
-        renderEndPrompt(routineId, routine, snapshotLogged(), startedAt, exerciseIndex);
+        renderEndPrompt(routineId, routine, snapshot(), startedAt, firstIndex);
       });
     }
 
     const backBtn = container.querySelector('#exercise-back-btn');
-    if (backBtn) {
+    if (backBtn && prevFirstIndex !== null) {
       backBtn.addEventListener('click', () => {
-        // Keep everything logged so far — including any sets entered or corrected
-        // on this exercise — then step back to review/correct the previous one.
-        const updatedLogged = loggedExercises.slice();
-        const current = card.getLoggedSets();
-        if (current.length > 0) {
-          updatedLogged[exerciseIndex] = { exerciseId: exercise.id, name: exercise.name, sets: current };
-        }
-        const state = { routineId, exerciseIndex: exerciseIndex - 1, loggedExercises: updatedLogged, startedAt };
+        const updated = snapshot();
+        const state = { routineId, exerciseIndex: prevFirstIndex, loggedExercises: updated, startedAt };
         saveInProgressSession(state);
-        renderExerciseFlow(routineId, exerciseIndex - 1, updatedLogged, startedAt);
+        renderExerciseFlow(routineId, prevFirstIndex, updated, startedAt);
       });
     }
   }
