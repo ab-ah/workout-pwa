@@ -57,13 +57,16 @@ export function renderHistory(container, store) {
            </div>`
         : `<span class="muted">${escapeHtml(session.date)}</span>
            <button class="btn-icon session-edit-btn" data-edit-open="${escapeHtml(session.sessionId)}" title="Edit date & time">✎</button>`;
+      const totalSets = session.exercises.reduce((n, e) => n + (e.sets?.length ?? 0), 0);
       return `
         <div class="session-row">
           <strong>${escapeHtml(session.dayTitle)}</strong> — ${meta}
-          <div class="muted">${session.exercises.length} exercises</div>
-          <ul>
-            ${session.exercises.map((e) => `<li>${escapeHtml(e.name)}: ${e.sets.map((s) => `${escapeHtml(s.weight)}kg x ${escapeHtml(s.reps)}`).join(', ')}</li>`).join('')}
-          </ul>
+          <details class="session-details">
+            <summary>${session.exercises.length} exercises · ${totalSets} sets</summary>
+            <ul>
+              ${session.exercises.map((e) => `<li>${escapeHtml(e.name)}: ${e.sets.map((s) => `${escapeHtml(s.weight)}kg x ${escapeHtml(s.reps)}`).join(', ')}</li>`).join('')}
+            </ul>
+          </details>
         </div>
       `;
     }).join('');

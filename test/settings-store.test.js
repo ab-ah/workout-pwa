@@ -180,7 +180,7 @@ test('migration repoints an existing default exercise from an external gif to th
   assert.equal(legRaise.gifUrl, 'assets/exercise-gifs/hanging-leg-raise.gif');
   const pullover = settings.exercises.find(e => e.id === 'dumbbell-pullover');
   assert.deepEqual(pullover.muscles, {
-    lats: 'prime_mover',
+    lats: 'synergist',   // v14: demoted from prime_mover (honest vertical-pull accounting)
     chest: 'synergist',
     triceps: 'stabilizer',
   }); // stale muscle roles refreshed by the plan bump
@@ -505,6 +505,47 @@ test('v9 default exercises tag deltoid heads, never legacy shoulders', () => {
   assert.equal(byId.get('seated-dumbbell-shoulder-press').muscles.side_delts, 'synergist');
   assert.equal(s.recoveryHours.front_delts, 48);
   assert.equal(s.recoveryHours.side_delts, 48);
+});
+
+test('v14 adds hip thrust, face pulls, incline curl and refreshes cues', () => {
+  globalThis.localStorage = makeMemoryStorage();
+  saveSettings({
+    exercises: [
+      // A stale calf raise with no cue, to prove the cue is refreshed on the bump.
+      { id: 'dumbbell-calf-raise', name: 'Dumbbell Calf Raise', muscles: {} },
+    ],
+    routines: [
+      { id: 'upper-power', name: 'Upper Power + Walk', tag: 't', colorVar: '--push', exerciseIds: ['flat-barbell-bench-press'] },
+      { id: 'upper-hypertrophy', name: 'Upper Hypertrophy', tag: 't', colorVar: '--pull', exerciseIds: ['standing-dumbbell-curl'] },
+      { id: 'lower-hypertrophy', name: 'Lower Hypertrophy + Walk', tag: 't', colorVar: '--legs', exerciseIds: [] },
+    ],
+    schedule: {},
+    recoveryHours: {},
+    planVersion: 13,
+  });
+  const s = getSettings();
+  assert.equal(s.planVersion, CURRENT_PLAN_VERSION);
+
+  const byId = new Map(s.exercises.map(e => [e.id, e]));
+  // New exercises appended to the pool.
+  assert.ok(byId.has('dumbbell-hip-thrust'));
+  assert.ok(byId.has('band-face-pull'));
+  assert.ok(byId.has('incline-dumbbell-curl'));
+  assert.equal(byId.get('dumbbell-hip-thrust').muscles.glutes, 'prime_mover');
+  assert.equal(byId.get('band-face-pull').muscles.rear_delts, 'prime_mover');
+  // Cue refreshed onto the stale default calf raise.
+  assert.match(byId.get('dumbbell-calf-raise').cue ?? '', /plate|step/i);
+
+  // Routines reinstalled with the new movements.
+  const up = s.routines.find(r => r.id === 'upper-power');
+  const uh = s.routines.find(r => r.id === 'upper-hypertrophy');
+  const lh = s.routines.find(r => r.id === 'lower-hypertrophy');
+  assert.ok(up.exerciseIds.includes('band-face-pull'));
+  assert.ok(uh.exerciseIds.includes('incline-dumbbell-curl'));
+  assert.ok(!uh.exerciseIds.includes('standing-dumbbell-curl'), 'standing curl swapped out');
+  assert.ok(lh.exerciseIds.includes('dumbbell-hip-thrust'));
+  // Superset pair updated to the incline curl.
+  assert.ok(uh.supersets.some(pair => pair.includes('incline-dumbbell-curl')));
 });
 
 test('does not overwrite routines once the plan version is current', () => {

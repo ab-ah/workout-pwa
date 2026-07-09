@@ -1,6 +1,19 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { suggestProgression, parseTopReps } from '../js/progression.js';
+import { suggestProgression, parseTopReps, prescribeRpe } from '../js/progression.js';
+
+test('prescribeRpe scales reps-in-reserve to the rep range', () => {
+  assert.equal(prescribeRpe({ repRange: '6–8' }).placeholder, 8);
+  assert.match(prescribeRpe({ repRange: '6–8' }).text, /RPE 8/);
+  assert.match(prescribeRpe({ repRange: '10–12' }).text, /RPE 8–9/);
+  assert.match(prescribeRpe({ repRange: '15–20' }).text, /RPE 9–10/);
+});
+
+test('prescribeRpe returns null for holds and cardio', () => {
+  assert.equal(prescribeRpe({ repRange: '45–60s hold' }), null);
+  assert.equal(prescribeRpe({ repRange: '25–35 min', timer: { type: 'duration' } }), null);
+  assert.equal(prescribeRpe(null), null);
+});
 
 test('parseTopReps reads the top of assorted range formats', () => {
   assert.equal(parseTopReps('8–12'), 12);
