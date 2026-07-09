@@ -1,7 +1,8 @@
 import { mountRestTimer } from './rest-timer.js';
-import { suggestProgression } from '../progression.js';
-import { coachingBlock } from './exercise-card.js';
+import { suggestProgression, prescribeRpe } from '../progression.js';
+import { coachingBlock, cueTargetBlock } from './exercise-card.js';
 import { buildSlotSequence, nextSlotIndex } from '../supersets.js';
+import { getDeloadMode, deloadSetTarget } from '../deload-mode.js';
 
 // Interleaved antagonist-superset card: two exercises logged a set at a time in
 // alternation (A1, B1, rest, A2, B2, rest, …) with one shared rest after each
@@ -34,8 +35,15 @@ export function mountSupersetCard(container, exA, exB, prevSets = [], initialSet
     Array.isArray(initialSets?.[1]) ? initialSets[1].map(s => ({ ...s })) : [],
   ];
 
-  const slots = buildSlotSequence(exA.setsCount, exB.setsCount);
-  const totalSets = exA.setsCount + exB.setsCount;
+  // One-tap deload week trims each side's working sets ~40% (see deload-mode.js).
+  const deload = getDeloadMode();
+  const effCounts = exes.map(ex => deload.active
+    ? Math.min(ex.setsCount, deloadSetTarget(ex.setsCount))
+    : ex.setsCount);
+
+  const slots = buildSlotSequence(effCounts[0], effCounts[1]);
+  const totalSets = effCounts[0] + effCounts[1];
+  let lastScrolledSide = -1; // for bring-active-panel-into-view on side change
   let pointer = nextSlotIndex(slots, logged[0].length, logged[1].length);
   let editing = null;   // { side, index } | null
   let restActive = false;
@@ -56,7 +64,7 @@ export function mountSupersetCard(container, exA, exB, prevSets = [], initialSet
     const slot = activeSlot();
     const isActiveSide = slot && slot.side === side && editing === null;
     const rows = [];
-    for (let i = 0; i < ex.setsCount; i++) {
+    for (let i = 0; i < effCounts[side]; i++) {
       if (editing && editing.side === side && editing.index === i) {
         const s = logged[side][i] ?? {};
         rows.push(`
@@ -87,7 +95,7 @@ export function mountSupersetCard(container, exA, exB, prevSets = [], initialSet
             <div class="input-group"><label class="input-label">Reps</label>
               <input type="number" inputmode="numeric" class="set-input" data-reps="${side}" placeholder="${ex.repRange}" value="${defReps}"></div>
             <div class="input-group"><label class="input-label">RPE</label>
-              <input type="number" inputmode="decimal" step="0.5" min="1" max="10" class="set-input set-input-rpe" data-rpe="${side}" placeholder="—" value=""></div>
+              <input type="number" inputmode="decimal" step="0.5" min="1" max="10" class="set-input set-input-rpe" data-rpe="${side}" placeholder="${prescribeRpe(ex)?.placeholder || '—'}" value=""></div>
             <button class="btn-primary" data-log="${side}" ${restActive ? 'disabled style="opacity:.45"' : ''}>Log</button>
           </div>`);
       } else {
@@ -111,6 +119,7 @@ export function mountSupersetCard(container, exA, exB, prevSets = [], initialSet
         </div>
         <p class="muted">${ex.repRange} reps · rest ${ex.restSeconds}s${ex.startWeight ? ` · start ~${ex.startWeight}` : ''}</p>
         ${hint ? `<p class="progression-hint">💡 ${hint.text}</p>` : ''}
+        ${cueTargetBlock(ex)}
         ${coachingBlock(ex, prevs[side])}
         <div class="ss-rows">${setRowsHtml(side)}</div>
       </div>`;
@@ -120,8 +129,8 @@ export function mountSupersetCard(container, exA, exB, prevSets = [], initialSet
     if (timerHandle) { timerHandle.stop(); timerHandle = null; }
 
     const slot = activeSlot();
-    const round = slot ? slot.set + 1 : Math.max(exA.setsCount, exB.setsCount);
-    const rounds = Math.max(exA.setsCount, exB.setsCount);
+    const round = slot ? slot.set + 1 : Math.max(effCounts[0], effCounts[1]);
+    const rounds = Math.max(effCounts[0], effCounts[1]);
     const activeName = slot ? exes[slot.side].name : null;
     const progress = slot
       ? `Round ${round} of ${rounds} · <strong>${activeName}</strong>`
@@ -131,6 +140,7 @@ export function mountSupersetCard(container, exA, exB, prevSets = [], initialSet
     container.innerHTML = `
       <div class="superset-card">
         <div class="superset-badge">🔁 Superset — alternate a set of each, rest after the pair</div>
+        ${deload.active ? '<div class="deload-tag">🌙 Deload week — fewer sets, hold the weight</div>' : ''}
         <div class="ss-progress muted">${progress}</div>
         ${panelHtml(0)}
         <div class="ss-divider"><span>↕</span></div>
@@ -170,6 +180,14 @@ export function mountSupersetCard(container, exA, exB, prevSets = [], initialSet
       completed = true;
       onComplete(buildEntries());
     });
+
+    // When the alternation moves to the other exercise, scroll its panel into
+    // view so the next active input isn't clipped off the bottom of the phone.
+    if (!restActive && editing === null && slot && slot.side !== lastScrolledSide) {
+      lastScrolledSide = slot.side;
+      container.querySelector('.ss-panel.ss-active')
+        ?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
   }
 
   function handleLog(side) {
@@ -184,6 +202,7 @@ export function mountSupersetCard(container, exA, exB, prevSets = [], initialSet
       return;
     }
     logged[side].push({ weight, reps, ...readRpe(container.querySelector(`[data-rpe="${side}"]`)) });
+    if (navigator.vibrate) navigator.vibrate(10); // subtle confirm tick
     activeDirty = false;
     const restAfter = slots[pointer]?.restAfter;
     const restSecs = exes[side].restSeconds;

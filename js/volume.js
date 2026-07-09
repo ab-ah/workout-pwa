@@ -32,10 +32,9 @@ export const VOLUME_LANDMARKS = {
   forearms:    { mev: 2,  mav: 6,  mrv: 12 },
   quads:       { mev: 8,  mav: 14, mrv: 20 },
   hamstrings:  { mev: 6,  mav: 10, mrv: 16 },
-  // Glute weekly volume here is entirely INDIRECT (synergist half-credit from
-  // squats/RDLs/lunges — no direct glute isolation), so the ceiling is set a
-  // touch higher: indirect-only work shouldn't trip the same MRV flag as direct
-  // sets would.
+  // Glutes now get direct work (dumbbell-hip-thrust, prime mover) on top of the
+  // indirect synergist half-credit from squats/RDLs/lunges. The ceiling stays a
+  // touch higher because most of the weekly tally is still indirect.
   glutes:      { mev: 4,  mav: 10, mrv: 18 },
   calves:      { mev: 8,  mav: 12, mrv: 18 },
   abs:         { mev: 6,  mav: 14, mrv: 25 },

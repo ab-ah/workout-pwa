@@ -1,4 +1,4 @@
-const CACHE_NAME = 'leanbuild-v27';
+const CACHE_NAME = 'leanbuild-v29';
 const ASSETS = [
   './',
   './index.html',
@@ -19,6 +19,8 @@ const ASSETS = [
   './js/adaptive.js',
   './js/volume.js',
   './js/deload.js',
+  './js/deload-mode.js',
+  './js/substitutions.js',
   './js/mobility.js',
   './js/supersets.js',
   './js/schedule.js',
@@ -47,6 +49,9 @@ const ASSETS = [
 // hosts. Precached best-effort (see install) so they also work fully offline.
 const GIFS = [
   './assets/exercise-gifs/back-hyperextension.gif',
+  './assets/exercise-gifs/band-face-pull.gif',
+  './assets/exercise-gifs/dumbbell-hip-thrust.gif',
+  './assets/exercise-gifs/incline-dumbbell-curl.gif',
   './assets/exercise-gifs/barbell-back-squat.gif',
   './assets/exercise-gifs/barbell-romanian-deadlift.gif',
   './assets/exercise-gifs/bent-over-barbell-row.gif',

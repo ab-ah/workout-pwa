@@ -23,6 +23,28 @@ function isTimeBased(repRange) {
   return typeof repRange === 'string' && /(\d\s*s\b|sec|hold)/i.test(repRange);
 }
 
+/**
+ * Prescribed effort target for a working set, so the app tells you how hard to
+ * push (reps in reserve) instead of only recording RPE after the fact. Heavier,
+ * lower-rep work leaves more in the tank (technique/joint cost); higher-rep
+ * isolation is taken closer to failure. Time-based/cardio work has no RPE target.
+ *
+ * @param {{ repRange?: string, timer?: object }} exercise
+ * @returns {{ text: string, placeholder: number } | null}
+ */
+export function prescribeRpe(exercise) {
+  if (!exercise) return null;
+  if (exercise.timer) return null; // cardio countdown — effort isn't RPE-scored
+  const repRange = exercise.repRange;
+  if (isTimeBased(repRange)) return null; // holds are chased by time, not RPE
+  const top = parseTopReps(repRange);
+  if (top == null) return null;
+
+  if (top <= 8) return { text: 'Target RPE 8 · leave ~2 reps in reserve', placeholder: 8 };
+  if (top <= 12) return { text: 'Target RPE 8–9 · leave 1–2 reps in reserve', placeholder: 8 };
+  return { text: 'Target RPE 9–10 · leave 0–1 reps in reserve', placeholder: 9 };
+}
+
 /** Round to one decimal, dropping a trailing .0 (RPE 7.5 stays, 8.0 → 8). */
 function round1(n) {
   return Math.round(n * 10) / 10;

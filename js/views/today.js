@@ -13,6 +13,8 @@ import { MUSCLE_LABELS } from '../components/muscle-atlas-paths.js';
 import { findMissedWorkout, localDateStr } from '../schedule.js';
 import { enableWakeLock, disableWakeLock } from '../wake-lock.js';
 import { downloadBackup, promptRestore } from '../backup-io.js';
+import { substituteOptions } from '../substitutions.js';
+import { getDeloadMode, startDeloadMode, endDeloadMode, DELOAD_DAYS } from '../deload-mode.js';
 
 const READINESS_LOW = 0.6; // prime movers below this get a warning
 
@@ -65,7 +67,23 @@ function buildReadinessBlock(readiness, perMuscle) {
 
 // Multi-week deload nudge (recovery-model handles day-to-day; this is the
 // meso-cycle layer). Rendered on the Today intro when a run of hard weeks stacks.
+// Three states: an ACTIVE deload week (offer to end early), a SUGGESTED deload
+// (offer one-tap start), or nothing. The active-deload cap on working sets is
+// applied inside the exercise/superset cards (see deload-mode.js).
 function deloadBannerHtml(history) {
+  const mode = getDeloadMode();
+  if (mode.active) {
+    return `
+      <div class="deload-banner deload-banner-active">
+        <div class="deload-banner-icon">🌙</div>
+        <div class="deload-banner-text">
+          <strong>Deload week active</strong>
+          <div class="muted">${mode.daysLeft} day${mode.daysLeft === 1 ? '' : 's'} left — every exercise is trimmed to ~60% of its sets. Hold the weights and let fatigue clear.</div>
+        </div>
+        <button class="btn-secondary deload-end-btn" id="deload-end-btn">End early</button>
+      </div>
+    `;
+  }
   const { deloadDue, message } = deloadStatus(history);
   if (!deloadDue) return '';
   return `
@@ -75,6 +93,7 @@ function deloadBannerHtml(history) {
         <strong>Deload suggested</strong>
         <div class="muted">${message}</div>
       </div>
+      <button class="btn-primary deload-start-btn" id="deload-start-btn">Start ${DELOAD_DAYS}-day deload</button>
     </div>
   `;
 }
@@ -176,7 +195,11 @@ export function renderToday(container, store) {
   }
 
   function saveInProgressSession(state) {
-    localStorage.setItem(todaySessionKey, JSON.stringify(state));
+    // Preserve any in-flow exercise substitutions across the many state saves
+    // (advance / back / keep-training) unless the caller sets its own map.
+    const existing = readInProgressSession();
+    const merged = { ...state, substitutions: state.substitutions ?? existing?.substitutions ?? {} };
+    localStorage.setItem(todaySessionKey, JSON.stringify(merged));
     sessionStorage.removeItem(todaySessionKey);
   }
 
@@ -186,9 +209,25 @@ export function renderToday(container, store) {
   }
 
   function startRoutine(routine) {
-    const state = { routineId: routine.id, exerciseIndex: 0, loggedExercises: [], startedAt: Date.now() };
+    const state = { routineId: routine.id, exerciseIndex: 0, loggedExercises: [], startedAt: Date.now(), substitutions: {} };
     saveInProgressSession(state);
     renderExerciseFlow(state.routineId, state.exerciseIndex, state.loggedExercises, state.startedAt);
+  }
+
+  // A missed-workout nudge is only worth showing once the user actually has a
+  // training history (a fresh install can't have "missed" anything) and never for
+  // a skipped active-recovery day (missing an easy mobility walk isn't a debt).
+  // It's also dismissible for the day.
+  const MISSED_DISMISS_KEY = 'leanbuild-missed-dismissed';
+  function isMissedDismissed(missed) {
+    return sessionStorage.getItem(MISSED_DISMISS_KEY) === missed.dateStr;
+  }
+  function missedToShow(missed, history) {
+    if (!missed) return null;
+    if (history.length === 0) return null;
+    if (missed.routine.id === 'recovery-walk') return null;
+    if (isMissedDismissed(missed)) return null;
+    return missed;
   }
 
   function missedBannerHtml(missed, routines) {
@@ -198,6 +237,7 @@ export function renderToday(container, store) {
       .join('');
     return `
       <div class="missed-banner">
+        <button class="banner-dismiss" id="missed-dismiss-btn" aria-label="Dismiss">✕</button>
         <div class="missed-banner-text">
           <span class="muted">Missed workout</span>
           <div><strong>${missed.routine.name}</strong> <span class="muted">was scheduled ${missed.dayName}</span></div>
@@ -208,6 +248,23 @@ export function renderToday(container, store) {
         </div>
       </div>
     `;
+  }
+
+  function wireDeload() {
+    const startBtn = container.querySelector('#deload-start-btn');
+    if (startBtn) startBtn.addEventListener('click', () => { startDeloadMode(); renderDayIntro(); });
+    const endBtn = container.querySelector('#deload-end-btn');
+    if (endBtn) endBtn.addEventListener('click', () => { endDeloadMode(); renderDayIntro(); });
+  }
+
+  function wireMissedDismiss(missed) {
+    const btn = container.querySelector('#missed-dismiss-btn');
+    if (btn && missed) {
+      btn.addEventListener('click', () => {
+        sessionStorage.setItem(MISSED_DISMISS_KEY, missed.dateStr);
+        renderDayIntro();
+      });
+    }
   }
 
   function wireMissed(missed) {
@@ -271,7 +328,7 @@ export function renderToday(container, store) {
     const settings = getSettings();
     const scheduled = getScheduledRoutine(settings);
     const history = store.getHistory();
-    const missed = findMissedWorkout(settings.schedule, settings.routines, history);
+    const missed = missedToShow(findMissedWorkout(settings.schedule, settings.routines, history), history);
     const banner = missedBannerHtml(missed, settings.routines);
     const restoreBanner = restoreBannerHtml(history.length === 0);
     const deloadBanner = deloadBannerHtml(history);
@@ -289,6 +346,8 @@ export function renderToday(container, store) {
         ${mobilityCardHtml()}
       `;
       wireMissed(missed);
+      wireMissedDismiss(missed);
+      wireDeload();
       wireRestore();
       wireMobilityFlow();
       return;
@@ -319,6 +378,8 @@ export function renderToday(container, store) {
       `;
       container.querySelector('#repeat-workout-btn').addEventListener('click', () => startRoutine(routine));
       wireMissed(missed);
+      wireMissedDismiss(missed);
+      wireDeload();
       wireRestore();
       return;
     }
@@ -341,6 +402,8 @@ export function renderToday(container, store) {
     `;
     container.querySelector('#start-workout-btn').addEventListener('click', () => startRoutine(routine));
     wireMissed(missed);
+    wireMissedDismiss(missed);
+    wireDeload();
     wireRestore();
     wireMobilityFlow();
   }
@@ -366,8 +429,16 @@ export function renderToday(container, store) {
       return;
     }
 
+    // In-flow substitutions: a per-position override map, persisted on the
+    // session, swaps an exercise for a same-muscle alternative just for today.
+    const substitutions = readInProgressSession()?.substitutions ?? {};
     const exercises = (routine.exerciseIds ?? [])
-      .map(id => settings.exercises?.find(e => e.id === id))
+      .map((id, i) => {
+        const overrideId = substitutions[i];
+        const resolvedId = overrideId ?? id;
+        return settings.exercises?.find(e => e.id === resolvedId)
+          ?? settings.exercises?.find(e => e.id === id);
+      })
       .filter(Boolean);
 
     if (exerciseIndex >= exercises.length) {
@@ -399,8 +470,10 @@ export function renderToday(container, store) {
       </div>
       ${firstIndex === 0 ? primerHtml(routine) : ''}
       <div class="card" id="exercise-card-slot"></div>
+      ${isSuperset ? '' : '<div id="swap-slot"></div>'}
     `;
     const slot = container.querySelector('#exercise-card-slot');
+    if (!isSuperset) wireSwapControl(container.querySelector('#swap-slot'), exercises[firstIndex], firstIndex);
 
     // Fold logged entries for this step's exercises back into the flat
     // loggedExercises array (indexed by exercise position).
@@ -466,6 +539,45 @@ export function renderToday(container, store) {
         saveInProgressSession(state);
         renderExerciseFlow(routineId, prevFirstIndex, updated, startedAt);
       });
+    }
+
+    // In-flow swap: offer same-muscle alternatives from the pool and, on pick,
+    // record a per-position override for this session and restart the step on
+    // the new exercise. Only shown for single-exercise steps.
+    function wireSwapControl(swapSlot, exercise, index) {
+      if (!swapSlot || !exercise) return;
+      // Exclude anything already in today's session — swapping to a duplicate id
+      // would collide in the step-index mapping (two positions, one id).
+      const presentIds = new Set(exercises.map(e => e.id));
+      const options = substituteOptions(exercise, settings.exercises)
+        .filter(o => !presentIds.has(o.id))
+        .slice(0, 8);
+      if (options.length === 0) return;
+
+      let open = false;
+      const draw = () => {
+        swapSlot.innerHTML = `
+          <button class="swap-toggle" id="swap-toggle-btn">⇄ Swap exercise</button>
+          ${open ? `
+            <div class="swap-picker">
+              <div class="muted swap-picker-hint">Same-muscle alternatives — just for today</div>
+              ${options.map(o => `<button class="swap-option" data-swap-id="${o.id}">${o.name}</button>`).join('')}
+            </div>` : ''}
+        `;
+        swapSlot.querySelector('#swap-toggle-btn').addEventListener('click', () => { open = !open; draw(); });
+        swapSlot.querySelectorAll('[data-swap-id]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const newId = btn.dataset.swapId;
+            const saved = readInProgressSession() ?? {};
+            const subs = { ...(saved.substitutions ?? {}), [index]: newId };
+            const updated = loggedExercises.slice();
+            updated[index] = undefined; // fresh start on the swapped-in exercise
+            saveInProgressSession({ routineId, exerciseIndex: index, loggedExercises: updated, startedAt, substitutions: subs });
+            renderExerciseFlow(routineId, index, updated, startedAt);
+          });
+        });
+      };
+      draw();
     }
   }
 

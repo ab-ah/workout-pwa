@@ -61,7 +61,26 @@ export const SETTINGS_KEY = 'leanbuild-settings-v1';
 //   Because setsCount now ships as a programmed variable, the migration refreshes
 //   it on default exercises on the bump (same one-time overwrite trade-off as
 //   name/muscles/rest). Routines reinstall; new leg-curl exercise is appended.
-export const CURRENT_PLAN_VERSION = 13;
+// v14 = trainer-review follow-ups (equipment now includes a resistance band):
+//   • Direct glute work added — a Dumbbell Hip Thrust joins the Lower Hypertrophy
+//     day. The plan's glute volume was 100% indirect (synergist half-credit off
+//     squats/RDLs/lunges); the hip thrust is the first movement that trains them
+//     as a prime mover.
+//   • Shoulder-health / rear-delt work — a Band Face Pull is added to BOTH upper
+//     days. Four pressing days a week with no external-rotation work is an
+//     impingement risk at 40; the face pull covers external rotation and lifts
+//     rear-delt volume.
+//   • Lengthened-position biceps — Upper Hypertrophy trades the Standing DB Curl
+//     for an Incline DB Curl (more growth per set from the stretched position).
+//   • Honest vertical-pull accounting — with no pull-up bar/cable, dumbbell-pullover
+//     and renegade-row are demoted from lats prime_mover to synergist so the weekly
+//     volume chart stops overstating lat work.
+//   • Form cues — a new optional `cue` field carries a short setup/technique note
+//     (calf raises off a step, hip-thrust setup, face-pull path, incline-curl
+//     stretch); it's refreshed on default exercises on the bump, like name/muscles.
+//   New exercises (incline-dumbbell-curl, dumbbell-hip-thrust, band-face-pull) are
+//   appended to any existing pool; routines reinstall on the bump.
+export const CURRENT_PLAN_VERSION = 14;
 
 const DEFAULT_RECOVERY_HOURS = {
   chest: 54, front_delts: 48, side_delts: 48, traps: 48, triceps: 48, lats: 60,
@@ -100,7 +119,14 @@ const DEFAULT_EXERCISE_MUSCLES = {
   'one-arm-dumbbell-row':                { lats: 'prime_mover', traps: 'synergist', rear_delts: 'synergist', biceps: 'synergist', forearms: 'stabilizer', obliques: 'stabilizer' },
   'chest-supported-dumbbell-row':        { lats: 'prime_mover', traps: 'synergist', rear_delts: 'synergist', biceps: 'synergist' },
   'two-arm-dumbbell-row':                { lats: 'prime_mover', traps: 'synergist', rear_delts: 'synergist', biceps: 'synergist', lower_back: 'synergist', forearms: 'stabilizer' },
-  'dumbbell-pullover':                   { lats: 'prime_mover', chest: 'synergist', triceps: 'stabilizer' },
+  // Honest vertical-pull accounting: with no pull-up bar or cable, the pullover
+  // is a stretch-based accessory, not a true lat driver — lats downgraded to
+  // synergist so weekly-volume no longer overstates lat work (see also
+  // renegade-row). chest gets the same stretch.
+  'dumbbell-pullover':                   { lats: 'synergist', chest: 'synergist', triceps: 'stabilizer' },
+  'incline-dumbbell-curl':               { biceps: 'prime_mover', forearms: 'stabilizer' },
+  'dumbbell-hip-thrust':                 { glutes: 'prime_mover', hamstrings: 'synergist', quads: 'stabilizer' },
+  'band-face-pull':                      { rear_delts: 'prime_mover', traps: 'synergist' },
   'back-hyperextension':                 { lower_back: 'prime_mover', glutes: 'synergist', hamstrings: 'synergist' },
   'weighted-back-hyperextension':        { lower_back: 'prime_mover', glutes: 'synergist', hamstrings: 'synergist' },
   'preacher-curl':                       { biceps: 'prime_mover', forearms: 'stabilizer' },
@@ -129,7 +155,10 @@ const DEFAULT_EXERCISE_MUSCLES = {
   'treadmill-hiit-intervals':            { quads: 'synergist', calves: 'synergist', hamstrings: 'synergist', glutes: 'stabilizer' },
   'dumbbell-thruster':                   { quads: 'prime_mover', front_delts: 'prime_mover', side_delts: 'synergist', glutes: 'synergist', triceps: 'synergist', abs: 'stabilizer' },
   'dumbbell-swing':                      { glutes: 'prime_mover', hamstrings: 'prime_mover', lower_back: 'synergist', front_delts: 'stabilizer', forearms: 'stabilizer', abs: 'stabilizer' },
-  'renegade-row':                        { lats: 'prime_mover', abs: 'prime_mover', obliques: 'synergist', biceps: 'synergist', front_delts: 'stabilizer', triceps: 'stabilizer' },
+  // Renegade row is an anti-rotation core drill with a light row bolted on; the
+  // load ceiling is too low to be a real lat builder, so lats → synergist (abs
+  // stays the true prime mover) and the volume chart stops over-crediting lats.
+  'renegade-row':                        { lats: 'synergist', abs: 'prime_mover', obliques: 'synergist', biceps: 'synergist', front_delts: 'stabilizer', triceps: 'stabilizer' },
   'dumbbell-push-press':                 { front_delts: 'prime_mover', side_delts: 'synergist', triceps: 'synergist', quads: 'synergist', traps: 'synergist', glutes: 'stabilizer' },
   'dumbbell-farmer-carry':               { forearms: 'prime_mover', traps: 'prime_mover', abs: 'stabilizer', obliques: 'stabilizer', glutes: 'stabilizer' },
   'burpee':                              { quads: 'synergist', chest: 'synergist', front_delts: 'synergist', abs: 'synergist', hamstrings: 'stabilizer', triceps: 'stabilizer' },
@@ -179,6 +208,8 @@ const DEFAULT_WEIGHT_STEP = {
   'rear-delt-dumbbell-fly': 1,
   'dumbbell-hammer-curl': 1,
   'standing-dumbbell-curl': 1,
+  'incline-dumbbell-curl': 1,
+  'dumbbell-hip-thrust': 2,
   'dumbbell-russian-twist': 1,
   'weighted-crunch': 1,
 };
@@ -218,7 +249,7 @@ const EXERCISE_POOL_DATA = [
   { id: 'barbell-back-squat', name: 'Barbell Back Squat', setsCount: 4, repRange: '6–8', restSeconds: 150, startWeight: 'bar + moderate load', gifUrl: 'assets/exercise-gifs/barbell-back-squat.gif' },
   { id: 'dumbbell-romanian-deadlift', name: 'Dumbbell Romanian Deadlift', setsCount: 3, repRange: '8–10', restSeconds: 75, startWeight: '22–28 kg / hand', gifUrl: 'assets/exercise-gifs/dumbbell-romanian-deadlift.gif' },
   { id: 'bulgarian-split-squat', name: 'Walking / Bulgarian Split Squat', setsCount: 3, repRange: '10 / leg', restSeconds: 60, startWeight: '12–18 kg / hand', gifUrl: 'assets/exercise-gifs/bulgarian-split-squat.gif' },
-  { id: 'dumbbell-calf-raise', name: 'Dumbbell Calf Raise', setsCount: 4, repRange: '15–20', restSeconds: 45, startWeight: '20–30 kg / hand', gifUrl: 'assets/exercise-gifs/dumbbell-calf-raise.gif' },
+  { id: 'dumbbell-calf-raise', name: 'Dumbbell Calf Raise', setsCount: 4, repRange: '15–20', restSeconds: 45, startWeight: '20–30 kg / hand', gifUrl: 'assets/exercise-gifs/dumbbell-calf-raise.gif', cue: 'Toes on a plate or step — let the heel drop for a full stretch at the bottom, then rise all the way onto the toes. Standing flat cuts the growth half of the ROM.' },
   { id: 'hanging-leg-raise', name: 'Lying Leg Raise', setsCount: 3, repRange: '12–15', restSeconds: 60, startWeight: 'bodyweight', gifUrl: 'assets/exercise-gifs/hanging-leg-raise.gif' },
   { id: 'plank', name: 'Plank', setsCount: 3, repRange: '45–60s hold', restSeconds: 45, startWeight: 'bodyweight', gifUrl: 'assets/exercise-gifs/plank.gif' },
   { id: 'incline-barbell-bench-press', name: 'Incline Barbell Bench Press', setsCount: 4, repRange: '8–10', restSeconds: 120, startWeight: '40–50 kg bar', gifUrl: 'assets/exercise-gifs/incline-barbell-bench-press.gif' },
@@ -236,6 +267,10 @@ const EXERCISE_POOL_DATA = [
   { id: 'dumbbell-russian-twist', name: 'Dumbbell Russian Twist', setsCount: 3, repRange: '16 (8/side)', restSeconds: 45, startWeight: '8–12 kg', gifUrl: 'assets/exercise-gifs/dumbbell-russian-twist.gif' },
   { id: 'weighted-crunch', name: 'Weighted Crunch / Cable-free Crunch', setsCount: 3, repRange: '15', restSeconds: 45, startWeight: 'hold 5–10 kg DB', gifUrl: 'assets/exercise-gifs/weighted-crunch.gif' },
   { id: 'dead-bug', name: 'Dead Bug', setsCount: 2, repRange: '12 / side', restSeconds: 45, startWeight: 'bodyweight', gifUrl: 'assets/exercise-gifs/dead-bug.gif' },
+  // --- v14 trainer-review additions (equipment: bench, DBs, resistance band) ---
+  { id: 'incline-dumbbell-curl', name: 'Incline Dumbbell Curl', setsCount: 3, repRange: '10–12', restSeconds: 60, startWeight: '10–14 kg / hand', gifUrl: 'assets/exercise-gifs/incline-dumbbell-curl.gif', cue: 'Lie back on the incline bench, arms hanging straight down — the stretched (lengthened) position grows more biceps per rep than a standing curl. Keep the upper arms still.' },
+  { id: 'dumbbell-hip-thrust', name: 'Dumbbell Hip Thrust', setsCount: 3, repRange: '10–12', restSeconds: 90, startWeight: 'DB across hips, 24–34 kg', gifUrl: 'assets/exercise-gifs/dumbbell-hip-thrust.gif', cue: 'Shoulder blades on the bench, DB across the hips (pad it), chin tucked. Drive through the heels and squeeze the glutes hard at the top — the only direct glute work in the plan.' },
+  { id: 'band-face-pull', name: 'Band Face Pull', setsCount: 3, repRange: '15–20', restSeconds: 45, startWeight: 'band, controlled', gifUrl: 'assets/exercise-gifs/band-face-pull.gif', cue: 'Anchor the band at eye height, pull toward your forehead with elbows high and rotate your pinkies back. Trains rear delts AND external rotation — cheap insurance for four pressing days a week.' },
   // --- Fat-loss conditioning & metabolic additions ---
   { id: 'treadmill-incline-walk', name: 'Incline Treadmill Walk (steady)', setsCount: 1, repRange: '25–35 min', restSeconds: 0, startWeight: 'incline 6–10%, brisk', gifUrl: 'assets/exercise-gifs/treadmill-incline-walk.gif', timer: { type: 'duration', seconds: 1800 } },
   { id: 'treadmill-hiit-intervals', name: 'Treadmill HIIT Intervals', setsCount: 1, repRange: '8–10 × 30s hard / 60s easy', restSeconds: 0, startWeight: 'run/fast walk', gifUrl: 'assets/exercise-gifs/treadmill-hiit-intervals.gif', timer: { type: 'interval', workSeconds: 30, restSeconds: 60, rounds: 9 } },
@@ -270,6 +305,7 @@ const DEFAULT_ROUTINES = [
       'chest-supported-dumbbell-row',
       'rear-delt-dumbbell-fly',
       'dumbbell-lateral-raise',
+      'band-face-pull',
       'preacher-curl',
       'overhead-dumbbell-triceps-extension',
       'treadmill-incline-walk',
@@ -321,14 +357,15 @@ const DEFAULT_ROUTINES = [
       'dumbbell-pullover',
       'rear-delt-dumbbell-fly',
       'lateral-raise-dropset',
-      'standing-dumbbell-curl',
+      'band-face-pull',
+      'incline-dumbbell-curl',
       'lying-dumbbell-triceps-extension',
     ],
     // Antagonist pairs to compress the session (see upper-power).
     supersets: [
       ['incline-barbell-bench-press', 'two-arm-dumbbell-row'],
       ['seated-dumbbell-shoulder-press', 'dumbbell-pullover'],
-      ['standing-dumbbell-curl', 'lying-dumbbell-triceps-extension'],
+      ['incline-dumbbell-curl', 'lying-dumbbell-triceps-extension'],
     ],
   },
   {
@@ -341,6 +378,7 @@ const DEFAULT_ROUTINES = [
       'dumbbell-romanian-deadlift',
       'dumbbell-lying-leg-curl',
       'bulgarian-split-squat',
+      'dumbbell-hip-thrust',
       'dumbbell-lateral-raise',
       'dumbbell-calf-raise',
       'treadmill-incline-walk',
@@ -457,7 +495,8 @@ function migrateSettings(settings) {
         (e.weightStep ?? null) !== (d.weightStep ?? null) ||
         (e.fatigueScale ?? null) !== (d.fatigueScale ?? null) ||
         (d.restSeconds != null && e.restSeconds !== d.restSeconds) ||
-        (d.setsCount != null && e.setsCount !== d.setsCount);
+        (d.setsCount != null && e.setsCount !== d.setsCount) ||
+        (d.cue != null && e.cue !== d.cue);
       return stale
         ? {
             ...e, name: d.name, gifUrl: d.gifUrl, muscles: { ...d.muscles },
@@ -466,6 +505,7 @@ function migrateSettings(settings) {
             ...(d.fatigueScale != null ? { fatigueScale: d.fatigueScale } : {}),
             ...(d.restSeconds != null ? { restSeconds: d.restSeconds } : {}),
             ...(d.setsCount != null ? { setsCount: d.setsCount } : {}),
+            ...(d.cue != null ? { cue: d.cue } : {}),
           }
         : e;
     });

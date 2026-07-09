@@ -1,8 +1,9 @@
 import { mountRestTimer } from './rest-timer.js';
 import { mountWorkoutTimer } from './workout-timer.js';
-import { suggestProgression, parseTopReps } from '../progression.js';
+import { suggestProgression, parseTopReps, prescribeRpe } from '../progression.js';
 import { warmupSets, HEAVY_BARBELL_LIFTS } from '../warmup.js';
 import { bestE1RM, loadForReps, roundLoad } from '../one-rep-max.js';
+import { getDeloadMode, deloadSetTarget } from '../deload-mode.js';
 
 /**
  * Renders one exercise with its sets into `container`.
@@ -110,7 +111,28 @@ export function coachingBlock(exercise, previousSets) {
   `;
 }
 
+/** Form-cue + prescribed-RPE guidance for an exercise (HTML string). Shared by
+ *  the single-exercise and superset cards so both prescribe effort, not just log
+ *  it, and surface the same technique cue. */
+export function cueTargetBlock(exercise) {
+  const rpe = prescribeRpe(exercise);
+  const cueHtml = exercise.cue
+    ? `<p class="exercise-cue">📝 ${exercise.cue}</p>`
+    : '';
+  const rpeHtml = rpe
+    ? `<p class="rpe-target">🎯 ${rpe.text}</p>`
+    : '';
+  return cueHtml + rpeHtml;
+}
+
 export function mountExerciseCard(container, exercise, previousSets, initialSets, onExerciseComplete, coach = {}) {
+  // One-tap deload week: cap this exercise's working sets while a deload is
+  // active (see deload-mode.js), holding the weights but trimming ~40% of volume.
+  const deload = getDeloadMode();
+  const effectiveSetsCount = deload.active
+    ? Math.min(exercise.setsCount, deloadSetTarget(exercise.setsCount))
+    : exercise.setsCount;
+  const rpePlaceholder = prescribeRpe(exercise)?.placeholder ?? '';
   const perSide = isUnilateral(exercise);
   const sideTag = perSide ? ' <span class="set-side">/side</span>' : '';
   const loggedSets = Array.isArray(initialSets) ? initialSets.map(s => ({ ...s })) : [];
@@ -124,6 +146,9 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
   let workoutTimerHandle = null;
   let completed = false;
   let restActive = false;
+  // Track which set we last scrolled to, so a new active set is brought into
+  // view on a phone without yanking the page on every keystroke re-render.
+  let lastScrolledSetIndex = -1;
   // The active-set inputs are pre-filled with the previous set's values as a
   // convenience. We only auto-log that row on "Finish Early" if the user has
   // actually typed into it — otherwise re-completing (e.g. after going back)
@@ -143,7 +168,7 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
     }
 
     const rows = [];
-    for (let i = 0; i < exercise.setsCount; i++) {
+    for (let i = 0; i < effectiveSetsCount; i++) {
       if (editingIndex === i) {
         const s = loggedSets[i] ?? {};
         rows.push(`
@@ -186,7 +211,7 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
             </div>
             <div class="input-group">
               <label class="input-label">RPE</label>
-              <input type="number" inputmode="decimal" step="0.5" min="1" max="10" class="set-input set-input-rpe" id="rpe-input" placeholder="—" value="">
+              <input type="number" inputmode="decimal" step="0.5" min="1" max="10" class="set-input set-input-rpe" id="rpe-input" placeholder="${rpePlaceholder || '—'}" value="">
             </div>
             <button class="btn-primary" id="log-set-btn" ${restActive ? 'disabled style="opacity:.45"' : ''}>Log</button>
           </div>
@@ -208,19 +233,21 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
       >
       <p class="muted">${exercise.repRange} reps · rest ${exercise.restSeconds}s · start ~${exercise.startWeight}</p>
       ${perSide ? '<p class="muted unilateral-note">↔ One side at a time — log the weight &amp; reps for a single side.</p>' : ''}
+      ${deload.active ? `<p class="deload-tag">🌙 Deload week — ${effectiveSetsCount} of ${exercise.setsCount} sets, hold the weight</p>` : ''}
       ${(() => {
         const hint = suggestProgression(previousSets, exercise.repRange, { weightStep: exercise.weightStep, stallCount: coach.stallCount });
         return hint ? `<p class="progression-hint">💡 ${hint.text}</p>` : '';
       })()}
+      ${cueTargetBlock(exercise)}
       ${coachingBlock(exercise, previousSets)}
       ${exercise.timer ? '<div id="workout-timer-slot"></div>' : ''}
       <div id="set-rows">${rows.join('')}</div>
       <div id="rest-timer-slot"></div>
       <button class="btn-primary" id="complete-exercise-btn">${(() => {
-        const allSetsDone = loggedSets.length >= exercise.setsCount;
+        const allSetsDone = loggedSets.length >= effectiveSetsCount;
         return allSetsDone
           ? 'Mark Exercise Complete →'
-          : `Finish Early (${loggedSets.length}/${exercise.setsCount} sets) →`;
+          : `Finish Early (${loggedSets.length}/${effectiveSetsCount} sets) →`;
       })()}</button>
     `;
 
@@ -264,6 +291,14 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
         onExerciseComplete([...loggedSets]);
       });
     }
+
+    // Bring the active input row into view when a new set becomes active, so the
+    // Log field is never stranded below the fold mid-workout.
+    if (!restActive && editingIndex === null && activeSetIndex !== lastScrolledSetIndex) {
+      lastScrolledSetIndex = activeSetIndex;
+      container.querySelector('#active-set-row')
+        ?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
   }
 
   /** Optional RPE from an input; returns { rpe } to spread onto a set, or {}. */
@@ -287,11 +322,12 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
       return;
     }
     loggedSets.push({ weight, reps, ...readRpe(container.querySelector('#rpe-input')) });
+    if (navigator.vibrate) navigator.vibrate(10); // subtle confirm tick
     activeSetIndex++;
     activeDirty = false; // fresh active row for the next set
     render();
 
-    if (loggedSets.length < exercise.setsCount) {
+    if (loggedSets.length < effectiveSetsCount) {
       restActive = true;
       render(); // re-render with Log button disabled
       const slot = container.querySelector('#rest-timer-slot');
@@ -319,7 +355,7 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
   }
 
   function captureActiveSetIfFilled() {
-    if (restActive || loggedSets.length >= exercise.setsCount) return true;
+    if (restActive || loggedSets.length >= effectiveSetsCount) return true;
     // Only capture a set the user actually entered, not untouched pre-fill.
     if (!activeDirty) return true;
 
