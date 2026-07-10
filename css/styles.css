@@ -171,17 +171,28 @@ body{
   background:var(--panel-2);border-radius:12px;padding:14px;margin:8px 0;border-bottom:none;
 }
 .set-row.active > .set-label{width:auto;font-size:13px}
-.field-row{display:grid;grid-template-columns:74px 1fr;align-items:center;gap:10px}
+/* Label above, stepper below, full width — stacked instead of a fixed-column
+   grid. A grid/flex item defaults to min-width:auto, so a "74px label + 1fr
+   stepper" row refused to shrink the stepper below its own min-content width
+   (two 52px buttons + input) and overflowed narrow phones; stacking removes
+   the horizontal constraint entirely. */
+.field-row{display:flex;flex-direction:column;gap:6px;min-width:0}
 .field-row .input-label{margin:0}
-.field-row.rpe-field .set-input-rpe{max-width:130px;justify-self:start}
-.stepper{display:flex;align-items:stretch;gap:8px}
+.stepper{display:flex;align-items:stretch;gap:6px;width:100%;min-width:0}
 .step-btn{
-  flex:0 0 auto;min-width:52px;min-height:52px;border-radius:10px;
+  flex:0 0 46px;min-width:46px;min-height:46px;border-radius:10px;
   background:var(--bg);border:1px solid var(--line);color:var(--ink);
-  font-size:26px;line-height:1;cursor:pointer;display:grid;place-items:center;
+  font-size:22px;line-height:1;cursor:pointer;display:grid;place-items:center;
 }
 .step-btn:active{background:var(--panel);border-color:var(--accent)}
-.stepper .set-input{flex:1;width:auto;min-width:0;text-align:center;font-size:20px}
+/* flex-basis 0 (not auto/84px) so the input grows from nothing instead of
+   demanding its own min-content width — the actual overflow fix. */
+.stepper .set-input{flex:1 1 0;width:0;min-width:0;text-align:center;font-size:18px;padding-left:4px;padding-right:4px}
+/* Hide native number-input spinner arrows inside a stepper — they duplicate
+   our ± buttons and were adding to the element's min-content width. */
+.stepper .set-input::-webkit-outer-spin-button,
+.stepper .set-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.stepper .set-input{-moz-appearance:textfield;appearance:textfield}
 .set-row.active > button{width:100%;margin-top:2px}
 .repeat-hint{font-size:12px;margin:-2px 0 2px;line-height:1.4}
 .set-label{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent-dim);width:56px;flex-shrink:0}
@@ -254,8 +265,8 @@ body{
 .warmup-arrow{color:var(--muted);font-size:12px}
 .coach-e1rm{margin-top:8px;font-size:12px;color:var(--muted);font-family:'JetBrains Mono',monospace}
 
-/* RPE input + tag (exercise card) */
-.set-input-rpe{max-width:64px}
+/* RPE input + tag (exercise card). RPE now sits in a full-width stepper like
+   weight/reps (see .stepper .set-input), so no separate width cap here. */
 .set-rpe{color:var(--core);font-family:'JetBrains Mono',monospace;font-size:12px}
 
 /* Adaptive readiness suggestion (today) */

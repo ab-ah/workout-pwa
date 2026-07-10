@@ -86,7 +86,7 @@ export function mountSupersetCard(container, exA, exB, prevSets = [], initialSet
             <div class="field-row"><label class="input-label">Reps</label>
               ${stepperHtml(`<input type="number" inputmode="numeric" class="set-input" data-edit-reps="${side}" value="${s.reps ?? ''}">`, { step: 1, label: 'reps' })}</div>
             <div class="field-row rpe-field"><label class="input-label">RPE (optional)</label>
-              <input type="number" inputmode="decimal" step="0.5" min="1" max="10" class="set-input set-input-rpe" data-edit-rpe="${side}" placeholder="—" value="${s.rpe ?? ''}"></div>
+              ${stepperHtml(`<input type="number" inputmode="decimal" step="0.5" class="set-input set-input-rpe" data-edit-rpe="${side}" placeholder="—" value="${s.rpe ?? ''}">`, { step: 0.5, min: 1, max: 10, label: 'RPE' })}</div>
             <button class="btn-primary" data-edit-save="${side}">Save</button>
           </div>`);
       } else if (i < logged[side].length) {
@@ -111,7 +111,7 @@ export function mountSupersetCard(container, exA, exB, prevSets = [], initialSet
             <div class="field-row"><label class="input-label">Reps</label>
               ${stepperHtml(`<input type="number" inputmode="numeric" class="set-input" data-reps="${side}" placeholder="${escapeHtml(String(ex.repRange ?? ''))}" value="${defReps}">`, { step: 1, label: 'reps' })}</div>
             <div class="field-row rpe-field"><label class="input-label">RPE (optional)</label>
-              <input type="number" inputmode="decimal" step="0.5" min="1" max="10" class="set-input set-input-rpe" data-rpe="${side}" placeholder="${prescribeRpe(ex)?.placeholder || '—'}" value=""></div>
+              ${stepperHtml(`<input type="number" inputmode="decimal" step="0.5" class="set-input set-input-rpe" data-rpe="${side}" placeholder="${prescribeRpe(ex)?.placeholder || '—'}" value="">`, { step: 0.5, min: 1, max: 10, label: 'RPE' })}</div>
             ${repeatHint}
             <button class="btn-primary" data-log="${side}" ${restActive ? 'disabled style="opacity:.45"' : ''}>${logLabel}</button>
           </div>`);
