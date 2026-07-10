@@ -187,7 +187,7 @@ body{
 .step-btn:active{background:var(--panel);border-color:var(--accent)}
 /* flex-basis 0 (not auto/84px) so the input grows from nothing instead of
    demanding its own min-content width — the actual overflow fix. */
-.stepper .set-input{flex:1 1 0;width:0;min-width:0;text-align:center;font-size:18px;padding-left:4px;padding-right:4px}
+.stepper .set-input{flex:1 1 0;width:0;min-width:4ch;text-align:center;font-size:18px;padding-left:4px;padding-right:4px}
 /* Hide native number-input spinner arrows inside a stepper — they duplicate
    our ± buttons and were adding to the element's min-content width. */
 .stepper .set-input::-webkit-outer-spin-button,
