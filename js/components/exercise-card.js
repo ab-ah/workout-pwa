@@ -224,7 +224,7 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
           </div>
           <div class="field-row rpe-field">
             <label class="input-label">RPE (optional)</label>
-            <input type="number" inputmode="decimal" step="0.5" min="1" max="10" class="set-input set-input-rpe" id="edit-rpe-input" placeholder="—" value="${s.rpe ?? ''}">
+            ${stepperHtml(`<input type="number" inputmode="decimal" step="0.5" class="set-input set-input-rpe" id="edit-rpe-input" placeholder="—" value="${s.rpe ?? ''}">`, { step: 0.5, min: 1, max: 10, label: 'RPE' })}
           </div>
           <button class="btn-primary" id="edit-save-btn">Save</button>
         </div>
@@ -258,7 +258,7 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
           </div>
           <div class="field-row rpe-field">
             <label class="input-label">RPE (optional)</label>
-            <input type="number" inputmode="decimal" step="0.5" min="1" max="10" class="set-input set-input-rpe" id="rpe-input" placeholder="${rpePlaceholder || '—'}" value="">
+            ${stepperHtml(`<input type="number" inputmode="decimal" step="0.5" class="set-input set-input-rpe" id="rpe-input" placeholder="${rpePlaceholder || '—'}" value="">`, { step: 0.5, min: 1, max: 10, label: 'RPE' })}
           </div>
           ${repeatHint}
           <button class="btn-primary" id="log-set-btn" ${restActive ? 'disabled style="opacity:.45"' : ''}>${logLabel}</button>
