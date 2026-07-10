@@ -15,6 +15,12 @@ import { enableWakeLock, disableWakeLock } from '../wake-lock.js';
 import { downloadBackup, promptRestore } from '../backup-io.js';
 import { substituteOptions } from '../substitutions.js';
 import { getDeloadMode, startDeloadMode, endDeloadMode, DELOAD_DAYS } from '../deload-mode.js';
+import { clearPendingRest } from '../rest-persist.js';
+import { escapeHtml } from '../escape.js';
+
+// Installed once (module scope) so re-entering the Today tab doesn't stack
+// duplicate popstate listeners for the Back-gesture guard.
+let backTrapInstalled = false;
 
 const READINESS_LOW = 0.6; // prime movers below this get a warning
 
@@ -215,9 +221,28 @@ export function renderToday(container, store) {
   }
 
   function startRoutine(routine) {
+    clearPendingRest(); // no stale rest carries into a freshly started workout
     const state = { routineId: routine.id, exerciseIndex: 0, loggedExercises: [], startedAt: Date.now(), substitutions: {} };
     saveInProgressSession(state);
     renderExerciseFlow(state.routineId, state.exerciseIndex, state.loggedExercises, state.startedAt);
+  }
+
+  // Back-gesture guard (Android/One One UI): a system Back during a workout used
+  // to exit the PWA. Absorb it — push a sentinel history state on entering the
+  // flow and, on popstate while a session is in progress, re-push and resume the
+  // Today view instead of leaving. Ending the workout releases the trap.
+  function pushFlowState() {
+    if (!history.state?.leanbuildFlow) history.pushState({ leanbuildFlow: true }, '');
+  }
+  if (!backTrapInstalled) {
+    backTrapInstalled = true;
+    window.addEventListener('popstate', () => {
+      const raw = localStorage.getItem(todaySessionKey) ?? sessionStorage.getItem(todaySessionKey);
+      if (raw) {
+        history.pushState({ leanbuildFlow: true }, '');
+        renderToday(container, store);
+      }
+    });
   }
 
   // The "Catch up" panel lists recently-missed scheduled sessions so you can run
@@ -226,7 +251,9 @@ export function renderToday(container, store) {
   // active-recovery day (missing an easy mobility walk isn't a debt). It's
   // dismissible for the rest of the day, and lives BELOW the day's main panel.
   function isCatchUpDismissed() {
-    return sessionStorage.getItem(CATCHUP_DISMISS_KEY) === localDateStr(Date.now());
+    // localStorage (not sessionStorage) so a dismissal survives Android killing
+    // the PWA process later the same day; keyed by date so it re-appears tomorrow.
+    return localStorage.getItem(CATCHUP_DISMISS_KEY) === localDateStr(Date.now());
   }
   function catchUpToShow(history) {
     if (history.length === 0) return [];
@@ -243,14 +270,14 @@ export function renderToday(container, store) {
     const items = list.map(m => {
       const when = m.daysAgo === 1 ? 'yesterday' : `${m.daysAgo} days ago`;
       return `
-        <li class="catchup-item" style="--rc:var(${m.routine.colorVar})">
+        <li class="catchup-item" style="--rc:var(${escapeHtml(m.routine.colorVar)})">
           <span class="catchup-bar" aria-hidden="true"></span>
           <div class="catchup-info">
-            <strong>${m.routine.name}</strong>
-            <span class="muted catchup-tag">${m.routine.tag}</span>
-            <span class="catchup-when">${m.dayName} · <span class="muted">${when}</span></span>
+            <strong>${escapeHtml(m.routine.name)}</strong>
+            <span class="muted catchup-tag">${escapeHtml(m.routine.tag)}</span>
+            <span class="catchup-when">${escapeHtml(m.dayName)} · <span class="muted">${escapeHtml(when)}</span></span>
           </div>
-          <button class="btn-secondary catchup-do" data-catchup-id="${m.routine.id}">Do it now</button>
+          <button class="btn-secondary catchup-do" data-catchup-id="${escapeHtml(m.routine.id)}">Do it now</button>
         </li>`;
     }).join('');
     const n = list.length;
@@ -276,7 +303,7 @@ export function renderToday(container, store) {
     const dismiss = container.querySelector('#catchup-dismiss-btn');
     if (dismiss) {
       dismiss.addEventListener('click', () => {
-        sessionStorage.setItem(CATCHUP_DISMISS_KEY, localDateStr(Date.now()));
+        localStorage.setItem(CATCHUP_DISMISS_KEY, localDateStr(Date.now()));
         renderDayIntro();
       });
     }
@@ -376,9 +403,9 @@ export function renderToday(container, store) {
       container.innerHTML = `
         ${restoreBanner}
         ${deloadBanner}
-        <div class="card today-done" style="border-left:4px solid var(${routine.colorVar})">
+        <div class="card today-done" style="border-left:4px solid var(${escapeHtml(routine.colorVar)})">
           <span class="muted">Today · done ✓</span>
-          <h2>${routine.name} complete</h2>
+          <h2>${escapeHtml(routine.name)} complete</h2>
           <p class="muted" style="margin-top:6px">${(doneToday.exercises ?? []).length} exercises · ${totalSets} sets${mins ? ` · ${mins} min` : ''}</p>
           <p class="muted" style="margin-top:10px;font-size:13px">Nice work — recovery is underway. Check the Recovery tab for muscle status.</p>
           <button class="btn-secondary" id="repeat-workout-btn" style="margin-top:12px">Train it again</button>
@@ -396,10 +423,10 @@ export function renderToday(container, store) {
     container.innerHTML = `
       ${restoreBanner}
       ${deloadBanner}
-      <div class="card" style="border-left:4px solid var(${routine.colorVar})">
+      <div class="card" style="border-left:4px solid var(${escapeHtml(routine.colorVar)})">
         <span class="muted">Up next</span>
-        <h2>${routine.name}</h2>
-        <p class="muted">${routine.tag}</p>
+        <h2>${escapeHtml(routine.name)}</h2>
+        <p class="muted">${escapeHtml(routine.tag)}</p>
         <p class="muted" style="margin-top:10px">${exercises.length} exercises</p>
         ${buildReadinessBlock(readiness, perMuscle)}
         ${buildAdaptiveBlock(readiness, perMuscle)}
@@ -453,8 +480,23 @@ export function renderToday(container, store) {
       return;
     }
 
+    pushFlowState(); // arm the Back-gesture guard while a workout is on screen
+
+    // Superset pairs are declared by ORIGINAL exercise id (supersets.js). When a
+    // side has been swapped, remap each declared pair onto the resolved ids at the
+    // same positions so an in-superset swap keeps the two paired instead of
+    // dissolving the superset into two singles.
+    const origIds = routine.exerciseIds ?? [];
+    const resolvedIds = exercises.map(e => e.id);
+    const effectiveSupersets = (routine.supersets ?? []).map(pair =>
+      pair.map(id => {
+        const pos = origIds.indexOf(id);
+        return pos >= 0 && resolvedIds[pos] ? resolvedIds[pos] : id;
+      })
+    );
+
     // Group into steps over the RESOLVED list so indices line up with `exercises`.
-    const steps = buildFlowSteps({ exerciseIds: exercises.map(e => e.id), supersets: routine.supersets })
+    const steps = buildFlowSteps({ exerciseIds: resolvedIds, supersets: effectiveSupersets })
       .map(s => ({ indices: s.exerciseIds.map(id => exercises.findIndex(e => e.id === id)) }));
     const stepPos = Math.max(0, steps.findIndex(st => st.indices.includes(exerciseIndex)));
     const step = steps[stepPos];
@@ -504,6 +546,27 @@ export function renderToday(container, store) {
     // the End prompt and the Previous control.
     let snapshot;
 
+    // Same-muscle swap alternatives for a position, excluding anything already
+    // in today's session (a duplicate id would collide in the step-index mapping).
+    function swapOptionsFor(index) {
+      const presentIds = new Set(exercises.map(e => e.id));
+      return substituteOptions(exercises[index], settings.exercises)
+        .filter(o => !presentIds.has(o.id))
+        .slice(0, 8)
+        .map(o => ({ id: o.id, name: o.name }));
+    }
+
+    // Record a per-position substitution for this session and restart the step on
+    // the swapped-in exercise. Shared by the single-card and superset swaps.
+    function applySwap(index, newId) {
+      const saved = readInProgressSession() ?? {};
+      const subs = { ...(saved.substitutions ?? {}), [index]: newId };
+      const updated = loggedExercises.slice();
+      updated[index] = undefined; // fresh start on the swapped-in exercise
+      saveInProgressSession({ routineId, exerciseIndex: firstIndex, loggedExercises: updated, startedAt, substitutions: subs });
+      renderExerciseFlow(routineId, firstIndex, updated, startedAt);
+    }
+
     if (isSuperset) {
       const [exA, exB] = step.indices.map(i => exercises[i]);
       const prev = [getLastSetsForExercise(exA.id, history), getLastSetsForExercise(exB.id, history)];
@@ -511,7 +574,16 @@ export function renderToday(container, store) {
       const stall = [stallCount(history, exA.id), stallCount(history, exB.id)];
       const card = mountSupersetCard(slot, exA, exB, prev, init,
         (entries) => advance(writeEntries(loggedExercises, entries)),
-        { stall });
+        {
+          stall,
+          // Persist mid-superset progress so a reload restores both sets and the rest clock.
+          onSetsChange: (entries) => {
+            const updated = writeEntries(loggedExercises, entries);
+            saveInProgressSession({ routineId, exerciseIndex: firstIndex, loggedExercises: updated, startedAt });
+          },
+          swapOptions: step.indices.map(swapOptionsFor),
+          onSwap: (side, newId) => applySwap(step.indices[side], newId),
+        });
       snapshot = () => writeEntries(loggedExercises, card.snapshotEntries());
     } else {
       const exercise = exercises[firstIndex];
@@ -522,7 +594,15 @@ export function renderToday(container, store) {
         const updated = loggedExercises.slice();
         updated[firstIndex] = { exerciseId: exercise.id, name: exercise.name, sets };
         advance(updated);
-      }, { stallCount: stall });
+      }, {
+        stallCount: stall,
+        // Persist mid-exercise progress so a reload restores both sets and the rest clock.
+        onSetsChange: (sets) => {
+          const updated = loggedExercises.slice();
+          updated[firstIndex] = { exerciseId: exercise.id, name: exercise.name, sets };
+          saveInProgressSession({ routineId, exerciseIndex: firstIndex, loggedExercises: updated, startedAt });
+        },
+      });
       snapshot = () => {
         const updated = loggedExercises.slice();
         const current = card.getLoggedSets();
@@ -553,12 +633,7 @@ export function renderToday(container, store) {
     // the new exercise. Only shown for single-exercise steps.
     function wireSwapControl(swapSlot, exercise, index) {
       if (!swapSlot || !exercise) return;
-      // Exclude anything already in today's session — swapping to a duplicate id
-      // would collide in the step-index mapping (two positions, one id).
-      const presentIds = new Set(exercises.map(e => e.id));
-      const options = substituteOptions(exercise, settings.exercises)
-        .filter(o => !presentIds.has(o.id))
-        .slice(0, 8);
+      const options = swapOptionsFor(index);
       if (options.length === 0) return;
 
       let open = false;
@@ -568,20 +643,12 @@ export function renderToday(container, store) {
           ${open ? `
             <div class="swap-picker">
               <div class="muted swap-picker-hint">Same-muscle alternatives — just for today</div>
-              ${options.map(o => `<button class="swap-option" data-swap-id="${o.id}">${o.name}</button>`).join('')}
+              ${options.map(o => `<button class="swap-option" data-swap-id="${escapeHtml(o.id)}">${escapeHtml(o.name)}</button>`).join('')}
             </div>` : ''}
         `;
         swapSlot.querySelector('#swap-toggle-btn').addEventListener('click', () => { open = !open; draw(); });
         swapSlot.querySelectorAll('[data-swap-id]').forEach(btn => {
-          btn.addEventListener('click', () => {
-            const newId = btn.dataset.swapId;
-            const saved = readInProgressSession() ?? {};
-            const subs = { ...(saved.substitutions ?? {}), [index]: newId };
-            const updated = loggedExercises.slice();
-            updated[index] = undefined; // fresh start on the swapped-in exercise
-            saveInProgressSession({ routineId, exerciseIndex: index, loggedExercises: updated, startedAt, substitutions: subs });
-            renderExerciseFlow(routineId, index, updated, startedAt);
-          });
+          btn.addEventListener('click', () => applySwap(index, btn.dataset.swapId));
         });
       };
       draw();
@@ -617,6 +684,7 @@ export function renderToday(container, store) {
     }
     container.querySelector('#end-discard-btn').addEventListener('click', () => {
       clearInProgressSession();
+      clearPendingRest();
       renderDayIntro();
     });
     container.querySelector('#end-keep-btn').addEventListener('click', () => {
@@ -646,11 +714,12 @@ export function renderToday(container, store) {
     };
     store.addSession(session);
     clearInProgressSession();
+    clearPendingRest();
 
     container.innerHTML = `
       <div class="card">
         <h2>Workout Complete</h2>
-        <p class="muted">${routine.name} — ${logged.length} exercises, ${totalSets} sets, ${minutes} min</p>
+        <p class="muted">${escapeHtml(routine.name)} — ${logged.length} exercises, ${totalSets} sets, ${minutes} min</p>
         <button class="btn-primary" id="back-to-today-btn">Back to Today</button>
         <button class="btn-secondary" id="backup-btn" style="margin-top:10px">⬇ Back up my data</button>
         <p class="muted" style="margin-top:8px;font-size:13px">Save a backup file so a phone wipe never loses your log.</p>

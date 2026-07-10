@@ -64,7 +64,7 @@ export function renderHistory(container, store) {
           <details class="session-details">
             <summary>${session.exercises.length} exercises · ${totalSets} sets</summary>
             <ul>
-              ${session.exercises.map((e) => `<li>${escapeHtml(e.name)}: ${e.sets.map((s) => `${escapeHtml(s.weight)}kg x ${escapeHtml(s.reps)}`).join(', ')}</li>`).join('')}
+              ${session.exercises.map((e) => `<li>${escapeHtml(e.name)}: ${e.sets.map((s) => `${escapeHtml(s.weight)}kg x ${escapeHtml(s.reps)}${Number.isFinite(s.rpe) ? ` <span class="set-rpe">@${escapeHtml(s.rpe)}</span>` : ''}`).join(', ')}</li>`).join('')}
             </ul>
           </details>
         </div>
@@ -100,10 +100,28 @@ export function renderHistory(container, store) {
   }
 
   let metric = 'topset'; // 'topset' | 'e1rm'
+  let selectedExerciseId = null; // persists across metric toggles / re-renders
+
+  /** The exercise with the most logged sessions — a far more useful default for
+   *  the Progress chart than whatever happens to be first in the list. */
+  function mostTrainedExerciseId() {
+    const counts = {};
+    for (const s of store.getHistory()) {
+      for (const e of (s.exercises ?? [])) counts[e.exerciseId] = (counts[e.exerciseId] ?? 0) + 1;
+    }
+    let best = null, bestN = -1;
+    for (const [id, n] of Object.entries(counts)) {
+      if (n > bestN) { bestN = n; best = id; }
+    }
+    return best;
+  }
 
   function renderProgress(body) {
     const exercises = getSettings().exercises ?? [];
-    const options = exercises.map((e) => `<option value="${escapeHtml(e.id)}">${escapeHtml(e.name)}</option>`).join('');
+    if (selectedExerciseId == null) {
+      selectedExerciseId = mostTrainedExerciseId() ?? (exercises[0]?.id ?? null);
+    }
+    const options = exercises.map((e) => `<option value="${escapeHtml(e.id)}"${e.id === selectedExerciseId ? ' selected' : ''}>${escapeHtml(e.name)}</option>`).join('');
     body.innerHTML = `
       ${bodyweightCardHtml()}
       <div class="progress-section-label">Exercise progress</div>
@@ -139,7 +157,7 @@ export function renderHistory(container, store) {
         : '';
     }
 
-    select.addEventListener('change', drawChart);
+    select.addEventListener('change', () => { selectedExerciseId = select.value; drawChart(); });
     body.querySelector('#metric-topset').addEventListener('click', () => { metric = 'topset'; render(); });
     body.querySelector('#metric-e1rm').addEventListener('click', () => { metric = 'e1rm'; render(); });
     drawChart();

@@ -1,48 +1,33 @@
+import { playBeep } from '../audio.js';
+import { setPendingRest, clearPendingRest } from '../rest-persist.js';
+import { notifyRestOver } from '../notify.js';
+
 export function computeRemainingSeconds(endTimestamp, now = Date.now()) {
   const remainingMs = endTimestamp - now;
   return Math.max(0, Math.ceil(remainingMs / 1000));
 }
 
-/**
- * Short two-tone beep via WebAudio — the reliable "rest over" cue on iOS,
- * where navigator.vibrate is a no-op inside a PWA. Best-effort: silently
- * does nothing if the browser blocks or lacks audio.
- */
+// Two-tone "rest over" cue on the shared, gesture-unlocked context (audio.js) so
+// it still sounds when the tab is backgrounded (e.g. you're in Spotify) — a fresh
+// per-beep context created while hidden would start suspended and stay silent.
 function playRestDoneBeep() {
-  try {
-    const Ctx = window.AudioContext || window.webkitAudioContext;
-    if (!Ctx) return;
-    const ctx = new Ctx();
-    const now = ctx.currentTime;
-    [880, 1320].forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.value = freq;
-      const start = now + i * 0.18;
-      gain.gain.setValueAtTime(0.0001, start);
-      gain.gain.exponentialRampToValueAtTime(0.3, start + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.16);
-      osc.connect(gain).connect(ctx.destination);
-      osc.start(start);
-      osc.stop(start + 0.17);
-    });
-    setTimeout(() => ctx.close().catch(() => {}), 600);
-  } catch {
-    /* audio unavailable — vibration / visual countdown still cover it */
-  }
+  playBeep([880, 1320]);
 }
 
 /**
  * Mounts a rest timer into `container` counting down `durationSeconds`.
  * Calls `onComplete` when it reaches zero. Returns a `stop()` function
  * to cancel early (used by the Skip button and on unmount).
+ *
+ * The absolute end time is persisted (rest-persist.js) so a mid-rest reload can
+ * re-mount the timer with the correct remaining seconds.
  */
 export function mountRestTimer(container, durationSeconds, onComplete) {
   const endTimestamp = Date.now() + durationSeconds * 1000;
+  setPendingRest(durationSeconds);
   container.innerHTML = `
     <div class="rest-timer">
-      <span class="muted">Rest</span>
+      <span class="muted rest-timer-label">Rest</span>
       <span class="time">${durationSeconds}s</span>
       <button class="btn-secondary btn-skip-rest">Skip rest</button>
     </div>
@@ -56,6 +41,7 @@ export function mountRestTimer(container, durationSeconds, onComplete) {
   function complete() {
     if (fired) return;
     fired = true;
+    clearPendingRest();
     stop();
     onComplete();
   }
@@ -66,6 +52,7 @@ export function mountRestTimer(container, durationSeconds, onComplete) {
     if (remaining <= 0) {
       if (navigator.vibrate) navigator.vibrate(200);
       playRestDoneBeep();
+      notifyRestOver();
       complete();
     }
   }
@@ -79,6 +66,7 @@ export function mountRestTimer(container, durationSeconds, onComplete) {
   }
 
   function handleSkip() {
+    clearPendingRest();
     complete();
   }
 

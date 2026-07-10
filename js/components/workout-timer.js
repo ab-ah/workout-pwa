@@ -7,30 +7,12 @@
 //     beep, e.g. a steady incline walk.
 // Mounts into `container`; returns { stop() } to cancel and clean up timers.
 
-/** Distinct two-tone beep per phase so WORK vs REST are audibly different. */
+import { unlockAudio, playBeep } from '../audio.js';
+
+/** Distinct two-tone beep per phase on the shared, gesture-unlocked context so
+ *  phase changes still sound when the tab is backgrounded (see audio.js). */
 function playTone(freqs) {
-  try {
-    const Ctx = window.AudioContext || window.webkitAudioContext;
-    if (!Ctx) return;
-    const ctx = new Ctx();
-    const now = ctx.currentTime;
-    freqs.forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.value = freq;
-      const start = now + i * 0.16;
-      gain.gain.setValueAtTime(0.0001, start);
-      gain.gain.exponentialRampToValueAtTime(0.3, start + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.14);
-      osc.connect(gain).connect(ctx.destination);
-      osc.start(start);
-      osc.stop(start + 0.15);
-    });
-    setTimeout(() => ctx.close().catch(() => {}), 500);
-  } catch {
-    /* audio unavailable — visual countdown still covers it */
-  }
+  playBeep(freqs, { gap: 0.16, dur: 0.14 });
 }
 
 const WORK_TONE = [660, 660, 990]; // rising — go
@@ -117,7 +99,10 @@ export function mountWorkoutTimer(container, config, onComplete) {
       pauseInterval();
       render();
     } else {
-      // Resume/start: recompute the end timestamp from the frozen remainder.
+      // Resume/start: unlock the shared audio context on this gesture so phase
+      // beeps sound even after the tab is backgrounded, then recompute the end
+      // timestamp from the frozen remainder.
+      unlockAudio();
       endTimestamp = Date.now() + remainingMs;
       running = true;
       pauseInterval();

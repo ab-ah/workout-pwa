@@ -24,6 +24,9 @@ const VIEWS = {
   week: () => renderWeek(viewRoot, store),
   history: () => renderHistory(viewRoot, store),
   recovery: () => renderRecovery(viewRoot, store),
+  // Settings is now a bottom-nav tab (moved off the floating top-right gear,
+  // the worst thumb-zone on a tall phone). Its own ✕ Close returns to Today.
+  settings: () => renderSettings(viewRoot, () => setActiveTab('today')),
 };
 
 let currentTab = 'today';
@@ -55,7 +58,10 @@ navButtons.forEach((btn) => {
   btn.addEventListener('click', () => setActiveTab(btn.dataset.tab));
 });
 
-setActiveTab('today');
+// Honour a ?tab= deep-link (used by the manifest app shortcuts), falling back to
+// Today for anything unrecognised.
+const initialTab = new URLSearchParams(location.search).get('tab');
+setActiveTab(VIEWS[initialTab] ? initialTab : 'today');
 
 // Readiness and recovery are time-based: their numbers drift while the app sits
 // backgrounded. When the PWA comes back to the foreground, re-render those tabs
@@ -63,11 +69,6 @@ setActiveTab('today');
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState !== 'visible') return;
   if (currentTab === 'today' || currentTab === 'recovery') VIEWS[currentTab]();
-});
-
-const settingsGear = document.getElementById('settings-gear-btn');
-settingsGear.addEventListener('click', () => {
-  renderSettings(viewRoot, () => setActiveTab(currentTab));
 });
 
 // Service worker + auto-update. The worker calls skipWaiting()/clients.claim(),

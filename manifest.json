@@ -1,11 +1,12 @@
 {
+  "id": "./index.html",
   "name": "Lean Build — Fat-Loss Plan",
   "short_name": "Lean Build",
   "description": "6-day fat-loss training plan with treadmill conditioning, recovery tracking, and set logging.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#0e1014",
+  "background_color": "#000000",
   "theme_color": "#0e1014",
   "orientation": "portrait-primary",
   "icons": [
@@ -28,6 +29,13 @@
       "short_name": "Today",
       "description": "Jump straight to today's scheduled session",
       "url": "./index.html?tab=today",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Log Weight",
+      "short_name": "Weigh-in",
+      "description": "Jump to the body-weight log and 7-day trend",
+      "url": "./index.html?tab=history",
       "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }]
     }
   ]

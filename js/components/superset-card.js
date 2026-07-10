@@ -3,6 +3,11 @@ import { suggestProgression, prescribeRpe } from '../progression.js';
 import { coachingBlock, cueTargetBlock, recommendedWeightBlock } from './exercise-card.js';
 import { buildSlotSequence, nextSlotIndex } from '../supersets.js';
 import { getDeloadMode, deloadSetTarget } from '../deload-mode.js';
+import { unlockAudio } from '../audio.js';
+import { ensureNotifyPermission } from '../notify.js';
+import { getPendingRestSeconds, clearPendingRest } from '../rest-persist.js';
+import { stepperHtml, wireSteppers } from './stepper.js';
+import { escapeHtml } from '../escape.js';
 
 // Interleaved antagonist-superset card: two exercises logged a set at a time in
 // alternation (A1, B1, rest, A2, B2, rest, …) with one shared rest after each
@@ -14,7 +19,9 @@ import { getDeloadMode, deloadSetTarget } from '../deload-mode.js';
 //   initialSets   — [initA, initB]: sets already logged this session (resume), or null.
 //   onComplete(entries) — entries = [{ exerciseId, name, sets }] for sides that
 //                          logged ≥1 set. Fires on "Mark Superset Complete".
-//   coach         — { stall: [stallA, stallB] } for the progression hints.
+//   coach         — { stall: [stallA, stallB], onSetsChange?, swapOptions?, onSwap? }.
+//                   onSetsChange(entries) persists mid-superset progress; swapOptions
+//                   = [optsA, optsB] of {id,name}; onSwap(side,newId) swaps a side.
 
 /** Optional RPE from an input; returns { rpe } to spread onto a set, or {}. */
 function readRpe(input) {
@@ -30,6 +37,8 @@ export function mountSupersetCard(container, exA, exB, prevSets = [], initialSet
   const exes = [exA, exB];
   const prevs = [prevSets?.[0] ?? null, prevSets?.[1] ?? null];
   const stalls = coach.stall ?? [];
+  const swapOptions = coach.swapOptions ?? [];
+  const weightSteps = exes.map(ex => Number.isFinite(ex.weightStep) ? ex.weightStep : 2.5);
   const logged = [
     Array.isArray(initialSets?.[0]) ? initialSets[0].map(s => ({ ...s })) : [],
     Array.isArray(initialSets?.[1]) ? initialSets[1].map(s => ({ ...s })) : [],
@@ -47,9 +56,11 @@ export function mountSupersetCard(container, exA, exB, prevSets = [], initialSet
   let pointer = nextSlotIndex(slots, logged[0].length, logged[1].length);
   let editing = null;   // { side, index } | null
   let restActive = false;
+  let restingSide = null; // which side's set we just logged (for the rest label)
   let activeDirty = false;
   let completed = false;
   let timerHandle = null;
+  const swapOpen = [false, false];
 
   function activeSlot() {
     return pointer < slots.length ? slots[pointer] : null;
@@ -70,11 +81,11 @@ export function mountSupersetCard(container, exA, exB, prevSets = [], initialSet
         rows.push(`
           <div class="set-row active">
             <span class="set-label">Set ${i + 1}</span>
-            <div class="input-group"><label class="input-label">Weight</label>
-              <input type="number" inputmode="decimal" class="set-input" data-edit-weight="${side}" value="${s.weight ?? ''}"></div>
-            <div class="input-group"><label class="input-label">Reps</label>
-              <input type="number" inputmode="numeric" class="set-input" data-edit-reps="${side}" value="${s.reps ?? ''}"></div>
-            <div class="input-group"><label class="input-label">RPE</label>
+            <div class="field-row"><label class="input-label">Weight (kg)</label>
+              ${stepperHtml(`<input type="number" inputmode="decimal" class="set-input" data-edit-weight="${side}" value="${s.weight ?? ''}">`, { step: weightSteps[side], label: 'weight' })}</div>
+            <div class="field-row"><label class="input-label">Reps</label>
+              ${stepperHtml(`<input type="number" inputmode="numeric" class="set-input" data-edit-reps="${side}" value="${s.reps ?? ''}">`, { step: 1, label: 'reps' })}</div>
+            <div class="field-row rpe-field"><label class="input-label">RPE (optional)</label>
               <input type="number" inputmode="decimal" step="0.5" min="1" max="10" class="set-input set-input-rpe" data-edit-rpe="${side}" placeholder="—" value="${s.rpe ?? ''}"></div>
             <button class="btn-primary" data-edit-save="${side}">Save</button>
           </div>`);
@@ -87,16 +98,22 @@ export function mountSupersetCard(container, exA, exB, prevSets = [], initialSet
         const prevLoggedSet = logged[side].length > 0 ? logged[side][logged[side].length - 1] : null;
         const defWeight = prevLoggedSet?.weight ?? prevSessionSet?.weight ?? '';
         const defReps = prevLoggedSet?.reps ?? prevSessionSet?.reps ?? '';
+        const canRepeat = defWeight !== '' && defReps !== '';
+        const logLabel = (canRepeat && !activeDirty) ? 'Log same ↻' : 'Log';
+        const repeatHint = canRepeat
+          ? `<p class="repeat-hint muted">↻ Log repeats ${defWeight}kg × ${defReps} — adjust with ± or type</p>`
+          : '';
         rows.push(`
           <div class="set-row active">
             <span class="set-label">Set ${i + 1}</span>
-            <div class="input-group"><label class="input-label">Weight</label>
-              <input type="number" inputmode="decimal" class="set-input" data-weight="${side}" placeholder="${ex.startWeight ?? 'kg'}" value="${defWeight}"></div>
-            <div class="input-group"><label class="input-label">Reps</label>
-              <input type="number" inputmode="numeric" class="set-input" data-reps="${side}" placeholder="${ex.repRange}" value="${defReps}"></div>
-            <div class="input-group"><label class="input-label">RPE</label>
+            <div class="field-row"><label class="input-label">Weight (kg)</label>
+              ${stepperHtml(`<input type="number" inputmode="decimal" class="set-input" data-weight="${side}" placeholder="${escapeHtml(String(ex.startWeight ?? 'kg'))}" value="${defWeight}">`, { step: weightSteps[side], label: 'weight' })}</div>
+            <div class="field-row"><label class="input-label">Reps</label>
+              ${stepperHtml(`<input type="number" inputmode="numeric" class="set-input" data-reps="${side}" placeholder="${escapeHtml(String(ex.repRange ?? ''))}" value="${defReps}">`, { step: 1, label: 'reps' })}</div>
+            <div class="field-row rpe-field"><label class="input-label">RPE (optional)</label>
               <input type="number" inputmode="decimal" step="0.5" min="1" max="10" class="set-input set-input-rpe" data-rpe="${side}" placeholder="${prescribeRpe(ex)?.placeholder || '—'}" value=""></div>
-            <button class="btn-primary" data-log="${side}" ${restActive ? 'disabled style="opacity:.45"' : ''}>Log</button>
+            ${repeatHint}
+            <button class="btn-primary" data-log="${side}" ${restActive ? 'disabled style="opacity:.45"' : ''}>${logLabel}</button>
           </div>`);
       } else {
         rows.push(`<div class="set-row"><span class="set-label">Set ${i + 1}</span><span class="muted">—</span></div>`);
@@ -105,52 +122,102 @@ export function mountSupersetCard(container, exA, exB, prevSets = [], initialSet
     return rows.join('');
   }
 
-  function panelHtml(side) {
-    const ex = exes[side];
-    const slot = activeSlot();
-    const isActiveSide = slot && slot.side === side && editing === null && !restActive;
-    const hint = suggestProgression(prevs[side], ex.repRange, { weightStep: ex.weightStep, stallCount: stalls[side] });
+  /** In-superset swap control for one side (parity with the single-exercise
+   *  card). Shown only when the caller supplied alternatives for that side. */
+  function swapHtml(side) {
+    const opts = swapOptions[side];
+    if (!opts || opts.length === 0) return '';
     return `
-      <div class="ss-panel ${isActiveSide ? 'ss-active' : ''}">
-        <div class="ss-panel-head">
-          <span class="ss-tag">${side === 0 ? 'A' : 'B'}</span>
-          <span class="exercise-name">${ex.name}</span>
-          ${ex.gifUrl ? `<img src="${ex.gifUrl}" alt="${ex.name} demonstration" class="ss-gif" loading="lazy" onerror="this.style.display='none'">` : ''}
-        </div>
-        <p class="muted">${ex.repRange} reps · rest ${ex.restSeconds}s${ex.startWeight ? ` · start ~${ex.startWeight}` : ''}</p>
-        ${recommendedWeightBlock(ex, prevs[side])}
-        ${hint ? `<p class="progression-hint">💡 ${hint.text}</p>` : ''}
-        ${cueTargetBlock(ex)}
-        ${coachingBlock(ex, prevs[side])}
-        <div class="ss-rows">${setRowsHtml(side)}</div>
+      <div class="ss-swap" data-swap-side="${side}">
+        <button class="swap-toggle" data-swap-toggle="${side}">⇄ Swap ${escapeHtml(exes[side].name)}</button>
+        ${swapOpen[side] ? `
+          <div class="swap-picker">
+            <div class="muted swap-picker-hint">Same-muscle alternatives — just for today</div>
+            ${opts.map(o => `<button class="swap-option" data-swap-pick="${side}" data-swap-id="${escapeHtml(o.id)}">${escapeHtml(o.name)}</button>`).join('')}
+          </div>` : ''}
       </div>`;
   }
 
-  function render() {
-    if (timerHandle) { timerHandle.stop(); timerHandle = null; }
+  // ── Static shell (panel heads, gifs, coaching) built ONCE ──────────────────
+  // Only the progress line, set rows, active-panel highlight and complete label
+  // change per render, so the small demo GIFs and coaching stay put (no flicker).
+  function panelShellHtml(side) {
+    const ex = exes[side];
+    const hint = suggestProgression(prevs[side], ex.repRange, { weightStep: ex.weightStep, stallCount: stalls[side] });
+    return `
+      <div class="ss-panel" id="ss-panel-${side}">
+        <div class="ss-panel-head">
+          <span class="ss-tag">${side === 0 ? 'A' : 'B'}</span>
+          <span class="exercise-name">${escapeHtml(ex.name)}</span>
+          ${ex.gifUrl ? `<img src="${ex.gifUrl}" alt="${escapeHtml(ex.name)} demonstration" class="ss-gif" loading="lazy" onerror="this.style.display='none'">` : ''}
+        </div>
+        <p class="muted">${escapeHtml(ex.repRange)} reps · rest ${ex.restSeconds}s${ex.startWeight ? ` · start ~${escapeHtml(String(ex.startWeight))}` : ''}</p>
+        ${recommendedWeightBlock(ex, prevs[side])}
+        ${hint ? `<p class="progression-hint">💡 ${escapeHtml(hint.text)}</p>` : ''}
+        ${cueTargetBlock(ex)}
+        ${coachingBlock(ex, prevs[side])}
+        <div class="ss-swap-slot" id="ss-swap-${side}"></div>
+        <div class="ss-rows" id="ss-rows-${side}"></div>
+      </div>`;
+  }
 
+  container.innerHTML = `
+    <div class="superset-card">
+      <div class="superset-badge">🔁 Superset — alternate a set of each, rest after the pair</div>
+      ${deload.active ? '<div class="deload-tag">🌙 Deload week — fewer sets, hold the weight</div>' : ''}
+      <div class="ss-progress muted" id="ss-progress"></div>
+      ${panelShellHtml(0)}
+      <div class="ss-divider"><span>↕</span></div>
+      ${panelShellHtml(1)}
+      <div id="ss-rest-slot"></div>
+      <button class="btn-primary" id="ss-complete-btn"></button>
+    </div>`;
+
+  const progressEl = container.querySelector('#ss-progress');
+  const panelEls = [container.querySelector('#ss-panel-0'), container.querySelector('#ss-panel-1')];
+  const rowsEls = [container.querySelector('#ss-rows-0'), container.querySelector('#ss-rows-1')];
+  const swapEls = [container.querySelector('#ss-swap-0'), container.querySelector('#ss-swap-1')];
+  const restSlot = container.querySelector('#ss-rest-slot');
+  const completeBtn = container.querySelector('#ss-complete-btn');
+
+  completeBtn.addEventListener('click', () => {
+    if (completed) return;
+    if (editing !== null) { editing = null; render(); return; }
+    captureActiveIfFilled();
+    completed = true;
+    clearPendingRest();
+    onComplete(buildEntries());
+  });
+
+  function render() {
     const slot = activeSlot();
     const round = slot ? slot.set + 1 : Math.max(effCounts[0], effCounts[1]);
     const rounds = Math.max(effCounts[0], effCounts[1]);
-    const activeName = slot ? exes[slot.side].name : null;
-    const progress = slot
-      ? `Round ${round} of ${rounds} · <strong>${activeName}</strong>`
-      : 'All sets logged';
     const allDone = loggedCount() >= totalSets;
 
-    container.innerHTML = `
-      <div class="superset-card">
-        <div class="superset-badge">🔁 Superset — alternate a set of each, rest after the pair</div>
-        ${deload.active ? '<div class="deload-tag">🌙 Deload week — fewer sets, hold the weight</div>' : ''}
-        <div class="ss-progress muted">${progress}</div>
-        ${panelHtml(0)}
-        <div class="ss-divider"><span>↕</span></div>
-        ${panelHtml(1)}
-        <div id="ss-rest-slot"></div>
-        <button class="${allDone ? 'btn-primary' : 'btn-primary finish-early'}" id="ss-complete-btn">${allDone
-          ? 'Mark Superset Complete →'
-          : `Finish Early (${loggedCount()}/${totalSets} sets) →`}</button>
-      </div>`;
+    if (restActive && restingSide !== null) {
+      // Make it unambiguous whose rest is running (the rest duration is the
+      // just-logged side's restSeconds).
+      progressEl.innerHTML = `Resting — just logged <strong>${escapeHtml(exes[restingSide].name)}</strong> (${exes[restingSide].restSeconds}s)`;
+    } else if (slot) {
+      progressEl.innerHTML = `Round ${round} of ${rounds} · <strong>${escapeHtml(exes[slot.side].name)}</strong>`;
+    } else {
+      progressEl.textContent = 'All sets logged';
+    }
+
+    for (let side = 0; side < 2; side++) {
+      const isActiveSide = slot && slot.side === side && editing === null && !restActive;
+      panelEls[side].classList.toggle('ss-active', !!isActiveSide);
+      rowsEls[side].innerHTML = setRowsHtml(side);
+      swapEls[side].innerHTML = swapHtml(side);
+    }
+
+    completeBtn.className = allDone ? 'btn-primary' : 'btn-primary finish-early';
+    completeBtn.textContent = allDone
+      ? 'Mark Superset Complete →'
+      : `Finish Early (${loggedCount()}/${totalSets} sets) →`;
+
+    wireSteppers(container);
 
     const logBtn = container.querySelector('[data-log]');
     if (logBtn) {
@@ -164,7 +231,7 @@ export function mountSupersetCard(container, exA, exB, prevSets = [], initialSet
     container.querySelectorAll('[data-done-index]').forEach(row => {
       row.addEventListener('click', () => {
         if (timerHandle) { timerHandle.stop(); timerHandle = null; }
-        restActive = false;
+        if (restActive) { restActive = false; restingSide = null; clearPendingRest(); restSlot.innerHTML = ''; }
         editing = { side: +row.dataset.doneSide, index: +row.dataset.doneIndex };
         render();
       });
@@ -173,21 +240,27 @@ export function mountSupersetCard(container, exA, exB, prevSets = [], initialSet
     const saveBtn = container.querySelector('[data-edit-save]');
     if (saveBtn) saveBtn.addEventListener('click', () => handleSaveEdit(+saveBtn.dataset.editSave));
 
-    const completeBtn = container.querySelector('#ss-complete-btn');
-    completeBtn.addEventListener('click', () => {
-      if (completed) return;
-      if (editing !== null) { editing = null; render(); return; }
-      captureActiveIfFilled();
-      completed = true;
-      onComplete(buildEntries());
+    // Swap controls (per side).
+    container.querySelectorAll('[data-swap-toggle]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const side = +btn.dataset.swapToggle;
+        swapOpen[side] = !swapOpen[side];
+        render();
+      });
+    });
+    container.querySelectorAll('[data-swap-pick]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const side = +btn.dataset.swapPick;
+        const newId = btn.dataset.swapId;
+        coach.onSwap?.(side, newId);
+      });
     });
 
     // When the alternation moves to the other exercise, scroll its panel into
     // view so the next active input isn't clipped off the bottom of the phone.
     if (!restActive && editing === null && slot && slot.side !== lastScrolledSide) {
       lastScrolledSide = slot.side;
-      container.querySelector('.ss-panel.ss-active')
-        ?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      panelEls[slot.side]?.scrollIntoView({ block: 'center', behavior: 'smooth' });
     }
   }
 
@@ -200,8 +273,14 @@ export function mountSupersetCard(container, exA, exB, prevSets = [], initialSet
     return prevLoggedSet ?? prevSessionSet ?? null;
   }
 
+  function emitSetsChange() {
+    coach.onSetsChange?.(buildEntries());
+  }
+
   function handleLog(side) {
     if (restActive) return;
+    unlockAudio();
+    ensureNotifyPermission();
     const weightInput = container.querySelector(`[data-weight="${side}"]`);
     const repsInput = container.querySelector(`[data-reps="${side}"]`);
     const prev = previousEntryFor(side);
@@ -228,14 +307,16 @@ export function mountSupersetCard(container, exA, exB, prevSets = [], initialSet
     const restAfter = slots[pointer]?.restAfter;
     const restSecs = exes[side].restSeconds;
     pointer++;
+    emitSetsChange();
     render();
 
     if (restAfter && pointer < slots.length && restSecs > 0) {
       restActive = true;
+      restingSide = side;
       render();
-      const restSlot = container.querySelector('#ss-rest-slot');
       timerHandle = mountRestTimer(restSlot, restSecs, () => {
         restActive = false;
+        restingSide = null;
         restSlot.innerHTML = '';
         render();
       });
@@ -254,6 +335,7 @@ export function mountSupersetCard(container, exA, exB, prevSets = [], initialSet
     }
     logged[editing.side][editing.index] = { weight, reps, ...readRpe(container.querySelector(`[data-edit-rpe="${side}"]`)) };
     editing = null;
+    emitSetsChange();
     render();
   }
 
@@ -272,6 +354,7 @@ export function mountSupersetCard(container, exA, exB, prevSets = [], initialSet
     logged[side].push({ weight, reps, ...readRpe(container.querySelector(`[data-rpe="${side}"]`)) });
     activeDirty = false;
     pointer++;
+    emitSetsChange();
   }
 
   function buildEntries() {
@@ -285,6 +368,22 @@ export function mountSupersetCard(container, exA, exB, prevSets = [], initialSet
   }
 
   render();
+
+  // Restore a rest that was running when the app was reloaded/updated.
+  const pendingRest = getPendingRestSeconds();
+  if (pendingRest > 0 && loggedCount() > 0 && loggedCount() < totalSets) {
+    restActive = true;
+    render();
+    timerHandle = mountRestTimer(restSlot, pendingRest, () => {
+      restActive = false;
+      restingSide = null;
+      restSlot.innerHTML = '';
+      render();
+    });
+  } else if (pendingRest > 0 && loggedCount() >= totalSets) {
+    clearPendingRest();
+  }
+
   return {
     /** Logged entries so far, folding any typed-but-unlogged active set. Used by
      *  the End / Previous controls to persist exactly what's on screen. */
