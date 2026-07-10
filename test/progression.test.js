@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { suggestProgression, parseTopReps, prescribeRpe } from '../js/progression.js';
+import { suggestProgression, parseTopReps, prescribeRpe, recommendLoad } from '../js/progression.js';
 
 test('prescribeRpe scales reps-in-reserve to the rep range', () => {
   assert.equal(prescribeRpe({ repRange: '6–8' }).placeholder, 8);
@@ -99,4 +99,36 @@ test('suggestProgression does not apply the stall reframe to bodyweight work', (
   const { text } = suggestProgression([{ weight: 0, reps: 10 }], '12–15', { stallCount: 5 });
   assert.doesNotMatch(text, /stall/i);
   assert.match(text, /beat/i);
+});
+
+test('recommendLoad returns null for bodyweight, time, and empty history', () => {
+  assert.equal(recommendLoad([{ weight: 0, reps: 15 }], '12–15'), null);
+  assert.equal(recommendLoad([{ weight: 20, reps: 60 }], '45–60s hold'), null);
+  assert.equal(recommendLoad([], '8–12'), null);
+  assert.equal(recommendLoad(null, '8–12'), null);
+});
+
+test('recommendLoad holds last top weight when there is no RPE history', () => {
+  // Did the top of the range (8) at 50kg, no RPE logged → shouldn't go backwards.
+  const rec = recommendLoad([{ weight: 50, reps: 8 }, { weight: 50, reps: 8 }], '6-8');
+  assert.equal(rec.reps, 8);
+  assert.equal(rec.weight, 50);
+  assert.match(rec.text, /50kg × 8/);
+});
+
+test('recommendLoad pushes the load up when last session left reps in reserve', () => {
+  // 8 reps at RPE ~6.5 means real capacity is higher → recommend heavier.
+  const rec = recommendLoad([{ weight: 50, reps: 8, rpe: 6 }, { weight: 50, reps: 8, rpe: 7 }], '6-8');
+  assert.ok(rec.weight > 50, `expected >50, got ${rec.weight}`);
+  assert.match(rec.text, /last avg RPE 6\.5/);
+});
+
+test('recommendLoad holds (does not push) when last session was a grind', () => {
+  const rec = recommendLoad([{ weight: 50, reps: 8, rpe: 9.5 }, { weight: 50, reps: 8, rpe: 9 }], '6-8');
+  assert.ok(rec.weight <= 50, `expected ≤50 after a grind, got ${rec.weight}`);
+});
+
+test('recommendLoad rounds to the given weight step', () => {
+  const rec = recommendLoad([{ weight: 100, reps: 8, rpe: 6 }], '6-8', { weightStep: 5 });
+  assert.equal(rec.weight % 5, 0);
 });

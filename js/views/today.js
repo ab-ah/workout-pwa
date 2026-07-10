@@ -10,13 +10,19 @@ import { mobilitySuggestions, allMobility } from '../mobility.js';
 import { mountMobilityFlow } from '../components/mobility-flow.js';
 import { generalPrimer } from '../warmup.js';
 import { MUSCLE_LABELS } from '../components/muscle-atlas-paths.js';
-import { findMissedWorkout, localDateStr } from '../schedule.js';
+import { findMissedWorkouts, localDateStr } from '../schedule.js';
 import { enableWakeLock, disableWakeLock } from '../wake-lock.js';
 import { downloadBackup, promptRestore } from '../backup-io.js';
 import { substituteOptions } from '../substitutions.js';
 import { getDeloadMode, startDeloadMode, endDeloadMode, DELOAD_DAYS } from '../deload-mode.js';
 
 const READINESS_LOW = 0.6; // prime movers below this get a warning
+
+// sessionStorage flag: the Catch-up panel is dismissed for the rest of the day.
+// Module-scoped (not inside renderToday) so it's initialised before the first
+// renderDayIntro() call — a function-body const would be in the temporal dead
+// zone when the intro renders on entry.
+const CATCHUP_DISMISS_KEY = 'leanbuild-catchup-dismissed';
 
 // Tiers mirror the adaptive-suggestion bands (adaptive.js READY 0.85 / CAUTION
 // 0.60) so the bar's colour/label and the advice below it never disagree:
@@ -214,38 +220,47 @@ export function renderToday(container, store) {
     renderExerciseFlow(state.routineId, state.exerciseIndex, state.loggedExercises, state.startedAt);
   }
 
-  // A missed-workout nudge is only worth showing once the user actually has a
-  // training history (a fresh install can't have "missed" anything) and never for
-  // a skipped active-recovery day (missing an easy mobility walk isn't a debt).
-  // It's also dismissible for the day.
-  const MISSED_DISMISS_KEY = 'leanbuild-missed-dismissed';
-  function isMissedDismissed(missed) {
-    return sessionStorage.getItem(MISSED_DISMISS_KEY) === missed.dateStr;
+  // The "Catch up" panel lists recently-missed scheduled sessions so you can run
+  // one now. It's only worth showing once the user actually has a training history
+  // (a fresh install can't have "missed" anything) and never lists a skipped
+  // active-recovery day (missing an easy mobility walk isn't a debt). It's
+  // dismissible for the rest of the day, and lives BELOW the day's main panel.
+  function isCatchUpDismissed() {
+    return sessionStorage.getItem(CATCHUP_DISMISS_KEY) === localDateStr(Date.now());
   }
-  function missedToShow(missed, history) {
-    if (!missed) return null;
-    if (history.length === 0) return null;
-    if (missed.routine.id === 'recovery-walk') return null;
-    if (isMissedDismissed(missed)) return null;
-    return missed;
+  function catchUpToShow(history) {
+    if (history.length === 0) return [];
+    if (isCatchUpDismissed()) return [];
+    const settings = getSettings();
+    return findMissedWorkouts(settings.schedule, settings.routines, history)
+      .filter(m => m.routine.id !== 'recovery-walk');
   }
 
-  function missedBannerHtml(missed, routines) {
-    if (!missed) return '';
-    const options = (routines ?? [])
-      .map(r => `<option value="${r.id}" ${r.id === missed.routine.id ? 'selected' : ''}>${r.name}</option>`)
-      .join('');
+  // A designed catch-up card: a header count, then one row per missed routine with
+  // its colour accent, tag, when-it-was-due and a one-tap "Do it now".
+  function catchUpCardHtml(list) {
+    if (!list || list.length === 0) return '';
+    const items = list.map(m => {
+      const when = m.daysAgo === 1 ? 'yesterday' : `${m.daysAgo} days ago`;
+      return `
+        <li class="catchup-item" style="--rc:var(${m.routine.colorVar})">
+          <span class="catchup-bar" aria-hidden="true"></span>
+          <div class="catchup-info">
+            <strong>${m.routine.name}</strong>
+            <span class="muted catchup-tag">${m.routine.tag}</span>
+            <span class="catchup-when">${m.dayName} · <span class="muted">${when}</span></span>
+          </div>
+          <button class="btn-secondary catchup-do" data-catchup-id="${m.routine.id}">Do it now</button>
+        </li>`;
+    }).join('');
+    const n = list.length;
     return `
-      <div class="missed-banner">
-        <button class="banner-dismiss" id="missed-dismiss-btn" aria-label="Dismiss">✕</button>
-        <div class="missed-banner-text">
-          <span class="muted">Missed workout</span>
-          <div><strong>${missed.routine.name}</strong> <span class="muted">was scheduled ${missed.dayName}</span></div>
-        </div>
-        <div class="missed-banner-actions">
-          <select class="set-input" id="missed-routine-select" aria-label="Choose a routine to do now">${options}</select>
-          <button class="btn-secondary" id="do-missed-btn">Do it now</button>
-        </div>
+      <div class="card catchup-card">
+        <button class="banner-dismiss" id="catchup-dismiss-btn" aria-label="Dismiss missed sessions">✕</button>
+        <span class="muted">⏳ Catch up</span>
+        <h3 class="catchup-title">${n} missed session${n === 1 ? '' : 's'}</h3>
+        <p class="muted catchup-sub">Run one now to stay on plan — recovery permitting.</p>
+        <ul class="catchup-list">${items}</ul>
       </div>
     `;
   }
@@ -257,26 +272,21 @@ export function renderToday(container, store) {
     if (endBtn) endBtn.addEventListener('click', () => { endDeloadMode(); renderDayIntro(); });
   }
 
-  function wireMissedDismiss(missed) {
-    const btn = container.querySelector('#missed-dismiss-btn');
-    if (btn && missed) {
-      btn.addEventListener('click', () => {
-        sessionStorage.setItem(MISSED_DISMISS_KEY, missed.dateStr);
+  function wireCatchUp(list) {
+    const dismiss = container.querySelector('#catchup-dismiss-btn');
+    if (dismiss) {
+      dismiss.addEventListener('click', () => {
+        sessionStorage.setItem(CATCHUP_DISMISS_KEY, localDateStr(Date.now()));
         renderDayIntro();
       });
     }
-  }
-
-  function wireMissed(missed) {
-    if (!missed) return;
-    const btn = container.querySelector('#do-missed-btn');
-    const select = container.querySelector('#missed-routine-select');
-    if (!btn) return;
-    btn.addEventListener('click', () => {
-      const settings = getSettings();
-      const chosenId = select?.value ?? missed.routine.id;
-      const routine = settings.routines?.find(r => r.id === chosenId) ?? missed.routine;
-      startRoutine(routine);
+    if (!list || list.length === 0) return;
+    container.querySelectorAll('[data-catchup-id]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const settings = getSettings();
+        const routine = settings.routines?.find(r => r.id === btn.dataset.catchupId);
+        if (routine) startRoutine(routine);
+      });
     });
   }
 
@@ -328,25 +338,24 @@ export function renderToday(container, store) {
     const settings = getSettings();
     const scheduled = getScheduledRoutine(settings);
     const history = store.getHistory();
-    const missed = missedToShow(findMissedWorkout(settings.schedule, settings.routines, history), history);
-    const banner = missedBannerHtml(missed, settings.routines);
+    const catchUpList = catchUpToShow(history);
+    const catchUp = catchUpCardHtml(catchUpList);
     const restoreBanner = restoreBannerHtml(history.length === 0);
     const deloadBanner = deloadBannerHtml(history);
 
     if (!scheduled) {
       container.innerHTML = `
         ${restoreBanner}
-        ${banner}
         ${deloadBanner}
         <div class="card">
           <span class="muted">Today</span>
           <h2>Rest Day</h2>
           <p class="muted">No workout scheduled for today. Recovery in progress.</p>
         </div>
+        ${catchUp}
         ${mobilityCardHtml()}
       `;
-      wireMissed(missed);
-      wireMissedDismiss(missed);
+      wireCatchUp(catchUpList);
       wireDeload();
       wireRestore();
       wireMobilityFlow();
@@ -366,7 +375,6 @@ export function renderToday(container, store) {
         : null;
       container.innerHTML = `
         ${restoreBanner}
-        ${banner}
         ${deloadBanner}
         <div class="card today-done" style="border-left:4px solid var(${routine.colorVar})">
           <span class="muted">Today · done ✓</span>
@@ -375,10 +383,10 @@ export function renderToday(container, store) {
           <p class="muted" style="margin-top:10px;font-size:13px">Nice work — recovery is underway. Check the Recovery tab for muscle status.</p>
           <button class="btn-secondary" id="repeat-workout-btn" style="margin-top:12px">Train it again</button>
         </div>
+        ${catchUp}
       `;
       container.querySelector('#repeat-workout-btn').addEventListener('click', () => startRoutine(routine));
-      wireMissed(missed);
-      wireMissedDismiss(missed);
+      wireCatchUp(catchUpList);
       wireDeload();
       wireRestore();
       return;
@@ -387,7 +395,6 @@ export function renderToday(container, store) {
     const { readiness, perMuscle } = routineReadiness(routine, settings, history);
     container.innerHTML = `
       ${restoreBanner}
-      ${banner}
       ${deloadBanner}
       <div class="card" style="border-left:4px solid var(${routine.colorVar})">
         <span class="muted">Up next</span>
@@ -398,11 +405,11 @@ export function renderToday(container, store) {
         ${buildAdaptiveBlock(readiness, perMuscle)}
         <button class="btn-primary" id="start-workout-btn">Start Workout</button>
       </div>
+      ${catchUp}
       ${routine.id === 'recovery-walk' ? mobilityCardHtml() : ''}
     `;
     container.querySelector('#start-workout-btn').addEventListener('click', () => startRoutine(routine));
-    wireMissed(missed);
-    wireMissedDismiss(missed);
+    wireCatchUp(catchUpList);
     wireDeload();
     wireRestore();
     wireMobilityFlow();

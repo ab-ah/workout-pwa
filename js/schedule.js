@@ -31,15 +31,35 @@ export function localDateStr(ts) {
  * @returns {{ routine, dow, dayName, dateStr, daysAgo } | null}
  */
 export function findMissedWorkout(schedule, routines, history, now = Date.now(), opts = {}) {
+  return findMissedWorkouts(schedule, routines, history, now, opts)[0] ?? null;
+}
+
+/**
+ * Every distinct missed scheduled workout within the lookback window, most-recent
+ * first and deduplicated by routine (a routine missed on two days lists once,
+ * carrying its most-recent miss). Same per-day skip rules as findMissedWorkout:
+ * a day is not counted if nothing was scheduled, something was logged that date,
+ * or the routine was performed on/after it. Powers the Today "Catch up" panel.
+ *
+ * @param {Object<string,string|null>} schedule  dow → routineId
+ * @param {Array<{id:string,name:string}>} routines
+ * @param {Array<{date:string, routineId?:string}>} history
+ * @param {number} [now]
+ * @param {{ lookbackDays?: number }} [opts]
+ * @returns {Array<{ routine, dow, dayName, dateStr, daysAgo }>}
+ */
+export function findMissedWorkouts(schedule, routines, history, now = Date.now(), opts = {}) {
   const lookback = opts.lookbackDays ?? DEFAULT_LOOKBACK_DAYS;
   const routineById = new Map((routines ?? []).map(r => [r.id, r]));
   const loggedDates = new Set((history ?? []).map(s => s.date));
+  const seen = new Set();
+  const missed = [];
 
   for (let daysAgo = 1; daysAgo <= lookback; daysAgo++) {
     const ts = now - daysAgo * MS_PER_DAY;
     const dow = new Date(ts).getDay();
     const routineId = (schedule ?? {})[String(dow)];
-    if (!routineId) continue;
+    if (!routineId || seen.has(routineId)) continue;
 
     const routine = routineById.get(routineId);
     if (!routine) continue;
@@ -51,7 +71,8 @@ export function findMissedWorkout(schedule, routines, history, now = Date.now(),
     const doneSince = (history ?? []).some(s => s.routineId === routineId && s.date >= dateStr);
     if (doneSince) continue;
 
-    return { routine, dow, dayName: DAY_NAMES[dow], dateStr, daysAgo };
+    seen.add(routineId);
+    missed.push({ routine, dow, dayName: DAY_NAMES[dow], dateStr, daysAgo });
   }
-  return null;
+  return missed;
 }

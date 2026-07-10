@@ -1,6 +1,6 @@
 import { mountRestTimer } from './rest-timer.js';
 import { suggestProgression, prescribeRpe } from '../progression.js';
-import { coachingBlock, cueTargetBlock } from './exercise-card.js';
+import { coachingBlock, cueTargetBlock, recommendedWeightBlock } from './exercise-card.js';
 import { buildSlotSequence, nextSlotIndex } from '../supersets.js';
 import { getDeloadMode, deloadSetTarget } from '../deload-mode.js';
 
@@ -118,6 +118,7 @@ export function mountSupersetCard(container, exA, exB, prevSets = [], initialSet
           ${ex.gifUrl ? `<img src="${ex.gifUrl}" alt="${ex.name} demonstration" class="ss-gif" loading="lazy" onerror="this.style.display='none'">` : ''}
         </div>
         <p class="muted">${ex.repRange} reps · rest ${ex.restSeconds}s${ex.startWeight ? ` · start ~${ex.startWeight}` : ''}</p>
+        ${recommendedWeightBlock(ex, prevs[side])}
         ${hint ? `<p class="progression-hint">💡 ${hint.text}</p>` : ''}
         ${cueTargetBlock(ex)}
         ${coachingBlock(ex, prevs[side])}
@@ -146,7 +147,7 @@ export function mountSupersetCard(container, exA, exB, prevSets = [], initialSet
         <div class="ss-divider"><span>↕</span></div>
         ${panelHtml(1)}
         <div id="ss-rest-slot"></div>
-        <button class="btn-primary" id="ss-complete-btn">${allDone
+        <button class="${allDone ? 'btn-primary' : 'btn-primary finish-early'}" id="ss-complete-btn">${allDone
           ? 'Mark Superset Complete →'
           : `Finish Early (${loggedCount()}/${totalSets} sets) →`}</button>
       </div>`;
@@ -190,18 +191,38 @@ export function mountSupersetCard(container, exA, exB, prevSets = [], initialSet
     }
   }
 
+  /** The set to inherit blank fields from for this side: the last set logged this
+   *  session, else the matching set from last session. Carries weight/reps/rpe. */
+  function previousEntryFor(side) {
+    const prevLoggedSet = logged[side].length > 0 ? logged[side][logged[side].length - 1] : null;
+    const idx = logged[side].length;
+    const prevSessionSet = prevs[side] ? (prevs[side][idx] ?? prevs[side][prevs[side].length - 1]) : null;
+    return prevLoggedSet ?? prevSessionSet ?? null;
+  }
+
   function handleLog(side) {
     if (restActive) return;
     const weightInput = container.querySelector(`[data-weight="${side}"]`);
     const repsInput = container.querySelector(`[data-reps="${side}"]`);
-    const weight = parseFloat(weightInput.value);
-    const reps = parseInt(repsInput.value, 10);
+    const prev = previousEntryFor(side);
+
+    // Fill any field left blank from the previous entry, so tapping Log with an
+    // unchanged field (or all of them) repeats the last set's weight / reps / RPE.
+    let weight = parseFloat(weightInput.value);
+    if (Number.isNaN(weight) && prev != null && Number.isFinite(Number(prev.weight))) weight = Number(prev.weight);
+    let reps = parseInt(repsInput.value, 10);
+    if (Number.isNaN(reps) && prev != null && Number.isFinite(Number(prev.reps))) reps = Number(prev.reps);
+
     if (Number.isNaN(weight) || Number.isNaN(reps)) {
       weightInput.style.borderColor = 'var(--push)';
       repsInput.style.borderColor = 'var(--push)';
       return;
     }
-    logged[side].push({ weight, reps, ...readRpe(container.querySelector(`[data-rpe="${side}"]`)) });
+    const typedRpe = readRpe(container.querySelector(`[data-rpe="${side}"]`));
+    const rpe = ('rpe' in typedRpe)
+      ? typedRpe
+      : (prev != null && Number.isFinite(Number(prev.rpe)) ? { rpe: Math.min(10, Number(prev.rpe)) } : {});
+    logged[side].push({ weight, reps, ...rpe });
     if (navigator.vibrate) navigator.vibrate(10); // subtle confirm tick
     activeDirty = false;
     const restAfter = slots[pointer]?.restAfter;

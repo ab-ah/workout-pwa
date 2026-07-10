@@ -1,6 +1,8 @@
 // Double-progression coaching hint derived from last session's sets.
 // Pure: no DOM. exercise-card renders the returned text.
 
+import { epley1RM, loadForReps, roundLoad } from './one-rep-max.js';
+
 const DEFAULT_WEIGHT_STEP = 2.5; // kg
 
 // Sessions of flat/declining e1RM before the coach stops chasing load and calls
@@ -108,4 +110,58 @@ export function suggestProgression(previousSets, repRange, opts = {}) {
     return { text: `Work ${topWeight}kg up to ${top} reps` };
   }
   return { text: `Beat ${maxReps} reps at ${topWeight}kg` };
+}
+
+/**
+ * Recommend today's working weight from the previous session's actual sets —
+ * weights, reps AND logged RPE. It estimates your 1RM from last session's best
+ * set, then picks the load that should land you at the top of the rep range with
+ * reps-in-reserve sized by how hard last session actually felt: an easy day
+ * (avg RPE ≤ 7) pushes for the top rep with nothing in reserve, a grind (avg RPE
+ * ≥ 9) backs off a couple of reps. Returns null for bodyweight/time work or when
+ * there's no loaded history to learn from (the card falls back to its start hint).
+ *
+ * @param {Array<{weight:number,reps:number,rpe?:number}>} previousSets
+ * @param {string} repRange
+ * @param {{ weightStep?: number }} [opts]
+ * @returns {{ weight:number, reps:number, avgRpe:number|null, text:string } | null}
+ */
+export function recommendLoad(previousSets, repRange, opts = {}) {
+  if (!Array.isArray(previousSets) || previousSets.length === 0) return null;
+  if (isTimeBased(repRange)) return null;
+
+  const loaded = previousSets.filter(s => (Number(s.weight) || 0) > 0);
+  if (loaded.length === 0) return null; // bodyweight — no external load to prescribe
+  const topWeight = Math.max(...loaded.map(s => Number(s.weight) || 0));
+
+  const top = parseTopReps(repRange);
+  const targetReps = top ?? Math.max(...loaded.map(s => Number(s.reps) || 0));
+  if (!targetReps) return null;
+
+  // Effort-adjusted 1RM: a set stopped short of failure (low RPE) implies a higher
+  // true 1RM than its raw reps show, so credit the reps left in reserve
+  // (RIR ≈ 10 − RPE) before estimating. No RPE → take the reps at face value.
+  let e1rm = null;
+  for (const s of loaded) {
+    const w = Number(s.weight) || 0;
+    const r = Number(s.reps) || 0;
+    if (w <= 0 || r <= 0) continue;
+    const rpe = Number(s.rpe);
+    const rir = Number.isFinite(rpe) && rpe > 0 ? Math.max(0, 10 - rpe) : 0;
+    const e = epley1RM(w, r + rir);
+    if (e != null && (e1rm === null || e > e1rm)) e1rm = e;
+  }
+  if (!e1rm) return null;
+
+  const step = opts.weightStep ?? DEFAULT_WEIGHT_STEP;
+  const rpes = loaded.map(s => Number(s.rpe)).filter(v => Number.isFinite(v) && v > 0);
+  const avgRpe = rpes.length ? rpes.reduce((a, b) => a + b, 0) / rpes.length : null;
+
+  // Aim for ~1 rep in reserve at the top of the range.
+  let weight = roundLoad(loadForReps(e1rm, targetReps + 1), step);
+  // Never prescribe going backwards unless last session was a genuine grind.
+  if (avgRpe == null || avgRpe < 9) weight = Math.max(weight, topWeight);
+
+  const rpeNote = avgRpe != null ? ` · last avg RPE ${round1(avgRpe)}` : '';
+  return { weight, reps: targetReps, avgRpe, text: `Try ~${weight}kg × ${targetReps}${rpeNote}` };
 }

@@ -80,7 +80,13 @@ export const SETTINGS_KEY = 'leanbuild-settings-v1';
 //     stretch); it's refreshed on default exercises on the bump, like name/muscles.
 //   New exercises (incline-dumbbell-curl, dumbbell-hip-thrust, band-face-pull) are
 //   appended to any existing pool; routines reinstall on the bump.
-export const CURRENT_PLAN_VERSION = 14;
+// v15 = equipment fix: the resistance band can't be anchored to a wall, so the
+//   Band Face Pull (needs an eye-height anchor) is swapped for a Band Pull-Apart
+//   on both upper days — same rear-delt + external-rotation benefit, held in the
+//   hands with no anchor. The new band-pull-apart exercise is appended to any
+//   existing pool and the routines reinstall on the bump; the old band-face-pull
+//   stays in the library (off the default schedule) so no history is orphaned.
+export const CURRENT_PLAN_VERSION = 15;
 
 const DEFAULT_RECOVERY_HOURS = {
   chest: 54, front_delts: 48, side_delts: 48, traps: 48, triceps: 48, lats: 60,
@@ -126,7 +132,7 @@ const DEFAULT_EXERCISE_MUSCLES = {
   'dumbbell-pullover':                   { lats: 'synergist', chest: 'synergist', triceps: 'stabilizer' },
   'incline-dumbbell-curl':               { biceps: 'prime_mover', forearms: 'stabilizer' },
   'dumbbell-hip-thrust':                 { glutes: 'prime_mover', hamstrings: 'synergist', quads: 'stabilizer' },
-  'band-face-pull':                      { rear_delts: 'prime_mover', traps: 'synergist' },
+  'band-pull-apart':                     { rear_delts: 'prime_mover', traps: 'synergist' },
   'back-hyperextension':                 { lower_back: 'prime_mover', glutes: 'synergist', hamstrings: 'synergist' },
   'weighted-back-hyperextension':        { lower_back: 'prime_mover', glutes: 'synergist', hamstrings: 'synergist' },
   'preacher-curl':                       { biceps: 'prime_mover', forearms: 'stabilizer' },
@@ -270,7 +276,7 @@ const EXERCISE_POOL_DATA = [
   // --- v14 trainer-review additions (equipment: bench, DBs, resistance band) ---
   { id: 'incline-dumbbell-curl', name: 'Incline Dumbbell Curl', setsCount: 3, repRange: '10–12', restSeconds: 60, startWeight: '10–14 kg / hand', gifUrl: 'assets/exercise-gifs/incline-dumbbell-curl.gif', cue: 'Lie back on the incline bench, arms hanging straight down — the stretched (lengthened) position grows more biceps per rep than a standing curl. Keep the upper arms still.' },
   { id: 'dumbbell-hip-thrust', name: 'Dumbbell Hip Thrust', setsCount: 3, repRange: '10–12', restSeconds: 90, startWeight: 'DB across hips, 24–34 kg', gifUrl: 'assets/exercise-gifs/dumbbell-hip-thrust.gif', cue: 'Shoulder blades on the bench, DB across the hips (pad it), chin tucked. Drive through the heels and squeeze the glutes hard at the top — the only direct glute work in the plan.' },
-  { id: 'band-face-pull', name: 'Band Face Pull', setsCount: 3, repRange: '15–20', restSeconds: 45, startWeight: 'band, controlled', gifUrl: 'assets/exercise-gifs/band-face-pull.gif', cue: 'Anchor the band at eye height, pull toward your forehead with elbows high and rotate your pinkies back. Trains rear delts AND external rotation — cheap insurance for four pressing days a week.' },
+  { id: 'band-pull-apart', name: 'Band Pull-Apart', setsCount: 3, repRange: '15–20', restSeconds: 45, startWeight: 'band, controlled', gifUrl: 'assets/exercise-gifs/band-pull-apart.gif', cue: 'Hold the band in front at shoulder height, arms straight — no anchor needed. Pull it apart to your chest, squeezing the shoulder blades, then return under control. Trains rear delts AND external rotation — cheap insurance for four pressing days a week.' },
   // --- Fat-loss conditioning & metabolic additions ---
   { id: 'treadmill-incline-walk', name: 'Incline Treadmill Walk (steady)', setsCount: 1, repRange: '25–35 min', restSeconds: 0, startWeight: 'incline 6–10%, brisk', gifUrl: 'assets/exercise-gifs/treadmill-incline-walk.gif', timer: { type: 'duration', seconds: 1800 } },
   { id: 'treadmill-hiit-intervals', name: 'Treadmill HIIT Intervals', setsCount: 1, repRange: '8–10 × 30s hard / 60s easy', restSeconds: 0, startWeight: 'run/fast walk', gifUrl: 'assets/exercise-gifs/treadmill-hiit-intervals.gif', timer: { type: 'interval', workSeconds: 30, restSeconds: 60, rounds: 9 } },
@@ -305,7 +311,7 @@ const DEFAULT_ROUTINES = [
       'chest-supported-dumbbell-row',
       'rear-delt-dumbbell-fly',
       'dumbbell-lateral-raise',
-      'band-face-pull',
+      'band-pull-apart',
       'preacher-curl',
       'overhead-dumbbell-triceps-extension',
       'treadmill-incline-walk',
@@ -357,7 +363,7 @@ const DEFAULT_ROUTINES = [
       'dumbbell-pullover',
       'rear-delt-dumbbell-fly',
       'lateral-raise-dropset',
-      'band-face-pull',
+      'band-pull-apart',
       'incline-dumbbell-curl',
       'lying-dumbbell-triceps-extension',
     ],
