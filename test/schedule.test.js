@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { findMissedWorkout, localDateStr } from '../js/schedule.js';
+import { findMissedWorkout, findMissedWorkouts, localDateStr } from '../js/schedule.js';
 
 // Fixed reference: Thursday 2 July 2026, noon local.
 const NOW = new Date(2026, 6, 2, 12, 0, 0).getTime();
@@ -57,6 +57,29 @@ test('respects a shorter lookback window', () => {
 test('ignores rest days (no routine scheduled)', () => {
   const restSchedule = { '3': null };
   assert.equal(findMissedWorkout(restSchedule, routines, [], NOW), null);
+});
+
+test('findMissedWorkouts lists every distinct missed routine, most-recent first', () => {
+  // Nothing logged in the window → Wed(pull), Tue(push), Mon(legs) all missed.
+  const list = findMissedWorkouts(schedule, routines, [], NOW);
+  assert.deepEqual(list.map(m => m.routine.id), ['pull', 'push', 'legs']);
+  assert.deepEqual(list.map(m => m.daysAgo), [1, 2, 3]);
+});
+
+test('findMissedWorkouts skips satisfied days and dedupes by routine', () => {
+  // Log Wednesday's pull → it drops out; push + legs remain.
+  const history = [{ date: '2026-07-01', routineId: 'pull' }];
+  const list = findMissedWorkouts(schedule, routines, history, NOW);
+  assert.deepEqual(list.map(m => m.routine.id), ['push', 'legs']);
+});
+
+test('findMissedWorkouts returns [] when the window is fully satisfied', () => {
+  const history = [
+    { date: '2026-07-01', routineId: 'pull' },
+    { date: '2026-06-30', routineId: 'push' },
+    { date: '2026-06-29', routineId: 'legs' },
+  ];
+  assert.deepEqual(findMissedWorkouts(schedule, routines, history, NOW), []);
 });
 
 test('localDateStr formats local YYYY-MM-DD', () => {

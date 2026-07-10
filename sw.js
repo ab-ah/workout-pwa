@@ -1,4 +1,4 @@
-const CACHE_NAME = 'leanbuild-v29';
+const CACHE_NAME = 'leanbuild-v30';
 const ASSETS = [
   './',
   './index.html',
@@ -35,6 +35,7 @@ const ASSETS = [
   './css/settings.css',
   './js/components/exercise-card.js',
   './js/components/superset-card.js',
+  './js/components/gif-lightbox.js',
   './js/components/mobility-flow.js',
   './js/components/rest-timer.js',
   './js/components/workout-timer.js',
@@ -50,6 +51,7 @@ const ASSETS = [
 const GIFS = [
   './assets/exercise-gifs/back-hyperextension.gif',
   './assets/exercise-gifs/band-face-pull.gif',
+  './assets/exercise-gifs/band-pull-apart.gif',
   './assets/exercise-gifs/dumbbell-hip-thrust.gif',
   './assets/exercise-gifs/incline-dumbbell-curl.gif',
   './assets/exercise-gifs/barbell-back-squat.gif',

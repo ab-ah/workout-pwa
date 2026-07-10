@@ -1,6 +1,6 @@
 import { mountRestTimer } from './rest-timer.js';
 import { mountWorkoutTimer } from './workout-timer.js';
-import { suggestProgression, parseTopReps, prescribeRpe } from '../progression.js';
+import { suggestProgression, parseTopReps, prescribeRpe, recommendLoad } from '../progression.js';
 import { warmupSets, HEAVY_BARBELL_LIFTS } from '../warmup.js';
 import { bestE1RM, loadForReps, roundLoad } from '../one-rep-max.js';
 import { getDeloadMode, deloadSetTarget } from '../deload-mode.js';
@@ -125,6 +125,18 @@ export function cueTargetBlock(exercise) {
   return cueHtml + rpeHtml;
 }
 
+/** Prominent "use this weight today" chip, computed from the previous session's
+ *  weights, reps and RPE (see progression.recommendLoad). Empty for bodyweight /
+ *  time work or when there's no loaded history yet. Shared by both cards. */
+export function recommendedWeightBlock(exercise, previousSets) {
+  const rec = recommendLoad(previousSets, exercise.repRange, { weightStep: exercise.weightStep });
+  if (!rec) return '';
+  const rpeNote = rec.avgRpe != null
+    ? ` <span class="weight-rec-note">from last RPE ${Math.round(rec.avgRpe * 10) / 10}</span>`
+    : '';
+  return `<p class="weight-rec">🏋 <span class="weight-rec-label">Recommended</span> <strong>${rec.weight}kg × ${rec.reps}</strong>${rpeNote}</p>`;
+}
+
 export function mountExerciseCard(container, exercise, previousSets, initialSets, onExerciseComplete, coach = {}) {
   // One-tap deload week: cap this exercise's working sets while a deload is
   // active (see deload-mode.js), holding the weights but trimming ~40% of volume.
@@ -234,6 +246,7 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
       <p class="muted">${exercise.repRange} reps · rest ${exercise.restSeconds}s · start ~${exercise.startWeight}</p>
       ${perSide ? '<p class="muted unilateral-note">↔ One side at a time — log the weight &amp; reps for a single side.</p>' : ''}
       ${deload.active ? `<p class="deload-tag">🌙 Deload week — ${effectiveSetsCount} of ${exercise.setsCount} sets, hold the weight</p>` : ''}
+      ${recommendedWeightBlock(exercise, previousSets)}
       ${(() => {
         const hint = suggestProgression(previousSets, exercise.repRange, { weightStep: exercise.weightStep, stallCount: coach.stallCount });
         return hint ? `<p class="progression-hint">💡 ${hint.text}</p>` : '';
@@ -243,12 +256,16 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
       ${exercise.timer ? '<div id="workout-timer-slot"></div>' : ''}
       <div id="set-rows">${rows.join('')}</div>
       <div id="rest-timer-slot"></div>
-      <button class="btn-primary" id="complete-exercise-btn">${(() => {
+      ${(() => {
         const allSetsDone = loggedSets.length >= effectiveSetsCount;
-        return allSetsDone
+        // "Finish Early" is a distinct amber outline so it never looks like the
+        // accent Log button; "Mark Complete" (all sets in) stays the solid accent.
+        const cls = allSetsDone ? 'btn-primary' : 'btn-primary finish-early';
+        const label = allSetsDone
           ? 'Mark Exercise Complete →'
           : `Finish Early (${loggedSets.length}/${effectiveSetsCount} sets) →`;
-      })()}</button>
+        return `<button class="${cls}" id="complete-exercise-btn">${label}</button>`;
+      })()}
     `;
 
     if (exercise.timer) {
@@ -311,17 +328,36 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
     return { rpe: Math.min(10, rpe) };
   }
 
+  /** The set to inherit blank fields from: the last set logged this session,
+   *  else the matching set from last session. Carries weight/reps/rpe. */
+  function previousEntryFor(index) {
+    const prevLoggedSet = loggedSets.length > 0 ? loggedSets[loggedSets.length - 1] : null;
+    const prevSessionSet = previousSets ? (previousSets[index] ?? previousSets[previousSets.length - 1]) : null;
+    return prevLoggedSet ?? prevSessionSet ?? null;
+  }
+
   function handleLogSet() {
     const weightInput = container.querySelector('#weight-input');
     const repsInput = container.querySelector('#reps-input');
-    const weight = parseFloat(weightInput.value);
-    const reps = parseInt(repsInput.value, 10);
+    const prev = previousEntryFor(activeSetIndex);
+
+    // Fill any field left blank from the previous entry, so tapping Log with an
+    // unchanged field (or all of them) repeats the last set's weight / reps / RPE.
+    let weight = parseFloat(weightInput.value);
+    if (Number.isNaN(weight) && prev != null && Number.isFinite(Number(prev.weight))) weight = Number(prev.weight);
+    let reps = parseInt(repsInput.value, 10);
+    if (Number.isNaN(reps) && prev != null && Number.isFinite(Number(prev.reps))) reps = Number(prev.reps);
+
     if (Number.isNaN(weight) || Number.isNaN(reps)) {
       weightInput.style.borderColor = 'var(--push)';
       repsInput.style.borderColor = 'var(--push)';
       return;
     }
-    loggedSets.push({ weight, reps, ...readRpe(container.querySelector('#rpe-input')) });
+    const typedRpe = readRpe(container.querySelector('#rpe-input'));
+    const rpe = ('rpe' in typedRpe)
+      ? typedRpe
+      : (prev != null && Number.isFinite(Number(prev.rpe)) ? { rpe: Math.min(10, Number(prev.rpe)) } : {});
+    loggedSets.push({ weight, reps, ...rpe });
     if (navigator.vibrate) navigator.vibrate(10); // subtle confirm tick
     activeSetIndex++;
     activeDirty = false; // fresh active row for the next set

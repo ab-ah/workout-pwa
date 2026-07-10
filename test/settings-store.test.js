@@ -527,12 +527,13 @@ test('v14 adds hip thrust, face pulls, incline curl and refreshes cues', () => {
   assert.equal(s.planVersion, CURRENT_PLAN_VERSION);
 
   const byId = new Map(s.exercises.map(e => [e.id, e]));
-  // New exercises appended to the pool.
+  // New exercises appended to the pool. (Rear-delt/external-rotation work now ships
+  // as the no-anchor Band Pull-Apart — see the v15 swap below.)
   assert.ok(byId.has('dumbbell-hip-thrust'));
-  assert.ok(byId.has('band-face-pull'));
+  assert.ok(byId.has('band-pull-apart'));
   assert.ok(byId.has('incline-dumbbell-curl'));
   assert.equal(byId.get('dumbbell-hip-thrust').muscles.glutes, 'prime_mover');
-  assert.equal(byId.get('band-face-pull').muscles.rear_delts, 'prime_mover');
+  assert.equal(byId.get('band-pull-apart').muscles.rear_delts, 'prime_mover');
   // Cue refreshed onto the stale default calf raise.
   assert.match(byId.get('dumbbell-calf-raise').cue ?? '', /plate|step/i);
 
@@ -540,12 +541,44 @@ test('v14 adds hip thrust, face pulls, incline curl and refreshes cues', () => {
   const up = s.routines.find(r => r.id === 'upper-power');
   const uh = s.routines.find(r => r.id === 'upper-hypertrophy');
   const lh = s.routines.find(r => r.id === 'lower-hypertrophy');
-  assert.ok(up.exerciseIds.includes('band-face-pull'));
+  assert.ok(up.exerciseIds.includes('band-pull-apart'));
   assert.ok(uh.exerciseIds.includes('incline-dumbbell-curl'));
   assert.ok(!uh.exerciseIds.includes('standing-dumbbell-curl'), 'standing curl swapped out');
   assert.ok(lh.exerciseIds.includes('dumbbell-hip-thrust'));
   // Superset pair updated to the incline curl.
   assert.ok(uh.supersets.some(pair => pair.includes('incline-dumbbell-curl')));
+});
+
+test('v15 swaps the wall-anchored Band Face Pull for a no-anchor Band Pull-Apart', () => {
+  globalThis.localStorage = makeMemoryStorage();
+  // A user already on v14: they have Band Face Pull in the pool and on both upper days.
+  saveSettings({
+    exercises: [
+      { id: 'band-face-pull', name: 'Band Face Pull', muscles: { rear_delts: 'prime_mover', traps: 'synergist' }, gifUrl: 'assets/exercise-gifs/band-face-pull.gif' },
+    ],
+    routines: [
+      { id: 'upper-power', name: 'Upper Power + Walk', tag: 't', colorVar: '--push', exerciseIds: ['flat-barbell-bench-press', 'band-face-pull'] },
+      { id: 'upper-hypertrophy', name: 'Upper Hypertrophy', tag: 't', colorVar: '--pull', exerciseIds: ['band-face-pull'] },
+    ],
+    schedule: {},
+    recoveryHours: {},
+    planVersion: 14,
+  });
+  const s = getSettings();
+  assert.equal(s.planVersion, CURRENT_PLAN_VERSION);
+
+  const byId = new Map(s.exercises.map(e => [e.id, e]));
+  // The new no-anchor movement is present with a cue that says no anchor is needed.
+  assert.ok(byId.has('band-pull-apart'));
+  assert.match(byId.get('band-pull-apart').cue ?? '', /no anchor/i);
+
+  // Reinstalled routines use the pull-apart, not the face pull.
+  const up = s.routines.find(r => r.id === 'upper-power');
+  const uh = s.routines.find(r => r.id === 'upper-hypertrophy');
+  assert.ok(up.exerciseIds.includes('band-pull-apart'));
+  assert.ok(uh.exerciseIds.includes('band-pull-apart'));
+  assert.ok(!up.exerciseIds.includes('band-face-pull'), 'face pull off the schedule');
+  assert.ok(!uh.exerciseIds.includes('band-face-pull'), 'face pull off the schedule');
 });
 
 test('does not overwrite routines once the plan version is current', () => {

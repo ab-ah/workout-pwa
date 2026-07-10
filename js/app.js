@@ -5,6 +5,11 @@ import { renderHistory } from './views/history.js';
 import { renderRecovery } from './views/recovery.js';
 import { renderSettings } from './views/settings.js';
 import { requestPersistentStorage } from './backup-io.js';
+import { installGifLightbox } from './components/gif-lightbox.js';
+
+// Tap any demo GIF to zoom it full-size (closes on tap/Escape). Installed once;
+// works across every re-render via event delegation.
+installGifLightbox();
 
 // Ask the browser to keep our logged data from being auto-evicted under storage
 // pressure. Best-effort and fire-and-forget — never blocks app startup.

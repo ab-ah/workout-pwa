@@ -451,3 +451,69 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible{
   background:rgba(255,255,255,.55);border-radius:1px;pointer-events:none;
 }
 .volume-range{font-size:10px;flex-shrink:0;white-space:nowrap;margin-left:2px}
+
+/* ── v1.11.0 additions ──────────────────────────────────────────────── */
+
+/* Catch-up panel (below Today's main card): recently-missed sessions to run now */
+.catchup-card{position:relative}
+.catchup-title{font-family:'Anton',sans-serif;font-size:20px;text-transform:uppercase;margin:2px 0}
+.catchup-sub{font-size:12px;margin-bottom:12px}
+.catchup-list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px}
+.catchup-item{
+  display:flex;align-items:center;gap:12px;position:relative;overflow:hidden;
+  background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:10px 12px 10px 15px;
+}
+.catchup-bar{position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--rc,var(--accent))}
+.catchup-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.catchup-info strong{font-size:15px}
+.catchup-tag{font-size:12px}
+.catchup-when{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink)}
+.catchup-do{margin-top:0;white-space:nowrap;flex-shrink:0}
+.catchup-do:hover{color:var(--accent);border-color:var(--accent)}
+
+/* Recommended working weight (from historical weight × reps × RPE) */
+.weight-rec{
+  display:flex;align-items:center;gap:7px;flex-wrap:wrap;
+  font-size:13px;color:var(--ink);
+  background:rgba(70,209,96,.10);border:1px solid rgba(70,209,96,.4);
+  border-radius:8px;padding:8px 11px;margin:8px 0 4px;
+}
+.weight-rec strong{font-family:'JetBrains Mono',monospace;color:var(--cardio);font-size:14px}
+.weight-rec-label{font-family:'JetBrains Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.weight-rec-note{font-size:11px;color:var(--muted)}
+
+/* Finish Early: a distinct, opaque button so it never reads as the accent Log
+   button and never bleeds content through while it sits sticky at the bottom. */
+.btn-primary.finish-early{
+  background:var(--panel-2);color:var(--core);
+  border:1px solid rgba(255,210,74,.5);
+}
+/* Sticky set/superset action: opaque shadow separates it from content scrolling
+   underneath (fixes the Log/Finish-Early overlap on short screens). */
+#complete-exercise-btn,#ss-complete-btn{box-shadow:0 -8px 18px rgba(14,16,20,.92)}
+
+/* Leave room so an active Log row is scrolled clear of the sticky action button
+   and the sticky rest timer, rather than landing underneath either of them. */
+html{scroll-padding-bottom:170px;scroll-padding-top:90px}
+.set-row.active,.ss-panel{scroll-margin-bottom:170px;scroll-margin-top:90px}
+/* Extra slack at the bottom of the superset card so the last panel's Log row can
+   always scroll above the sticky Finish Early / Complete button. */
+.superset-card{padding-bottom:64px}
+
+/* Tap-to-zoom GIF lightbox (pops over the current screen; tap/Esc to close) */
+.exercise-gif,.ss-gif,.mobility-gif,.mobility-flow-gif{cursor:zoom-in}
+.gif-lightbox{
+  position:fixed;inset:0;z-index:1000;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+  background:rgba(6,8,12,.93);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);
+  padding:24px;cursor:zoom-out;animation:gif-lightbox-in .15s ease;
+}
+@keyframes gif-lightbox-in{from{opacity:0}to{opacity:1}}
+.gif-lightbox-img{
+  max-width:100%;max-height:82vh;width:auto;height:auto;object-fit:contain;
+  border-radius:16px;background:var(--bg);box-shadow:0 24px 70px rgba(0,0,0,.7);
+}
+.gif-lightbox-hint{
+  font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--muted);
+}
