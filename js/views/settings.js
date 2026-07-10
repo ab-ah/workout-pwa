@@ -3,6 +3,7 @@ import { APP_VERSION, BUILD_DATE } from '../version.js';
 import { PROGRESS_KEY, HISTORY_KEY } from '../store.js';
 import { createMuscleAtlas, ROLE_COLORS, MUSCLE_LABELS } from '../components/muscle-atlas.js';
 import { downloadBackup, restoreBackupFromFile } from '../backup-io.js';
+import { escapeHtml } from '../escape.js';
 
 const MUSCLE_NAMES = MUSCLE_LABELS;
 const ALL_MUSCLES = Object.keys(MUSCLE_NAMES);
@@ -195,7 +196,7 @@ export function renderSettings(container, onClose) {
         <div class="settings-ex-card ${isExpanded ? 'expanded' : ''}">
           <div class="settings-ex-card-header" data-toggle="${i}">
             <div class="settings-ex-card-heading">
-              <span class="settings-ex-card-name">${ex.name}</span>
+              <span class="settings-ex-card-name">${escapeHtml(ex.name)}</span>
               <div class="settings-ex-card-tags">${tags}</div>
             </div>
             <span class="settings-ex-card-chevron">${isExpanded ? '▲' : '▼'}</span>
@@ -204,7 +205,7 @@ export function renderSettings(container, onClose) {
           <div class="settings-ex-card-body">
             <div class="settings-field">
               <label class="settings-field-label">Name</label>
-              <input type="text" class="set-input settings-name-input" style="width:100%" data-ex="${i}" value="${ex.name}">
+              <input type="text" class="set-input settings-name-input" style="width:100%" data-ex="${i}" value="${escapeHtml(ex.name)}">
             </div>
             <div class="settings-field">
               <label class="settings-field-label">Sets</label>
@@ -212,7 +213,7 @@ export function renderSettings(container, onClose) {
             </div>
             <div class="settings-field">
               <label class="settings-field-label">Rep Range</label>
-              <input type="text" class="set-input" style="width:80px" data-ex="${i}" data-field="repRange" value="${ex.repRange}">
+              <input type="text" class="set-input" style="width:80px" data-ex="${i}" data-field="repRange" value="${escapeHtml(ex.repRange)}">
             </div>
             <div class="settings-field">
               <label class="settings-field-label">Rest (seconds)</label>
@@ -221,11 +222,11 @@ export function renderSettings(container, onClose) {
             <div class="settings-field">
               <label class="settings-field-label">GIF URL</label>
               <div class="gif-url-row">
-                <input type="url" class="set-input settings-gif-input" data-ex="${i}" value="${ex.gifUrl ?? ''}">
+                <input type="url" class="set-input settings-gif-input" data-ex="${i}" value="${escapeHtml(ex.gifUrl ?? '')}">
                 <button class="btn-save-gif" data-ex="${i}">Save</button>
               </div>
               <span class="gif-save-confirm" id="gif-confirm-${i}" style="display:none;color:var(--accent);font-size:11px;margin-top:4px">✓ Saved</span>
-              <img class="settings-gif-preview" id="gif-preview-${i}" src="${ex.gifUrl ?? ''}" alt="${ex.name} demonstration" loading="lazy" ${ex.gifUrl ? '' : 'style="display:none"'} onerror="this.style.display='none'">
+              <img class="settings-gif-preview" id="gif-preview-${i}" src="${escapeHtml(ex.gifUrl ?? '')}" alt="${escapeHtml(ex.name)} demonstration" loading="lazy" ${ex.gifUrl ? '' : 'style="display:none"'} onerror="this.style.display='none'">
             </div>
             <div class="settings-field">
               <label class="settings-field-label">Muscles <span class="muted" style="font-size:10px">click to cycle: none → primary → synergist → stabilizer</span></label>
@@ -392,14 +393,14 @@ export function renderSettings(container, onClose) {
         const details = isOpen ? `
           <div class="routine-ex-detail">
             <p class="muted">${ex.setsCount} sets · ${ex.repRange} reps · rest ${ex.restSeconds}s${ex.startWeight ? ` · start ${ex.startWeight}` : ''}</p>
-            ${ex.gifUrl ? `<img class="routine-ex-gif" src="${ex.gifUrl}" alt="${ex.name} demonstration" loading="lazy" onerror="this.style.display='none'">` : ''}
+            ${ex.gifUrl ? `<img class="routine-ex-gif" src="${escapeHtml(ex.gifUrl)}" alt="${escapeHtml(ex.name)} demonstration" loading="lazy" onerror="this.style.display='none'">` : ''}
             <div id="routine-atlas-${ri}-${exId}" class="routine-ex-atlas"></div>
           </div>` : '';
         return `<div class="routine-ex-item ${isOpen ? 'expanded' : ''}">
           <div class="routine-ex-row">
             <button class="routine-ex-toggle" data-routine="${ri}" data-ex-id="${exId}">
               <span class="routine-ex-chevron">${isOpen ? '▲' : '▼'}</span>
-              <span>${ex.name}</span>
+              <span>${escapeHtml(ex.name)}</span>
             </button>
             <button class="btn-icon danger" data-remove-routine="${ri}" data-ex-id="${exId}" title="Remove from routine">×</button>
           </div>
@@ -408,13 +409,13 @@ export function renderSettings(container, onClose) {
       }).join('');
 
       const availableExercises = allExercises.filter(e => !(r.exerciseIds ?? []).includes(e.id));
-      const addExOptions = availableExercises.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
+      const addExOptions = availableExercises.map(e => `<option value="${escapeHtml(e.id)}">${escapeHtml(e.name)}</option>`).join('');
 
       return `
         <div class="routine-card" style="border-left:3px solid ${borderColor}">
           <div class="settings-field">
             <label class="settings-field-label">Name</label>
-            <input type="text" class="set-input routine-name-input" style="width:100%" data-routine="${ri}" value="${r.name}">
+            <input type="text" class="set-input routine-name-input" style="width:100%" data-routine="${ri}" value="${escapeHtml(r.name)}">
           </div>
           <div class="settings-field">
             <label class="settings-field-label">Color</label>
@@ -563,7 +564,7 @@ export function renderSettings(container, onClose) {
       const currentRoutineId = schedule[dow] ?? null;
       const options = [
         `<option value="" ${!currentRoutineId ? 'selected' : ''}>Rest Day</option>`,
-        ...routines.map(r => `<option value="${r.id}" ${currentRoutineId === r.id ? 'selected' : ''}>${r.name}</option>`),
+        ...routines.map(r => `<option value="${escapeHtml(r.id)}" ${currentRoutineId === r.id ? 'selected' : ''}>${escapeHtml(r.name)}</option>`),
       ].join('');
       return `
         <div class="schedule-day">

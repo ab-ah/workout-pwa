@@ -2,6 +2,7 @@ import { getSettings } from '../settings-store.js';
 import { weeklyVolumeByMuscle, volumeStatus } from '../volume.js';
 import { routineReadiness } from '../recovery-model.js';
 import { MUSCLE_LABELS } from '../components/muscle-atlas-paths.js';
+import { escapeHtml } from '../escape.js';
 
 // A prime-mover muscle below this freshness is called out when previewing a day.
 const READINESS_LOW = 0.6;
@@ -117,7 +118,7 @@ export function renderWeek(container, store) {
         : [];
 
       const exList = isExpanded && exercises.length
-        ? `${readinessHtml(routine)}<ol class="week-ex-list">${exercises.map(e => `<li>${e.name}</li>`).join('')}</ol>`
+        ? `${readinessHtml(routine)}<ol class="week-ex-list">${exercises.map(e => `<li>${escapeHtml(e.name)}</li>`).join('')}</ol>`
         : '';
 
       if (!routine) {
@@ -136,7 +137,7 @@ export function renderWeek(container, store) {
         <div class="week-item-main">
           <div>
             <strong>${DAY_NAMES[dow]}</strong>
-            <div class="muted">${routine.name} · ${routine.tag}</div>
+            <div class="muted">${escapeHtml(routine.name)} · ${escapeHtml(routine.tag)}</div>
           </div>
           <span class="status">${isToday ? 'Today' : (isExpanded ? '▲' : '▼')}</span>
         </div>

@@ -1,9 +1,13 @@
-const CACHE_NAME = 'leanbuild-v30';
+const CACHE_NAME = 'leanbuild-v31';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
   './css/styles.css',
+  './css/fonts.css',
+  './assets/fonts/anton.woff2',
+  './assets/fonts/inter.woff2',
+  './assets/fonts/jetbrainsmono.woff2',
   './js/app.js',
   './js/version.js',
   './js/store.js',
@@ -25,6 +29,10 @@ const ASSETS = [
   './js/supersets.js',
   './js/schedule.js',
   './js/wake-lock.js',
+  './js/audio.js',
+  './js/rest-persist.js',
+  './js/notify.js',
+  './js/escape.js',
   './js/views/today.js',
   './js/views/week.js',
   './js/views/history.js',
@@ -35,6 +43,7 @@ const ASSETS = [
   './css/settings.css',
   './js/components/exercise-card.js',
   './js/components/superset-card.js',
+  './js/components/stepper.js',
   './js/components/gif-lightbox.js',
   './js/components/mobility-flow.js',
   './js/components/rest-timer.js',

@@ -2,18 +2,17 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
 <title>Lean Build</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0e1014">
+<meta name="color-scheme" content="dark">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Lean Build">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/fonts.css">
 <link rel="stylesheet" href="css/styles.css">
 <link rel="stylesheet" href="css/recovery.css">
 <link rel="stylesheet" href="css/settings.css">
@@ -21,12 +20,12 @@
 <body>
 <div class="wrap" id="view-root"></div>
 
-<button class="settings-gear" id="settings-gear-btn">⚙</button>
 <nav class="bottom-nav" id="bottom-nav">
-  <button data-tab="today">Today</button>
-  <button data-tab="week">Week</button>
-  <button data-tab="history">History</button>
-  <button data-tab="recovery">Recovery</button>
+  <button data-tab="today" aria-label="Today"><span class="nav-ico" aria-hidden="true">🏋</span><span class="nav-lbl">Today</span></button>
+  <button data-tab="week" aria-label="Week"><span class="nav-ico" aria-hidden="true">📅</span><span class="nav-lbl">Week</span></button>
+  <button data-tab="history" aria-label="History"><span class="nav-ico" aria-hidden="true">📈</span><span class="nav-lbl">History</span></button>
+  <button data-tab="recovery" aria-label="Recovery"><span class="nav-ico" aria-hidden="true">💤</span><span class="nav-lbl">Recovery</span></button>
+  <button data-tab="settings" aria-label="Settings"><span class="nav-ico" aria-hidden="true">⚙</span><span class="nav-lbl">Settings</span></button>
 </nav>
 
 <script type="module" src="js/app.js"></script>

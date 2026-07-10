@@ -12,9 +12,13 @@
   --legs:#c08bff;
   --core:#ffd24a;
   --cardio:#46d160;
+  color-scheme:dark;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
+/* Buttons: no long-press text-selection callout, no double-tap zoom, no blue tap
+   flash — matters during rapid one-handed Log tapping with sweaty hands. */
+button{touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
 body{
   background:var(--bg);
   color:var(--ink);
@@ -22,6 +26,8 @@ body{
   line-height:1.5;
   padding:0 16px 90px;
   -webkit-font-smoothing:antialiased;
+  /* Stop Android pull-to-refresh from reloading the app mid-workout. */
+  overscroll-behavior-y:contain;
 }
 .wrap{max-width:920px;margin:0 auto;padding-top:20px}
 
@@ -35,11 +41,21 @@ body{
   z-index:50;
 }
 .bottom-nav button{
-  flex:1;background:transparent;border:none;color:var(--muted);
-  font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.06em;text-transform:uppercase;
-  padding:14px 4px;min-height:52px;cursor:pointer;transition:color .12s;
+  position:relative;flex:1;background:transparent;border:none;color:var(--muted);
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.04em;text-transform:uppercase;
+  padding:12px 2px;min-height:56px;cursor:pointer;transition:color .12s;
 }
+.bottom-nav .nav-ico{font-size:18px;line-height:1;filter:grayscale(1) opacity(.7);transition:filter .12s}
+.bottom-nav .nav-lbl{font-size:10px}
 .bottom-nav button.active{color:var(--accent)}
+.bottom-nav button.active .nav-ico{filter:none}
+/* Active-tab pill so the state reads under gym lighting and for colour-vision
+   deficits, not colour alone. */
+.bottom-nav button.active::before{
+  content:"";position:absolute;top:0;left:50%;transform:translateX(-50%);
+  width:26px;height:3px;border-radius:0 0 3px 3px;background:var(--accent);
+}
 
 /* CARD/DAY shared */
 .card{
@@ -132,7 +148,7 @@ body{
 /* padding-right clears the fixed settings gear (top-right) so the ✕ End control
    never sits underneath it. */
 .exercise-flow-header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;padding-right:46px}
-.exercise-flow-header .exercise-progress{margin-bottom:0}
+.exercise-flow-header .exercise-progress{margin-bottom:0;font-size:14px;color:var(--ink)}
 .exercise-back-btn{
   background:transparent;border:1px solid var(--line);border-radius:8px;
   color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:12px;
@@ -147,26 +163,27 @@ body{
   display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--panel-2);
 }
 .set-row.done{opacity:.55}
-/* Active/edit entry row: two-line grid so Weight · Reps · RPE fit across the
-   phone width and the Log/Save button spans full-width below — no side-scroll,
-   and the action stays on-screen. */
+/* Active/edit entry row: stacked full-width fields, each weight/reps wrapped in a
+   big ± stepper so most sets log without opening the keyboard. Vertical stacking
+   trades cheap phone height for wide, sweaty-thumb-friendly tap targets. */
 .set-row.active{
-  display:grid;
-  grid-template-columns:1fr 1fr 1fr;
-  grid-template-areas:
-    "lbl lbl lbl"
-    "w   r   rpe"
-    "act act act";
-  gap:8px;align-items:end;
-  background:var(--panel-2);border-radius:10px;padding:12px;margin:6px 0;border-bottom:none;
+  display:flex;flex-direction:column;gap:10px;
+  background:var(--panel-2);border-radius:12px;padding:14px;margin:8px 0;border-bottom:none;
 }
-.set-row.active > .set-label{grid-area:lbl;width:auto}
-.set-row.active > .input-group:nth-of-type(1){grid-area:w}
-.set-row.active > .input-group:nth-of-type(2){grid-area:r}
-.set-row.active > .input-group:nth-of-type(3){grid-area:rpe}
-.set-row.active > button{grid-area:act;width:100%;margin-top:2px}
-.set-row.active .set-input{width:100%}
-.set-row.active .set-input-rpe{max-width:none}
+.set-row.active > .set-label{width:auto;font-size:13px}
+.field-row{display:grid;grid-template-columns:74px 1fr;align-items:center;gap:10px}
+.field-row .input-label{margin:0}
+.field-row.rpe-field .set-input-rpe{max-width:130px;justify-self:start}
+.stepper{display:flex;align-items:stretch;gap:8px}
+.step-btn{
+  flex:0 0 auto;min-width:52px;min-height:52px;border-radius:10px;
+  background:var(--bg);border:1px solid var(--line);color:var(--ink);
+  font-size:26px;line-height:1;cursor:pointer;display:grid;place-items:center;
+}
+.step-btn:active{background:var(--panel);border-color:var(--accent)}
+.stepper .set-input{flex:1;width:auto;min-width:0;text-align:center;font-size:20px}
+.set-row.active > button{width:100%;margin-top:2px}
+.repeat-hint{font-size:12px;margin:-2px 0 2px;line-height:1.4}
 .set-label{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent-dim);width:56px;flex-shrink:0}
 .set-input{
   width:84px;background:var(--bg);border:1px solid var(--line);border-radius:7px;
@@ -180,7 +197,8 @@ body{
   background:var(--panel-2);border:1px dashed var(--line);border-radius:12px;padding:14px 18px;margin:12px 0;
   position:sticky;top:8px;z-index:30;box-shadow:0 6px 18px rgba(0,0,0,.35);
 }
-.rest-timer .time{font-family:'JetBrains Mono',monospace;font-size:24px;color:var(--accent)}
+.rest-timer .time{font-family:'JetBrains Mono',monospace;font-size:48px;font-weight:700;line-height:1;color:var(--accent);font-variant-numeric:tabular-nums}
+.rest-timer .rest-timer-label{flex-shrink:0}
 
 /* WORKOUT TIMER (cardio HIIT / duration countdown) */
 .workout-timer{
@@ -188,7 +206,7 @@ body{
   background:var(--panel-2);border:1px dashed var(--cardio);border-radius:12px;padding:16px 18px;margin:12px 0;
 }
 .workout-timer-phase{font-family:'JetBrains Mono',monospace;font-size:13px;letter-spacing:0.04em;text-transform:uppercase;color:var(--cardio)}
-.workout-timer-clock{font-family:'JetBrains Mono',monospace;font-size:32px;color:var(--ink)}
+.workout-timer-clock{font-family:'JetBrains Mono',monospace;font-size:56px;font-weight:700;line-height:1;color:var(--ink);font-variant-numeric:tabular-nums}
 .workout-timer-actions{display:flex;gap:10px}
 
 /* WEEK GRID */
@@ -221,7 +239,7 @@ body{
   .wrap{padding-top:14px}
 }
 .input-group{display:flex;flex-direction:column;gap:3px}
-.input-label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.input-label{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
 
 .exercise-gif{width:auto;max-width:100%;max-height:150px;object-fit:contain;border-radius:12px;margin:8px auto;display:block}
 
@@ -276,7 +294,10 @@ body{
   font-size:12px;color:var(--pull);background:rgba(74,176,255,.1);
   border:1px solid rgba(74,176,255,.3);padding:6px 10px;border-radius:8px;margin-bottom:6px;text-align:center;
 }
-.ss-progress{font-family:'JetBrains Mono',monospace;font-size:12px;margin-bottom:10px;text-align:center}
+.ss-progress{font-family:'JetBrains Mono',monospace;font-size:14px;margin-bottom:10px;text-align:center}
+/* In-superset swap control */
+.ss-swap-slot:not(:empty){margin:8px 0 2px}
+.ss-swap .swap-toggle{margin-bottom:0}
 .ss-progress strong{color:var(--ink)}
 .ss-panel{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:8px 0;opacity:.7;transition:opacity .15s,border-color .15s}
 .ss-panel.ss-active{opacity:1;border-color:var(--pull);background:rgba(74,176,255,.04)}
@@ -450,7 +471,7 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible{
   position:absolute;top:-2px;bottom:-2px;width:2px;
   background:rgba(255,255,255,.55);border-radius:1px;pointer-events:none;
 }
-.volume-range{font-size:10px;flex-shrink:0;white-space:nowrap;margin-left:2px}
+.volume-range{font-size:11px;flex-shrink:0;white-space:nowrap;margin-left:2px}
 
 /* ── v1.11.0 additions ──────────────────────────────────────────────── */
 
