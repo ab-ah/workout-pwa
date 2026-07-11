@@ -26,13 +26,13 @@
 .settings-back, .settings-reset {
   background: transparent; border: 1px solid var(--line); color: var(--muted);
   font-family: 'JetBrains Mono', monospace; font-size: 11px; text-transform: uppercase;
-  padding: 7px 12px; border-radius: 8px; cursor: pointer;
+  padding: 10px 14px; min-height: 44px; border-radius: 8px; cursor: pointer;
 }
 .settings-tabs {
   display: flex; gap: 6px; margin-bottom: 16px; overflow-x: auto;
 }
 .settings-tabs button {
-  flex-shrink: 0; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line);
+  flex-shrink: 0; padding: 10px 14px; min-height: 44px; border-radius: 8px; border: 1px solid var(--line);
   background: var(--panel); color: var(--muted);
   font-family: 'JetBrains Mono', monospace; font-size: 11px; text-transform: uppercase; cursor: pointer;
 }
@@ -54,7 +54,7 @@
 }
 .settings-ex-name { font-size: 13px; font-weight: 600; margin-bottom: 8px; display: block }
 .settings-ex-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap }
-.btn-icon { background: transparent; border: 1px solid var(--line); border-radius: 6px; padding: 9px 10px; min-width: 40px; min-height: 40px; cursor: pointer; font-size: 14px }
+.btn-icon { background: transparent; border: 1px solid var(--line); border-radius: 6px; padding: 9px 12px; min-width: 44px; min-height: 44px; cursor: pointer; font-size: 14px }
 .btn-icon.danger { color: var(--push); border-color: var(--push) }
 .settings-gif-row { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin-bottom: 8px }
 .settings-gif-input { width: 100%; margin-top: 8px; font-size: 11px }
@@ -101,13 +101,20 @@
 }
 .ex-muscle-tag {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: .5px;
   color: var(--accent);
   background: rgba(214, 255, 63, .10);
   border-radius: 5px;
   padding: 2px 6px;
+}
+/* Intentionally-accessory movement (has muscles, but nothing as a prime mover —
+   e.g. the pullover, the treadmill work). Neutral, NOT the dashed alarm style,
+   which is reserved for exercises whose muscle map is genuinely unset. */
+.ex-muscle-tag.is-accessory {
+  color: var(--muted);
+  background: rgba(139, 148, 163, .12);
 }
 .ex-muscle-tag.is-empty {
   color: var(--muted);
@@ -132,7 +139,8 @@
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 999px;
-  padding: 5px 11px;
+  padding: 8px 13px;
+  min-height: 40px;
   cursor: pointer;
   white-space: nowrap;
 }
@@ -146,7 +154,7 @@
   border-color: var(--accent);
 }
 .ex-filter-count {
-  font-size: 10px;
+  font-size: 11px;
   opacity: .7;
 }
 .settings-ex-card-chevron {
@@ -371,7 +379,7 @@
   align-items: center;
   gap: 5px;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-size: 11px;
   color: #9ca3af;
 }
 .atlas-role-dot {

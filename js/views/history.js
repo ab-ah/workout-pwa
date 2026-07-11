@@ -2,7 +2,7 @@ import { getSettings } from '../settings-store.js';
 import { buildChartSVG } from '../components/chart.js';
 import { movingAverage, weightTrend, latestEntry } from '../bodyweight.js';
 import { weightCoach, proteinTarget } from '../weight-coach.js';
-import { e1rmSeries, isE1RMPRInSession } from '../one-rep-max.js';
+import { e1rmSeries, isE1RMPRInSession, bestE1RM } from '../one-rep-max.js';
 import { localDateStr } from '../schedule.js';
 import { exerciseLogMode, formatDuration } from '../components/exercise-card.js';
 
@@ -27,6 +27,9 @@ function escapeHtml(s) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 }
+
+/** "1 exercise" / "2 exercises" — pluralise a count + noun. */
+const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 /** Local "HH:MM" for an epoch, or a sensible default when absent. */
 function timeStr(ms) {
@@ -82,7 +85,7 @@ export function renderHistory(container, store) {
         <div class="session-row">
           <strong>${escapeHtml(session.dayTitle)}</strong> — ${meta}
           <details class="session-details">
-            <summary>${session.exercises.length} exercises · ${totalSets} sets</summary>
+            <summary>${plural(session.exercises.length, 'exercise')} · ${plural(totalSets, 'set')}</summary>
             <ul>
               ${session.exercises.map((e) => `<li>${escapeHtml(e.name)}: ${e.sets.map((s) => formatHistorySet(s, modeByExerciseId.get(e.exerciseId))).join(', ')}</li>`).join('')}
             </ul>
@@ -144,11 +147,33 @@ export function renderHistory(container, store) {
     // cardio (duration + effort) and holds (duration) don't have a "top set"
     // to chart, so they're left off this picker entirely.
     const exercises = (getSettings().exercises ?? []).filter((ex) => exerciseLogMode(ex) === 'strength');
+    const allowedIds = new Set(exercises.map((ex) => ex.id));
     if (selectedExerciseId == null || !exercises.some((ex) => ex.id === selectedExerciseId)) {
-      const allowedIds = new Set(exercises.map((ex) => ex.id));
       selectedExerciseId = mostTrainedExerciseId(allowedIds) ?? (exercises[0]?.id ?? null);
     }
-    const options = exercises.map((e) => `<option value="${escapeHtml(e.id)}"${e.id === selectedExerciseId ? ' selected' : ''}>${escapeHtml(e.name)}</option>`).join('');
+
+    // Sort the picker so exercises you've actually logged sit at the top (with a
+    // session count), and the long tail of not-yet-trained movements — which all
+    // chart as "No data yet" — is grouped separately below, so opening the picker
+    // rewards exploration instead of dead-ending on the first alphabetical entry.
+    const sessionCounts = {};
+    for (const s of store.getHistory()) {
+      for (const e of (s.exercises ?? [])) {
+        if (allowedIds.has(e.exerciseId)) sessionCounts[e.exerciseId] = (sessionCounts[e.exerciseId] ?? 0) + 1;
+      }
+    }
+    const trained = exercises
+      .filter((e) => sessionCounts[e.id])
+      .sort((a, b) => (sessionCounts[b.id] - sessionCounts[a.id]) || a.name.localeCompare(b.name));
+    const untrained = exercises
+      .filter((e) => !sessionCounts[e.id])
+      .sort((a, b) => a.name.localeCompare(b.name));
+    const optionHtml = (e, suffix = '') =>
+      `<option value="${escapeHtml(e.id)}"${e.id === selectedExerciseId ? ' selected' : ''}>${escapeHtml(e.name)}${suffix}</option>`;
+    const options = `
+      ${trained.length ? `<optgroup label="Your exercises">${trained.map((e) => optionHtml(e, ` (${sessionCounts[e.id]})`)).join('')}</optgroup>` : ''}
+      ${untrained.length ? `<optgroup label="Not logged yet">${untrained.map((e) => optionHtml(e)).join('')}</optgroup>` : ''}
+    `;
     body.innerHTML = `
       ${bodyweightCardHtml()}
       <div class="progress-section-label">Exercise progress</div>
@@ -176,11 +201,18 @@ export function renderHistory(container, store) {
       chartSlot.innerHTML = buildChartSVG(points, { width: 600, height: 220 });
 
       // PR badge: did the most recent session that trained this exercise set an
-      // all-time e1RM best?
+      // all-time e1RM best? Require at least one EARLIER session with a loggable
+      // e1RM — otherwise the very first time you log an exercise "beats" an empty
+      // history and false-flags a PR. Name the exercise so the badge is clearly
+      // tied to the current selection, not whatever's charted.
       const lastSession = [...history].reverse()
         .find(s => (s.exercises ?? []).some(e => e.exerciseId === exId));
-      prBadge.innerHTML = (lastSession && isE1RMPRInSession(history, lastSession.sessionId, exId))
-        ? `<div class="pr-badge">🏆 New estimated-1RM PR on your last session</div>`
+      const hasPriorE1RM = lastSession && history.some(s =>
+        s.sessionId !== lastSession.sessionId &&
+        (s.exercises ?? []).some(e => e.exerciseId === exId && bestE1RM(e.sets) != null));
+      const exName = exercises.find(e => e.id === exId)?.name ?? '';
+      prBadge.innerHTML = (hasPriorE1RM && isE1RMPRInSession(history, lastSession.sessionId, exId))
+        ? `<div class="pr-badge">🏆 New Est. 1RM PR — ${escapeHtml(exName)}</div>`
         : '';
     }
 

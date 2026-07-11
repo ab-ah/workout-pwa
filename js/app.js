@@ -17,7 +17,22 @@ requestPersistentStorage();
 
 const store = createStore(window.localStorage);
 const viewRoot = document.getElementById('view-root');
+const bottomNav = document.getElementById('bottom-nav');
 const navButtons = document.querySelectorAll('#bottom-nav button');
+
+// Publish the fixed bottom nav's real rendered height (content + safe-area) to a
+// CSS variable, so sticky in-workout controls (the active-set row and the
+// Complete/Finish button) sit exactly above it instead of relying on a
+// hand-tuned magic number that tucked a few px under the nav. Re-measured on
+// resize / rotation / safe-area changes.
+function syncNavHeight() {
+  if (!bottomNav) return;
+  const h = bottomNav.offsetHeight;
+  if (h > 0) document.documentElement.style.setProperty('--nav-h', `${h}px`);
+}
+syncNavHeight();
+window.addEventListener('resize', syncNavHeight);
+window.addEventListener('orientationchange', syncNavHeight);
 
 const VIEWS = {
   today: () => renderToday(viewRoot, store),

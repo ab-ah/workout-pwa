@@ -189,9 +189,16 @@ export function renderSettings(container, onClose) {
       if (!matches(ex)) return '';
       const isExpanded = expandedExerciseIndex === i;
       const primes = primeMuscles(ex);
+      // Distinguish an intentional accessory/conditioning movement (has muscle
+      // tags, just none as a prime mover — e.g. the pullover or treadmill work)
+      // from a genuine data gap (no muscles set at all, e.g. a half-built
+      // user-created exercise). Only the latter gets the alarming dashed tag.
+      const hasAnyMuscle = Object.keys(getExMuscles(ex)).length > 0;
       const tags = primes.length
         ? primes.map(m => `<span class="ex-muscle-tag">${MUSCLE_NAMES[m] ?? m}</span>`).join('')
-        : '<span class="ex-muscle-tag is-empty">No prime muscle</span>';
+        : hasAnyMuscle
+          ? '<span class="ex-muscle-tag is-accessory">Accessory</span>'
+          : '<span class="ex-muscle-tag is-empty">No muscles set</span>';
       return `
         <div class="settings-ex-card ${isExpanded ? 'expanded' : ''}">
           <div class="settings-ex-card-header" data-toggle="${i}">
@@ -229,7 +236,7 @@ export function renderSettings(container, onClose) {
               <img class="settings-gif-preview" id="gif-preview-${i}" src="${escapeHtml(ex.gifUrl ?? '')}" alt="${escapeHtml(ex.name)} demonstration" loading="lazy" ${ex.gifUrl ? '' : 'style="display:none"'} onerror="this.style.display='none'">
             </div>
             <div class="settings-field">
-              <label class="settings-field-label">Muscles <span class="muted" style="font-size:10px">click to cycle: none → primary → synergist → stabilizer</span></label>
+              <label class="settings-field-label">Muscles <span class="muted" style="font-size:11px">click to cycle: none → primary → synergist → stabilizer</span></label>
               <div id="atlas-ex-${i}" style="margin-top:6px"></div>
               <div class="atlas-role-legend">
                 <div class="atlas-role-legend-item"><div class="atlas-role-dot" style="background:${ROLE_COLORS.prime_mover}"></div>Prime Mover</div>

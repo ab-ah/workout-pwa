@@ -34,7 +34,7 @@ export function mountMobilityFlow(container, items, onExit) {
           <button class="exercise-end-btn" id="mobility-exit-btn" title="Exit mobility">✕ Exit</button>
         </div>
         <div class="card mobility-flow-card">
-          ${demoMediaHtml({ gifUrl: m.gifUrl, className: 'mobility-flow-gif', name: m.name })}
+          ${demoMediaHtml({ gifUrl: m.gifUrl, className: 'mobility-flow-gif', name: m.name, zoomable: true })}
           <h2 class="mobility-flow-name">${m.name}</h2>
           <p class="muted mobility-flow-detail">${m.detail}</p>
           <div class="mobility-flow-actions">

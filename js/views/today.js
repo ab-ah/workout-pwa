@@ -25,6 +25,9 @@ let backTrapInstalled = false;
 
 const READINESS_LOW = 0.6; // prime movers below this get a warning
 
+/** "1 exercise" / "2 exercises" — pluralise a count + noun. */
+const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
 // sessionStorage flag: the Catch-up panel is dismissed for the rest of the day.
 // Module-scoped (not inside renderToday) so it's initialised before the first
 // renderDayIntro() call — a function-body const would be in the temporal dead
@@ -407,7 +410,7 @@ export function renderToday(container, store) {
         <div class="card today-done" style="border-left:4px solid var(${escapeHtml(routine.colorVar)})">
           <span class="muted">Today · done ✓</span>
           <h2>${escapeHtml(routine.name)} complete</h2>
-          <p class="muted" style="margin-top:6px">${(doneToday.exercises ?? []).length} exercises · ${totalSets} sets${mins ? ` · ${mins} min` : ''}</p>
+          <p class="muted" style="margin-top:6px">${plural((doneToday.exercises ?? []).length, 'exercise')} · ${plural(totalSets, 'set')}${mins ? ` · ${mins} min` : ''}</p>
           <p class="muted" style="margin-top:10px;font-size:13px">Nice work — recovery is underway. Check the Recovery tab for muscle status.</p>
           <button class="btn-secondary" id="repeat-workout-btn" style="margin-top:12px">Train it again</button>
         </div>
@@ -428,7 +431,7 @@ export function renderToday(container, store) {
         <span class="muted">Up next</span>
         <h2>${escapeHtml(routine.name)}</h2>
         <p class="muted">${escapeHtml(routine.tag)}</p>
-        <p class="muted" style="margin-top:10px">${exercises.length} exercises</p>
+        <p class="muted" style="margin-top:10px">${plural(exercises.length, 'exercise')}</p>
         ${buildReadinessBlock(readiness, perMuscle)}
         ${buildAdaptiveBlock(readiness, perMuscle)}
         <button class="btn-primary" id="start-workout-btn">Start Workout</button>

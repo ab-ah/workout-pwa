@@ -7,12 +7,17 @@ import { escapeHtml } from '../escape.js';
 // A prime-mover muscle below this freshness is called out when previewing a day.
 const READINESS_LOW = 0.6;
 
-// Colour + label per volume tier (see volume.js volumeStatus).
+// Colour + label per volume tier (see volume.js volumeStatus). Warm ramp for the
+// productive path — orange (undertraining, suboptimal but not dangerous) → amber
+// (maintenance) → green (optimal) — then RED for over-MRV, the actual
+// overtraining risk. (Over-MRV was previously a calm blue, which read as the
+// safest colour on the chart for the one tier you don't want to be in; blue is
+// now reserved for the unrelated deload UI.)
 const VOLUME_TIERS = {
-  below:       { color: '#e0553a', label: 'below MEV' },
+  below:       { color: '#e08a3a', label: 'below MEV' },
   maintenance: { color: '#e0b03a', label: 'maintenance' },
   optimal:     { color: '#46d160', label: 'optimal' },
-  high:        { color: '#6a8cff', label: 'over MRV' },
+  high:        { color: '#e0553a', label: 'over MRV' },
   unknown:     { color: '#8a8a8a', label: '' },
 };
 
@@ -133,13 +138,13 @@ export function renderWeek(container, store) {
         </div>`;
       }
 
-      return `<div class="week-item${isToday ? ' is-today' : ''}" style="border-left:4px solid var(${routine.colorVar})" data-dow="${dow}">
+      return `<div class="week-item${isToday ? ' is-today' : ''}${isExpanded ? ' is-open' : ''}" style="border-left:4px solid var(${routine.colorVar})" data-dow="${dow}">
         <div class="week-item-main">
           <div>
             <strong>${DAY_NAMES[dow]}</strong>
             <div class="muted">${escapeHtml(routine.name)} · ${escapeHtml(routine.tag)}</div>
           </div>
-          <span class="status">${isToday ? 'Today' : (isExpanded ? '▲' : '▼')}</span>
+          <span class="status">${isToday ? 'Today' : '▼'}</span>
         </div>
         ${exList}
       </div>`;

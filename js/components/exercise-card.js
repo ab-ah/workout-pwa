@@ -225,7 +225,7 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
   container.innerHTML = `
     <div class="exercise-progress" id="exercise-progress"></div>
     <div class="exercise-name">${escapeHtml(exercise.name)}</div>
-    ${demoMediaHtml({ gifUrl: exercise.gifUrl, className: 'exercise-gif', name: exercise.name })}
+    ${demoMediaHtml({ gifUrl: exercise.gifUrl, className: 'exercise-gif', name: exercise.name, zoomable: true })}
     <p class="muted">${escapeHtml(exercise.repRange)}${mode === 'strength' && !repUnit ? ' reps' : ''} · rest ${exercise.restSeconds}s · start ~${escapeHtml(String(exercise.startWeight ?? ''))}</p>
     ${perSide ? `<p class="muted unilateral-note">${unilateralNote}</p>` : ''}
     ${deload.active ? `<p class="deload-tag">🌙 Deload week — ${effectiveSetsCount} of ${exercise.setsCount} sets, hold the weight</p>` : ''}
@@ -368,9 +368,13 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
     const rows = [];
     for (let i = 0; i < effectiveSetsCount; i++) rows.push(setRowHtml(i));
 
+    // Rest timer renders ABOVE the set rows so its countdown is on-screen the
+    // moment a set is logged. Placed after the rows it was pushed below the fold
+    // on a phone (the tall active-entry row filled the viewport), which hid the
+    // most-repeated feedback in the app.
     dynamicRoot.innerHTML = `
-      <div id="set-rows">${rows.join('')}</div>
       <div id="rest-timer-slot"></div>
+      <div id="set-rows">${rows.join('')}</div>
       ${completeBtnHtml()}
     `;
 
@@ -418,14 +422,17 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
     }
 
     // Bring the active input row into view when a new set becomes active, so the
-    // Log field is never stranded below the fold mid-workout.
+    // Log field is never stranded below the fold mid-workout. Once every set is
+    // logged there's no active row — fall back to the Complete button so finishing
+    // the exercise gets the same auto-scroll instead of leaving it below the fold.
     if (!restActive && editingIndex === null && activeSetIndex !== lastScrolledSetIndex) {
       lastScrolledSetIndex = activeSetIndex;
       // Honour the OS "reduce motion" setting — jump instead of smooth-scrolling.
       const reduceMotion = typeof matchMedia === 'function'
         && matchMedia('(prefers-reduced-motion: reduce)').matches;
-      dynamicRoot.querySelector('#active-set-row')
-        ?.scrollIntoView({ block: 'center', behavior: reduceMotion ? 'auto' : 'smooth' });
+      const scrollTarget = dynamicRoot.querySelector('#active-set-row')
+        ?? dynamicRoot.querySelector('#complete-exercise-btn');
+      scrollTarget?.scrollIntoView({ block: 'center', behavior: reduceMotion ? 'auto' : 'smooth' });
     }
   }
 

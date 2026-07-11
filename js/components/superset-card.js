@@ -167,10 +167,10 @@ export function mountSupersetCard(container, exA, exB, prevSets = [], initialSet
       <div class="superset-badge">🔁 Superset — alternate a set of each, rest after the pair</div>
       ${deload.active ? '<div class="deload-tag">🌙 Deload week — fewer sets, hold the weight</div>' : ''}
       <div class="ss-progress muted" id="ss-progress"></div>
+      <div id="ss-rest-slot"></div>
       ${panelShellHtml(0)}
       <div class="ss-divider"><span>↕</span></div>
       ${panelShellHtml(1)}
-      <div id="ss-rest-slot"></div>
       <button class="btn-primary" id="ss-complete-btn"></button>
     </div>`;
 

@@ -12,7 +12,7 @@ function recoveryColor(fraction) {
   return `rgb(${r},${g},40)`;
 }
 
-export function renderRecovery(container, store) {
+export function renderRecovery(container, store, justTunedMuscle = null) {
   const settings = getSettings();
   const history = store.getHistory();
 
@@ -45,7 +45,7 @@ export function renderRecovery(container, store) {
       <div class="muscle-dot" style="background:${d.color}"></div>
       <span class="muscle-name">${d.label}</span>
       <span class="muscle-status">${statusText}</span>
-      <span class="muscle-window" title="Full recovery window">${hrs}h</span>
+      <span class="muscle-window${m === justTunedMuscle ? ' just-tuned' : ''}" title="Full recovery window">${hrs}h</span>
       <span class="muscle-tune">
         <button class="tune-btn" data-muscle="${m}" data-dir="sore" title="Still sore — recover slower">+</button>
         <button class="tune-btn" data-muscle="${m}" data-dir="fresh" title="Already fresh — recover faster">−</button>
@@ -74,7 +74,7 @@ export function renderRecovery(container, store) {
       settings.recoveryHours = settings.recoveryHours ?? {};
       settings.recoveryHours[muscle] = nudgeRecoveryHours(current, btn.dataset.dir);
       saveSettings(settings);
-      renderRecovery(container, store); // re-render with the updated window
+      renderRecovery(container, store, muscle); // re-render; pulse the changed window
     });
   });
 }

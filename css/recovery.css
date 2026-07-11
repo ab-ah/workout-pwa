@@ -28,12 +28,19 @@
 .muscle-legend { grid-template-columns: 1fr }
 .muscle-name { flex: 1 }
 .muscle-status { margin-left: 0 }
-.muscle-window { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--muted); min-width: 34px; text-align: right }
-.muscle-tune { display: inline-flex; gap: 5px; flex-shrink: 0 }
+.muscle-window { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--muted); min-width: 40px; text-align: right; border-radius: 5px }
+/* Brief highlight on the window value that just changed, so a + / − tap gives
+   visible confirmation of what it did. Neutralised under reduce-motion. */
+.muscle-window.just-tuned { animation: tune-pulse .55s ease }
+@keyframes tune-pulse {
+  0% { color: var(--accent); background: rgba(214, 255, 63, .22) }
+  100% { color: var(--muted); background: transparent }
+}
+.muscle-tune { display: inline-flex; gap: 6px; flex-shrink: 0 }
 .tune-btn {
-  width: 26px; height: 26px; border-radius: 6px; padding: 0;
+  width: 40px; height: 44px; border-radius: 8px; padding: 0;
   border: 1px solid var(--line); background: var(--bg); color: var(--ink);
-  font-size: 15px; line-height: 1; cursor: pointer;
+  font-size: 18px; line-height: 1; cursor: pointer;
 }
 .tune-btn:hover { border-color: var(--accent); color: var(--accent) }
 .tune-btn:active { transform: scale(0.92) }

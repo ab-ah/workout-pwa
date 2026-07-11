@@ -34,35 +34,43 @@ function prefersReducedMotion() {
  * @param {string} opts.gifUrl    the demo's .gif path (source of truth in data)
  * @param {string} opts.className CSS class shared with the old <img> styling
  * @param {string} opts.name      exercise name, for the accessible label
+ * @param {boolean} [opts.zoomable] wrap the media with a visible ⤢ zoom badge.
+ *   The whole demo is always tap-to-zoom (gif-lightbox.js); the badge is just a
+ *   touch affordance, so only the big in-card demos opt in — not the small
+ *   list/superset thumbnails.
  * @returns {string} a <video> for bundled demos, else an <img> (or '' if no url)
  */
-export function demoMediaHtml({ gifUrl, className, name }) {
+export function demoMediaHtml({ gifUrl, className, name, zoomable = false }) {
   const url = String(gifUrl ?? '').trim();
   if (!url) return '';
 
   const label = `${escapeHtml(name ?? '')} demonstration`;
   const cls = escapeHtml(className);
 
+  let media;
   if (!isLocalDemoGif(url)) {
     // User URL or non-bundled asset — keep the plain image behaviour.
-    return `<img src="${escapeHtml(url)}" alt="${label}" class="${cls}" loading="lazy" onerror="this.style.display='none'">`;
+    media = `<img src="${escapeHtml(url)}" alt="${label}" class="${cls}" loading="lazy" onerror="this.style.display='none'">`;
+  } else {
+    const safe = escapeHtml(url);
+    const webm = safe.replace(/\.gif$/i, '.webm');
+    const mp4 = safe.replace(/\.gif$/i, '.mp4');
+    // autoplay+loop+muted+playsinline = GIF-like ambient playback on mobile.
+    // Under "reduce motion" we drop autoplay so the demo holds on its first frame
+    // (preload=auto so that frame is actually painted). The trailing <img> only
+    // renders if neither <source> can play.
+    const reduce = prefersReducedMotion();
+    const playback = reduce ? 'preload="auto"' : 'autoplay loop muted playsinline preload="metadata"';
+    media = (
+      `<video class="${cls}" ${playback} ` +
+      `aria-label="${label}" data-demo-gif="${safe}">` +
+      `<source src="${webm}" type="video/webm">` +
+      `<source src="${mp4}" type="video/mp4">` +
+      `<img src="${safe}" alt="${label}" class="${cls}" loading="lazy">` +
+      `</video>`
+    );
   }
 
-  const safe = escapeHtml(url);
-  const webm = safe.replace(/\.gif$/i, '.webm');
-  const mp4 = safe.replace(/\.gif$/i, '.mp4');
-  // autoplay+loop+muted+playsinline = GIF-like ambient playback on mobile.
-  // Under "reduce motion" we drop autoplay so the demo holds on its first frame
-  // (preload=auto so that frame is actually painted). The trailing <img> only
-  // renders if neither <source> can play.
-  const reduce = prefersReducedMotion();
-  const playback = reduce ? 'preload="auto"' : 'autoplay loop muted playsinline preload="metadata"';
-  return (
-    `<video class="${cls}" ${playback} ` +
-    `aria-label="${label}" data-demo-gif="${safe}">` +
-    `<source src="${webm}" type="video/webm">` +
-    `<source src="${mp4}" type="video/mp4">` +
-    `<img src="${safe}" alt="${label}" class="${cls}" loading="lazy">` +
-    `</video>`
-  );
+  if (!zoomable) return media;
+  return `<span class="demo-media-wrap">${media}<span class="demo-zoom-badge" aria-hidden="true">⤢</span></span>`;
 }
