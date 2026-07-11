@@ -10,6 +10,7 @@ import { mobilitySuggestions, allMobility } from '../mobility.js';
 import { mountMobilityFlow } from '../components/mobility-flow.js';
 import { generalPrimer } from '../warmup.js';
 import { MUSCLE_LABELS } from '../components/muscle-atlas-paths.js';
+import { demoMediaHtml } from '../components/demo-media.js';
 import { findMissedWorkouts, localDateStr } from '../schedule.js';
 import { enableWakeLock, disableWakeLock } from '../wake-lock.js';
 import { downloadBackup, promptRestore } from '../backup-io.js';
@@ -130,7 +131,7 @@ function primerHtml(routine) {
 function mobilityCardHtml() {
   const items = mobilitySuggestions(new Date().getDate(), 4)
     .map(m => `<li>
-        ${m.gifUrl ? `<img src="${m.gifUrl}" alt="${m.name} demonstration" class="mobility-gif" loading="lazy" onerror="this.style.display='none'">` : ''}
+        ${demoMediaHtml({ gifUrl: m.gifUrl, className: 'mobility-gif', name: m.name })}
         <div class="mobility-item-text"><strong>${m.name}</strong> <span class="muted">${m.detail}</span></div>
       </li>`)
     .join('');

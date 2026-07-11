@@ -9,6 +9,7 @@ import { ensureNotifyPermission } from '../notify.js';
 import { getPendingRestSeconds, clearPendingRest } from '../rest-persist.js';
 import { stepperHtml, wireSteppers } from './stepper.js';
 import { escapeHtml } from '../escape.js';
+import { demoMediaHtml } from './demo-media.js';
 
 /**
  * Renders one exercise with its sets into `container`.
@@ -224,13 +225,7 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
   container.innerHTML = `
     <div class="exercise-progress" id="exercise-progress"></div>
     <div class="exercise-name">${escapeHtml(exercise.name)}</div>
-    <img
-      src="${exercise.gifUrl}"
-      alt="${escapeHtml(exercise.name)} demonstration"
-      class="exercise-gif"
-      loading="lazy"
-      onerror="this.style.display='none'"
-    >
+    ${demoMediaHtml({ gifUrl: exercise.gifUrl, className: 'exercise-gif', name: exercise.name })}
     <p class="muted">${escapeHtml(exercise.repRange)}${mode === 'strength' && !repUnit ? ' reps' : ''} · rest ${exercise.restSeconds}s · start ~${escapeHtml(String(exercise.startWeight ?? ''))}</p>
     ${perSide ? `<p class="muted unilateral-note">${unilateralNote}</p>` : ''}
     ${deload.active ? `<p class="deload-tag">🌙 Deload week — ${effectiveSetsCount} of ${exercise.setsCount} sets, hold the weight</p>` : ''}

@@ -564,9 +564,9 @@ html{scroll-padding-bottom:170px;scroll-padding-top:90px}
 }
 
 /* Respect the OS "reduce motion" preference: neutralise CSS animations,
-   transitions and smooth scrolling. (Autoplaying demo GIFs can't be paused from
-   CSS — that arrives with the planned GIF→video conversion, where a still poster
-   frame can stand in for motion-sensitive users.) */
+   transitions and smooth scrolling. Demo playback is handled in JS: demo-media.js
+   drops autoplay under reduce-motion so the (now video, not GIF) demo holds on
+   its first frame instead of looping. */
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{
     animation-duration:.001ms !important;animation-iteration-count:1 !important;

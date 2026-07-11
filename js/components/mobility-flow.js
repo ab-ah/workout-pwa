@@ -9,6 +9,8 @@
 //   items  — [{ name, detail, gifUrl? }] in order.
 //   onExit — called when the user finishes ("Done") or taps Exit.
 
+import { demoMediaHtml } from './demo-media.js';
+
 /**
  * @param {HTMLElement} container
  * @param {Array<{name:string, detail:string, gifUrl?:string}>} items
@@ -32,7 +34,7 @@ export function mountMobilityFlow(container, items, onExit) {
           <button class="exercise-end-btn" id="mobility-exit-btn" title="Exit mobility">✕ Exit</button>
         </div>
         <div class="card mobility-flow-card">
-          ${m.gifUrl ? `<img src="${m.gifUrl}" alt="${m.name} demonstration" class="mobility-flow-gif" loading="lazy" onerror="this.style.display='none'">` : ''}
+          ${demoMediaHtml({ gifUrl: m.gifUrl, className: 'mobility-flow-gif', name: m.name })}
           <h2 class="mobility-flow-name">${m.name}</h2>
           <p class="muted mobility-flow-detail">${m.detail}</p>
           <div class="mobility-flow-actions">

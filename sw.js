@@ -1,4 +1,4 @@
-const CACHE_NAME = 'leanbuild-v34';
+const CACHE_NAME = 'leanbuild-v35';
 const ASSETS = [
   './',
   './index.html',
@@ -119,14 +119,24 @@ const GIFS = [
   './assets/exercise-gifs/weighted-crunch.gif'
 ];
 
+// Each demo now ships as interpolated 16 fps video (see js/components/
+// demo-media.js): a WebM + MP4 pair per movement, ~3.5 MB total vs ~15 MB of
+// GIF. We precache the videos and NOT the GIFs — the GIF stays in the repo only
+// as the in-<video> fallback for browsers that can play neither source, and is
+// runtime-cached on the rare occasion it's actually needed.
+const DEMO_VIDEOS = GIFS.flatMap((gif) => [
+  gif.replace(/\.gif$/, '.webm'),
+  gif.replace(/\.gif$/, '.mp4'),
+]);
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(async (cache) => {
       // Core app shell must all cache for install to count as successful.
       await cache.addAll(ASSETS);
-      // GIFs are best-effort: a single missing/failed image must not abort the
-      // install. Any that miss here are still runtime-cached on first view.
-      await Promise.allSettled(GIFS.map((url) => cache.add(url)));
+      // Demo videos are best-effort: a single missing/failed file must not abort
+      // the install. Any that miss here are still runtime-cached on first view.
+      await Promise.allSettled(DEMO_VIDEOS.map((url) => cache.add(url)));
     })
   );
   self.skipWaiting();
