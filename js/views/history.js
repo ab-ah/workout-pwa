@@ -4,6 +4,20 @@ import { movingAverage, weightTrend, latestEntry } from '../bodyweight.js';
 import { weightCoach, proteinTarget } from '../weight-coach.js';
 import { e1rmSeries, isE1RMPRInSession } from '../one-rep-max.js';
 import { localDateStr } from '../schedule.js';
+import { exerciseLogMode, formatDuration } from '../components/exercise-card.js';
+
+/** One logged set, formatted for the session log. `exMode` ('strength' |
+ *  'cardio' | 'hold' | undefined) comes from the matching exercise's own
+ *  definition — duration-based sets carry no weight/reps so they need their
+ *  own summary instead of "undefinedkg x undefined". Falls back to guessing
+ *  from the set shape if the exercise def is no longer in the catalog. */
+function formatHistorySet(s, exMode) {
+  const rpeTag = Number.isFinite(s.rpe) ? ` <span class="set-rpe">@${escapeHtml(s.rpe)}</span>` : '';
+  const mode = exMode ?? (Number.isFinite(s.durationSeconds) ? 'cardio' : 'strength');
+  if (mode === 'cardio') return `${formatDuration(s.durationSeconds)}${rpeTag}`;
+  if (mode === 'hold') return `${s.durationSeconds}s`;
+  return `${escapeHtml(s.weight)}kg x ${escapeHtml(s.reps)}${rpeTag}`;
+}
 
 function escapeHtml(s) {
   return String(s)
@@ -46,6 +60,12 @@ export function renderHistory(container, store) {
       body.innerHTML = '<p class="muted">No sessions logged yet.</p>';
       return;
     }
+    // Exercise id → log mode, so a session's sets render with the right summary
+    // (weight x reps / duration + effort / duration) regardless of which
+    // exercise they belong to.
+    const modeByExerciseId = new Map(
+      (getSettings().exercises ?? []).map((ex) => [ex.id, exerciseLogMode(ex)])
+    );
     body.innerHTML = history.map((session) => {
       const isEditing = editingId === session.sessionId;
       const meta = isEditing
@@ -64,7 +84,7 @@ export function renderHistory(container, store) {
           <details class="session-details">
             <summary>${session.exercises.length} exercises · ${totalSets} sets</summary>
             <ul>
-              ${session.exercises.map((e) => `<li>${escapeHtml(e.name)}: ${e.sets.map((s) => `${escapeHtml(s.weight)}kg x ${escapeHtml(s.reps)}${Number.isFinite(s.rpe) ? ` <span class="set-rpe">@${escapeHtml(s.rpe)}</span>` : ''}`).join(', ')}</li>`).join('')}
+              ${session.exercises.map((e) => `<li>${escapeHtml(e.name)}: ${e.sets.map((s) => formatHistorySet(s, modeByExerciseId.get(e.exerciseId))).join(', ')}</li>`).join('')}
             </ul>
           </details>
         </div>
@@ -102,12 +122,15 @@ export function renderHistory(container, store) {
   let metric = 'topset'; // 'topset' | 'e1rm'
   let selectedExerciseId = null; // persists across metric toggles / re-renders
 
-  /** The exercise with the most logged sessions — a far more useful default for
-   *  the Progress chart than whatever happens to be first in the list. */
-  function mostTrainedExerciseId() {
+  /** The exercise (among `allowedIds`) with the most logged sessions — a far
+   *  more useful default for the Progress chart than whatever happens to be
+   *  first in the list. */
+  function mostTrainedExerciseId(allowedIds) {
     const counts = {};
     for (const s of store.getHistory()) {
-      for (const e of (s.exercises ?? [])) counts[e.exerciseId] = (counts[e.exerciseId] ?? 0) + 1;
+      for (const e of (s.exercises ?? [])) {
+        if (allowedIds.has(e.exerciseId)) counts[e.exerciseId] = (counts[e.exerciseId] ?? 0) + 1;
+      }
     }
     let best = null, bestN = -1;
     for (const [id, n] of Object.entries(counts)) {
@@ -117,9 +140,13 @@ export function renderHistory(container, store) {
   }
 
   function renderProgress(body) {
-    const exercises = getSettings().exercises ?? [];
-    if (selectedExerciseId == null) {
-      selectedExerciseId = mostTrainedExerciseId() ?? (exercises[0]?.id ?? null);
+    // Weight/est.-1RM trend only means something for loaded strength work —
+    // cardio (duration + effort) and holds (duration) don't have a "top set"
+    // to chart, so they're left off this picker entirely.
+    const exercises = (getSettings().exercises ?? []).filter((ex) => exerciseLogMode(ex) === 'strength');
+    if (selectedExerciseId == null || !exercises.some((ex) => ex.id === selectedExerciseId)) {
+      const allowedIds = new Set(exercises.map((ex) => ex.id));
+      selectedExerciseId = mostTrainedExerciseId(allowedIds) ?? (exercises[0]?.id ?? null);
     }
     const options = exercises.map((e) => `<option value="${escapeHtml(e.id)}"${e.id === selectedExerciseId ? ' selected' : ''}>${escapeHtml(e.name)}</option>`).join('');
     body.innerHTML = `

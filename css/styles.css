@@ -167,7 +167,7 @@ body{
    big ± stepper so most sets log without opening the keyboard. Vertical stacking
    trades cheap phone height for wide, sweaty-thumb-friendly tap targets. */
 .set-row.active{
-  display:flex;flex-direction:column;gap:10px;
+  display:flex;flex-direction:column;align-items:stretch;gap:10px;
   background:var(--panel-2);border-radius:12px;padding:14px;margin:8px 0;border-bottom:none;
 }
 .set-row.active > .set-label{width:auto;font-size:13px}

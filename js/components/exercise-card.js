@@ -1,5 +1,5 @@
 import { mountRestTimer } from './rest-timer.js';
-import { mountWorkoutTimer } from './workout-timer.js';
+import { mountWorkoutTimer, buildPhases } from './workout-timer.js';
 import { suggestProgression, parseTopReps, prescribeRpe, recommendLoad } from '../progression.js';
 import { warmupSets, HEAVY_BARBELL_LIFTS } from '../warmup.js';
 import { bestE1RM, loadForReps, roundLoad } from '../one-rep-max.js';
@@ -62,6 +62,33 @@ function warmupKind(exercise) {
 
 function isUnilateral(exercise) {
   return UNILATERAL_EXERCISES.has(exercise.id);
+}
+
+// Isometric holds — timed, not weight/reps. Logged as a single duration field.
+const HOLD_EXERCISES = new Set(['plank', 'side-plank']);
+
+/** Which fields the set-logger should show: 'cardio' (timer-driven treadmill
+ *  work — duration + effort RPE), 'hold' (isometric — duration only), or the
+ *  default 'strength' (weight x reps). Exported so history.js can exclude
+ *  duration-based exercises from the weight/e1RM progress chart. */
+export function exerciseLogMode(exercise) {
+  if (exercise.timer) return 'cardio';
+  if (HOLD_EXERCISES.has(exercise.id)) return 'hold';
+  return 'strength';
+}
+
+export function formatDuration(totalSeconds) {
+  const s = Math.max(0, Math.round(totalSeconds));
+  const m = Math.floor(s / 60);
+  const rem = s % 60;
+  return `${m}:${String(rem).padStart(2, '0')}`;
+}
+
+/** Total planned seconds across every phase of a cardio timer, used as the
+ *  duration field's default before any history exists. */
+function cardioDefaultSeconds(exercise) {
+  if (!exercise.timer) return null;
+  return buildPhases(exercise.timer).reduce((sum, p) => sum + p.seconds, 0);
 }
 
 /** First number in a string like "50–60 kg bar" → 50, else null. */
@@ -157,6 +184,8 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
   const perSide = isUnilateral(exercise);
   const sideTag = perSide ? ' <span class="set-side">/side</span>' : '';
   const weightStep = Number.isFinite(exercise.weightStep) ? exercise.weightStep : 2.5;
+  const mode = exerciseLogMode(exercise); // 'strength' | 'cardio' | 'hold'
+  const defaultCardioSeconds = mode === 'cardio' ? cardioDefaultSeconds(exercise) : null;
   const loggedSets = Array.isArray(initialSets) ? initialSets.map(s => ({ ...s })) : [];
   let activeSetIndex = loggedSets.length;
   let editingIndex = null; // index of a logged set being corrected, or null
@@ -178,7 +207,15 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
   // outside the re-rendered region. Keeping the GIF node in place means logging
   // a set no longer wipes and re-creates it — the demo animation stops jumping
   // back to frame 0 on every log.
-  const progHint = suggestProgression(previousSets, exercise.repRange, { weightStep: exercise.weightStep, stallCount: coach.stallCount });
+  // Weight/reps progression coaching only means something for loaded strength
+  // work — a duration walk or a hold has no "top weight" to jump, so skip it
+  // rather than let suggestProgression fall back to nonsense reps-of-zero text.
+  const progHint = mode === 'strength'
+    ? suggestProgression(previousSets, exercise.repRange, { weightStep: exercise.weightStep, stallCount: coach.stallCount })
+    : null;
+  const unilateralNote = mode === 'hold'
+    ? '↔ One side at a time — log the hold time for a single side.'
+    : '↔ One side at a time — log the weight &amp; reps for a single side.';
   container.innerHTML = `
     <div class="exercise-progress" id="exercise-progress"></div>
     <div class="exercise-name">${escapeHtml(exercise.name)}</div>
@@ -189,10 +226,10 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
       loading="lazy"
       onerror="this.style.display='none'"
     >
-    <p class="muted">${escapeHtml(exercise.repRange)} reps · rest ${exercise.restSeconds}s · start ~${escapeHtml(String(exercise.startWeight ?? ''))}</p>
-    ${perSide ? '<p class="muted unilateral-note">↔ One side at a time — log the weight &amp; reps for a single side.</p>' : ''}
+    <p class="muted">${escapeHtml(exercise.repRange)}${mode === 'strength' ? ' reps' : ''} · rest ${exercise.restSeconds}s · start ~${escapeHtml(String(exercise.startWeight ?? ''))}</p>
+    ${perSide ? `<p class="muted unilateral-note">${unilateralNote}</p>` : ''}
     ${deload.active ? `<p class="deload-tag">🌙 Deload week — ${effectiveSetsCount} of ${exercise.setsCount} sets, hold the weight</p>` : ''}
-    ${recommendedWeightBlock(exercise, previousSets)}
+    ${mode === 'strength' ? recommendedWeightBlock(exercise, previousSets) : ''}
     ${progHint ? `<p class="progression-hint">💡 ${escapeHtml(progHint.text)}</p>` : ''}
     ${cueTargetBlock(exercise)}
     ${coachingBlock(exercise, previousSets)}
@@ -208,58 +245,98 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
     workoutTimerHandle = mountWorkoutTimer(container.querySelector('#workout-timer-slot'), exercise.timer, () => {});
   }
 
+  /** Fields for the active/edit row, keyed by mode. Strength keeps its existing
+   *  weight+reps+RPE fields; cardio logs duration (minutes) + effort RPE; a hold
+   *  logs duration (seconds) alone — none of the three share a data shape, so
+   *  each renders its own field-row markup. */
+  function fieldsHtml({ idPrefix, defaultWeight, defaultReps, defaultRpe, defaultDurationSeconds }) {
+    if (mode === 'strength') {
+      return `
+        <div class="field-row">
+          <label class="input-label">Weight (kg)</label>
+          ${stepperHtml(`<input type="number" inputmode="decimal" class="set-input" id="${idPrefix}weight-input" placeholder="${escapeHtml(String(exercise.startWeight ?? 'kg'))}" value="${defaultWeight ?? ''}">`, { step: weightStep, label: 'weight' })}
+        </div>
+        <div class="field-row">
+          <label class="input-label">Reps</label>
+          ${stepperHtml(`<input type="number" inputmode="numeric" class="set-input" id="${idPrefix}reps-input" placeholder="${escapeHtml(String(exercise.repRange ?? ''))}" value="${defaultReps ?? ''}">`, { step: 1, label: 'reps' })}
+        </div>
+        <div class="field-row rpe-field">
+          <label class="input-label">RPE (optional)</label>
+          ${stepperHtml(`<input type="number" inputmode="decimal" step="0.5" class="set-input set-input-rpe" id="${idPrefix}rpe-input" placeholder="${rpePlaceholder || '—'}" value="${defaultRpe ?? ''}">`, { step: 0.5, min: 1, max: 10, label: 'RPE' })}
+        </div>
+      `;
+    }
+    if (mode === 'cardio') {
+      const defaultMinutes = Number.isFinite(defaultDurationSeconds) ? Math.round(defaultDurationSeconds / 60) : '';
+      const placeholderMinutes = Number.isFinite(defaultCardioSeconds) ? Math.round(defaultCardioSeconds / 60) : '';
+      return `
+        <div class="field-row">
+          <label class="input-label">Duration (min)</label>
+          ${stepperHtml(`<input type="number" inputmode="numeric" class="set-input" id="${idPrefix}duration-input" placeholder="${placeholderMinutes}" value="${defaultMinutes}">`, { step: 1, min: 1, label: 'duration' })}
+        </div>
+        <div class="field-row rpe-field">
+          <label class="input-label">Effort RPE</label>
+          ${stepperHtml(`<input type="number" inputmode="decimal" step="0.5" class="set-input set-input-rpe" id="${idPrefix}rpe-input" placeholder="${rpePlaceholder || '—'}" value="${defaultRpe ?? ''}">`, { step: 0.5, min: 1, max: 10, label: 'RPE' })}
+        </div>
+      `;
+    }
+    // hold
+    return `
+      <div class="field-row">
+        <label class="input-label">Duration (sec)</label>
+        ${stepperHtml(`<input type="number" inputmode="numeric" class="set-input" id="${idPrefix}duration-input" value="${defaultDurationSeconds ?? ''}">`, { step: 5, min: 5, label: 'duration' })}
+      </div>
+    `;
+  }
+
+  /** Human-readable summary of a logged set, keyed by mode. */
+  function formatLoggedSet(s) {
+    const rpeTag = Number.isFinite(s.rpe) ? ` <span class="set-rpe">@${s.rpe}</span>` : '';
+    if (mode === 'cardio') return `${formatDuration(s.durationSeconds)}${rpeTag}`;
+    if (mode === 'hold') return `${s.durationSeconds}s${sideTag}`;
+    return `${s.weight}kg x ${s.reps}${sideTag}${rpeTag}`;
+  }
+
   function setRowHtml(i) {
     if (editingIndex === i) {
       const s = loggedSets[i] ?? {};
       return `
         <div class="set-row active" id="edit-set-row">
           <span class="set-label">Set ${i + 1}</span>
-          <div class="field-row">
-            <label class="input-label">Weight (kg)</label>
-            ${stepperHtml(`<input type="number" inputmode="decimal" class="set-input" id="edit-weight-input" value="${s.weight ?? ''}">`, { step: weightStep, label: 'weight' })}
-          </div>
-          <div class="field-row">
-            <label class="input-label">Reps</label>
-            ${stepperHtml(`<input type="number" inputmode="numeric" class="set-input" id="edit-reps-input" value="${s.reps ?? ''}">`, { step: 1, label: 'reps' })}
-          </div>
-          <div class="field-row rpe-field">
-            <label class="input-label">RPE (optional)</label>
-            ${stepperHtml(`<input type="number" inputmode="decimal" step="0.5" class="set-input set-input-rpe" id="edit-rpe-input" placeholder="—" value="${s.rpe ?? ''}">`, { step: 0.5, min: 1, max: 10, label: 'RPE' })}
-          </div>
+          ${fieldsHtml({ idPrefix: 'edit-', defaultWeight: s.weight, defaultReps: s.reps, defaultRpe: s.rpe, defaultDurationSeconds: s.durationSeconds })}
           <button class="btn-primary" id="edit-save-btn">Save</button>
         </div>
       `;
     }
     if (i < loggedSets.length) {
       const s = loggedSets[i];
-      const rpeTag = Number.isFinite(s.rpe) ? ` <span class="set-rpe">@${s.rpe}</span>` : '';
-      return `<div class="set-row done editable" data-edit-index="${i}" title="Tap to correct"><span class="set-label">Set ${i + 1}</span><span>${s.weight}kg x ${s.reps}${sideTag}${rpeTag} <span class="set-edit-hint">✎</span></span></div>`;
+      return `<div class="set-row done editable" data-edit-index="${i}" title="Tap to correct"><span class="set-label">Set ${i + 1}</span><span>${formatLoggedSet(s)} <span class="set-edit-hint">✎</span></span></div>`;
     }
     if (i === activeSetIndex && editingIndex === null) {
       const prevSessionSet = previousSets ? previousSets[activeSetIndex] ?? previousSets[previousSets.length - 1] : null;
       const prevLoggedSet = loggedSets.length > 0 ? loggedSets[loggedSets.length - 1] : null;
       const defaultWeight = prevLoggedSet?.weight ?? prevSessionSet?.weight ?? '';
       const defaultReps   = prevLoggedSet?.reps   ?? prevSessionSet?.reps   ?? '';
-      const canRepeat = defaultWeight !== '' && defaultReps !== '';
+      const defaultDurationSeconds = prevLoggedSet?.durationSeconds ?? prevSessionSet?.durationSeconds
+        ?? (mode === 'cardio' ? defaultCardioSeconds : null);
+      const canRepeat = mode === 'strength'
+        ? (defaultWeight !== '' && defaultReps !== '')
+        : Number.isFinite(defaultDurationSeconds);
       const logLabel = (canRepeat && !activeDirty) ? 'Log same ↻' : 'Log';
-      const repeatHint = canRepeat
-        ? `<p class="repeat-hint muted">↻ Log repeats ${defaultWeight}kg × ${defaultReps}${perSide ? ' /side' : ''} — adjust with ± or type</p>`
-        : '';
+      let repeatHint = '';
+      if (canRepeat) {
+        // Cardio's duration field only accepts whole minutes, so the hint shows
+        // the rounded value that Log will actually save, not the exact planned
+        // seconds — otherwise "repeats 12:30" logs as 13:00 with nothing typed.
+        const summary = mode === 'strength'
+          ? `${defaultWeight}kg × ${defaultReps}${perSide ? ' /side' : ''}`
+          : (mode === 'cardio' ? formatDuration(Math.round(defaultDurationSeconds / 60) * 60) : `${defaultDurationSeconds}s${perSide ? ' /side' : ''}`);
+        repeatHint = `<p class="repeat-hint muted">↻ Log repeats ${summary} — adjust with ± or type</p>`;
+      }
       return `
         <div class="set-row active" id="active-set-row">
           <span class="set-label">Set ${i + 1}</span>
-          <div class="field-row">
-            <label class="input-label">Weight (kg)</label>
-            ${stepperHtml(`<input type="number" inputmode="decimal" class="set-input" id="weight-input" placeholder="${escapeHtml(String(exercise.startWeight ?? 'kg'))}" value="${defaultWeight}">`, { step: weightStep, label: 'weight' })}
-          </div>
-          <div class="field-row">
-            <label class="input-label">Reps</label>
-            ${stepperHtml(`<input type="number" inputmode="numeric" class="set-input" id="reps-input" placeholder="${escapeHtml(String(exercise.repRange ?? ''))}" value="${defaultReps}">`, { step: 1, label: 'reps' })}
-          </div>
-          <div class="field-row rpe-field">
-            <label class="input-label">RPE (optional)</label>
-            ${stepperHtml(`<input type="number" inputmode="decimal" step="0.5" class="set-input set-input-rpe" id="rpe-input" placeholder="${rpePlaceholder || '—'}" value="">`, { step: 0.5, min: 1, max: 10, label: 'RPE' })}
-          </div>
+          ${fieldsHtml({ idPrefix: '', defaultWeight, defaultReps, defaultDurationSeconds })}
           ${repeatHint}
           <button class="btn-primary" id="log-set-btn" ${restActive ? 'disabled style="opacity:.45"' : ''}>${logLabel}</button>
         </div>
@@ -303,8 +380,12 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
     if (logBtn) {
       logBtn.addEventListener('click', handleLogSet);
       const markDirty = () => { activeDirty = true; };
-      dynamicRoot.querySelector('#weight-input')?.addEventListener('input', markDirty);
-      dynamicRoot.querySelector('#reps-input')?.addEventListener('input', markDirty);
+      if (mode === 'strength') {
+        dynamicRoot.querySelector('#weight-input')?.addEventListener('input', markDirty);
+        dynamicRoot.querySelector('#reps-input')?.addEventListener('input', markDirty);
+      } else {
+        dynamicRoot.querySelector('#duration-input')?.addEventListener('input', markDirty);
+      }
     }
 
     // Tap a logged set to correct it.
@@ -369,33 +450,65 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
     coach.onSetsChange?.(loggedSets.map(s => ({ ...s })));
   }
 
+  /** Build a strength set ({weight, reps, rpe?}) from the active row's inputs,
+   *  inheriting any field left blank from `prev`. Returns null (and marks the
+   *  offending inputs) if weight/reps can't be resolved. */
+  function buildStrengthSet(prev, idPrefix) {
+    const weightInput = dynamicRoot.querySelector(`#${idPrefix}weight-input`);
+    const repsInput = dynamicRoot.querySelector(`#${idPrefix}reps-input`);
+    let weight = parseFloat(weightInput.value);
+    if (Number.isNaN(weight) && prev != null && Number.isFinite(Number(prev.weight))) weight = Number(prev.weight);
+    let reps = parseInt(repsInput.value, 10);
+    if (Number.isNaN(reps) && prev != null && Number.isFinite(Number(prev.reps))) reps = Number(prev.reps);
+    if (Number.isNaN(weight) || Number.isNaN(reps)) {
+      weightInput.style.borderColor = 'var(--push)';
+      repsInput.style.borderColor = 'var(--push)';
+      return null;
+    }
+    const typedRpe = readRpe(dynamicRoot.querySelector(`#${idPrefix}rpe-input`));
+    const rpe = ('rpe' in typedRpe)
+      ? typedRpe
+      : (prev != null && Number.isFinite(Number(prev.rpe)) ? { rpe: Math.min(10, Number(prev.rpe)) } : {});
+    return { weight, reps, ...rpe };
+  }
+
+  /** Build a cardio/hold set ({durationSeconds, rpe?}) from the active row's
+   *  duration input (minutes for cardio, seconds for a hold), inheriting a
+   *  blank field from `prev`. Returns null (and marks the input) if the
+   *  duration can't be resolved. */
+  function buildDurationSet(prev, idPrefix) {
+    const durationInput = dynamicRoot.querySelector(`#${idPrefix}duration-input`);
+    let raw = parseFloat(durationInput.value);
+    if (Number.isNaN(raw) && prev != null && Number.isFinite(Number(prev.durationSeconds))) {
+      raw = mode === 'cardio' ? Number(prev.durationSeconds) / 60 : Number(prev.durationSeconds);
+    }
+    if (Number.isNaN(raw) || raw <= 0) {
+      durationInput.style.borderColor = 'var(--push)';
+      return null;
+    }
+    const durationSeconds = Math.round(mode === 'cardio' ? raw * 60 : raw);
+    if (mode !== 'cardio') return { durationSeconds };
+    const typedRpe = readRpe(dynamicRoot.querySelector(`#${idPrefix}rpe-input`));
+    const rpe = ('rpe' in typedRpe)
+      ? typedRpe
+      : (prev != null && Number.isFinite(Number(prev.rpe)) ? { rpe: Math.min(10, Number(prev.rpe)) } : {});
+    return { durationSeconds, ...rpe };
+  }
+
+  function buildSetFromActiveRow(idPrefix) {
+    const prev = previousEntryFor(activeSetIndex);
+    return mode === 'strength' ? buildStrengthSet(prev, idPrefix) : buildDurationSet(prev, idPrefix);
+  }
+
   function handleLogSet() {
     // Unlock the shared audio context on this gesture so the rest-over beep can
     // fire even after the phone is backgrounded, and offer the notification once.
     unlockAudio();
     ensureNotifyPermission();
 
-    const weightInput = dynamicRoot.querySelector('#weight-input');
-    const repsInput = dynamicRoot.querySelector('#reps-input');
-    const prev = previousEntryFor(activeSetIndex);
-
-    // Fill any field left blank from the previous entry, so tapping Log with an
-    // unchanged field (or all of them) repeats the last set's weight / reps / RPE.
-    let weight = parseFloat(weightInput.value);
-    if (Number.isNaN(weight) && prev != null && Number.isFinite(Number(prev.weight))) weight = Number(prev.weight);
-    let reps = parseInt(repsInput.value, 10);
-    if (Number.isNaN(reps) && prev != null && Number.isFinite(Number(prev.reps))) reps = Number(prev.reps);
-
-    if (Number.isNaN(weight) || Number.isNaN(reps)) {
-      weightInput.style.borderColor = 'var(--push)';
-      repsInput.style.borderColor = 'var(--push)';
-      return;
-    }
-    const typedRpe = readRpe(dynamicRoot.querySelector('#rpe-input'));
-    const rpe = ('rpe' in typedRpe)
-      ? typedRpe
-      : (prev != null && Number.isFinite(Number(prev.rpe)) ? { rpe: Math.min(10, Number(prev.rpe)) } : {});
-    loggedSets.push({ weight, reps, ...rpe });
+    const set = buildSetFromActiveRow('');
+    if (!set) return;
+    loggedSets.push(set);
     if (navigator.vibrate) navigator.vibrate(10); // subtle confirm tick
     activeSetIndex++;
     activeDirty = false; // fresh active row for the next set
@@ -415,16 +528,11 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
   }
 
   function handleSaveEdit() {
-    const weightInput = dynamicRoot.querySelector('#edit-weight-input');
-    const repsInput = dynamicRoot.querySelector('#edit-reps-input');
-    const weight = parseFloat(weightInput.value);
-    const reps = parseInt(repsInput.value, 10);
-    if (Number.isNaN(weight) || Number.isNaN(reps)) {
-      weightInput.style.borderColor = 'var(--push)';
-      repsInput.style.borderColor = 'var(--push)';
-      return;
-    }
-    loggedSets[editingIndex] = { weight, reps, ...readRpe(dynamicRoot.querySelector('#edit-rpe-input')) };
+    const set = mode === 'strength'
+      ? buildStrengthSet(null, 'edit-')
+      : buildDurationSet(null, 'edit-');
+    if (!set) return;
+    loggedSets[editingIndex] = set;
     editingIndex = null;
     emitSetsChange();
     render();
@@ -435,23 +543,19 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
     // Only capture a set the user actually entered, not untouched pre-fill.
     if (!activeDirty) return true;
 
-    const weightInput = dynamicRoot.querySelector('#weight-input');
-    const repsInput = dynamicRoot.querySelector('#reps-input');
-    if (!weightInput || !repsInput) return true;
-
-    const hasWeight = weightInput.value.trim() !== '';
-    const hasReps = repsInput.value.trim() !== '';
-    if (!hasWeight && !hasReps) return true;
-
-    const weight = parseFloat(weightInput.value);
-    const reps = parseInt(repsInput.value, 10);
-    if (Number.isNaN(weight) || Number.isNaN(reps)) {
-      weightInput.style.borderColor = 'var(--push)';
-      repsInput.style.borderColor = 'var(--push)';
-      return false;
+    if (mode === 'strength') {
+      const weightInput = dynamicRoot.querySelector('#weight-input');
+      const repsInput = dynamicRoot.querySelector('#reps-input');
+      if (!weightInput || !repsInput) return true;
+      if (weightInput.value.trim() === '' && repsInput.value.trim() === '') return true;
+    } else {
+      const durationInput = dynamicRoot.querySelector('#duration-input');
+      if (!durationInput || durationInput.value.trim() === '') return true;
     }
 
-    loggedSets.push({ weight, reps, ...readRpe(dynamicRoot.querySelector('#rpe-input')) });
+    const set = buildSetFromActiveRow('');
+    if (!set) return false;
+    loggedSets.push(set);
     activeSetIndex++;
     emitSetsChange();
     return true;

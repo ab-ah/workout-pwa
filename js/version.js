@@ -3,5 +3,5 @@
 //
 // Release convention: every deploy bumps APP_VERSION (and the service worker's
 // CACHE_NAME in sw.js, in lock-step) so an updated number on screen == fresh code.
-export const APP_VERSION = '1.12.2';
-export const BUILD_DATE = '2026-07-10';
+export const APP_VERSION = '1.13.0';
+export const BUILD_DATE = '2026-07-11';
