@@ -86,7 +86,28 @@ export const SETTINGS_KEY = 'leanbuild-settings-v1';
 //   hands with no anchor. The new band-pull-apart exercise is appended to any
 //   existing pool and the routines reinstall on the bump; the old band-face-pull
 //   stays in the library (off the default schedule) so no history is orphaned.
-export const CURRENT_PLAN_VERSION = 15;
+// v16 = trainer-review follow-ups (weekly-volume audit, no new equipment):
+//   • Lats were the plan's structural gap — 14 weighted sets, below the 16 MAV
+//     growth threshold, and (with no pull-up bar or cable) 100% horizontal rowing.
+//     The Chest-Supported DB Row steps 3→5 sets on Upper Power: it's the one row
+//     that adds direct lat volume with ZERO lower-back cost (lower_back already
+//     sits near its MRV), clearing lats to 16.
+//   • Row quality — a dead-stop / long-ROM lat cue is added to the three scheduled
+//     rowing drivers (bent-over barbell, chest-supported DB, two-arm DB) so each
+//     set biases the lats over the biceps instead of turning into a short-ROM heave.
+//   • Calves were barely over maintenance (8.5 sets) — the DB Calf Raise steps
+//     4→5 on both lower days, lifting calves to ~10 without a third calf slot.
+//   • Redundant ab volume trimmed — Mountain Climbers (lowest stimulus-per-fatigue
+//     of the core moves, on a day where abs already clear optimal) are dropped from
+//     Conditioning & Core; the freed recovery budget backs the lat/calf additions.
+//   • Landmark corrections in volume.js for the plan's mostly-indirect,
+//     work-tolerant muscles so the volume chart stops false-flagging "over MRV":
+//     glutes 18→22 (indirect off every squat/RDL/lunge), plus traps 18→22 and
+//     rear delts 18→20 (the +2 chest-supported-row sets nudged both just over the
+//     old ceiling; nearly all their volume is synergist half-credit from rows).
+//   Migration refreshes setsCount + cue on the affected default exercises and
+//   reinstalls the routines on the bump; logged history is untouched.
+export const CURRENT_PLAN_VERSION = 16;
 
 const DEFAULT_RECOVERY_HOURS = {
   chest: 54, front_delts: 48, side_delts: 48, traps: 48, triceps: 48, lats: 60,
@@ -244,9 +265,9 @@ const EXERCISE_POOL_DATA = [
   { id: 'dumbbell-lateral-raise', name: 'Dumbbell Lateral Raise', setsCount: 4, repRange: '12–15', restSeconds: 60, startWeight: '7–10 kg / hand', gifUrl: 'assets/exercise-gifs/dumbbell-lateral-raise.gif' },
   { id: 'lying-dumbbell-triceps-extension', name: 'Lying Dumbbell Triceps Extension', setsCount: 3, repRange: '10–12', restSeconds: 60, startWeight: '8–12 kg / hand', gifUrl: 'assets/exercise-gifs/lying-dumbbell-triceps-extension.gif' },
   { id: 'close-grip-dumbbell-press', name: 'Close-Grip Dumbbell Press', setsCount: 2, repRange: '10–12', restSeconds: 60, startWeight: '14–18 kg / hand', gifUrl: 'assets/exercise-gifs/close-grip-dumbbell-press.gif' },
-  { id: 'bent-over-barbell-row', name: 'Bent-Over Barbell Row', setsCount: 4, repRange: '6–8', restSeconds: 150, startWeight: '40–50 kg bar', gifUrl: 'assets/exercise-gifs/bent-over-barbell-row.gif' },
+  { id: 'bent-over-barbell-row', name: 'Bent-Over Barbell Row', setsCount: 4, repRange: '6–8', restSeconds: 150, startWeight: '40–50 kg bar', gifUrl: 'assets/exercise-gifs/bent-over-barbell-row.gif', cue: 'Hinge to ~45°, brace hard, and pull the bar to your lower ribs — elbows driving back and down, not flaring up. Own a brief pause at the top and a full stretch at the bottom; think “elbow to back pocket” to load the lats rather than heaving with the lower back.' },
   { id: 'one-arm-dumbbell-row', name: 'One-Arm Dumbbell Row', setsCount: 3, repRange: '8–10', restSeconds: 75, startWeight: '22–28 kg / hand', gifUrl: 'assets/exercise-gifs/one-arm-dumbbell-row.gif' },
-  { id: 'chest-supported-dumbbell-row', name: 'Chest-Supported Dumbbell Row (incline bench)', setsCount: 3, repRange: '10–12', restSeconds: 60, startWeight: '14–18 kg / hand', gifUrl: 'assets/exercise-gifs/chest-supported-dumbbell-row.gif' },
+  { id: 'chest-supported-dumbbell-row', name: 'Chest-Supported Dumbbell Row (incline bench)', setsCount: 5, repRange: '10–12', restSeconds: 60, startWeight: '14–18 kg / hand', gifUrl: 'assets/exercise-gifs/chest-supported-dumbbell-row.gif', cue: 'Chest pinned to the incline bench so the lower back does nothing — that’s the point of this one. Let the dumbbells hang for a full stretch at the bottom, then drive the elbows down and back toward your hips (not up to your chest) to bias the lats. Your main lat driver — hence the extra sets.' },
   { id: 'back-hyperextension', name: 'Back Hyperextension', setsCount: 3, repRange: '12–15', restSeconds: 60, startWeight: 'bodyweight → hold plate', gifUrl: 'assets/exercise-gifs/back-hyperextension.gif' },
   { id: 'preacher-curl', name: 'Preacher Curl (EZ/straight bar)', setsCount: 3, repRange: '8–10', restSeconds: 60, startWeight: '20–30 kg bar', gifUrl: 'assets/exercise-gifs/preacher-curl.gif' },
   { id: 'dumbbell-hammer-curl', name: 'Dumbbell Hammer Curl', setsCount: 3, repRange: '10–12', restSeconds: 60, startWeight: '10–14 kg / hand', gifUrl: 'assets/exercise-gifs/dumbbell-hammer-curl.gif' },
@@ -255,12 +276,12 @@ const EXERCISE_POOL_DATA = [
   { id: 'barbell-back-squat', name: 'Barbell Back Squat', setsCount: 4, repRange: '6–8', restSeconds: 150, startWeight: 'bar + moderate load', gifUrl: 'assets/exercise-gifs/barbell-back-squat.gif' },
   { id: 'dumbbell-romanian-deadlift', name: 'Dumbbell Romanian Deadlift', setsCount: 3, repRange: '8–10', restSeconds: 75, startWeight: '22–28 kg / hand', gifUrl: 'assets/exercise-gifs/dumbbell-romanian-deadlift.gif' },
   { id: 'bulgarian-split-squat', name: 'Walking / Bulgarian Split Squat', setsCount: 3, repRange: '10 / leg', restSeconds: 60, startWeight: '12–18 kg / hand', gifUrl: 'assets/exercise-gifs/bulgarian-split-squat.gif' },
-  { id: 'dumbbell-calf-raise', name: 'Dumbbell Calf Raise', setsCount: 4, repRange: '15–20', restSeconds: 45, startWeight: '20–30 kg / hand', gifUrl: 'assets/exercise-gifs/dumbbell-calf-raise.gif', cue: 'Toes on a plate or step — let the heel drop for a full stretch at the bottom, then rise all the way onto the toes. Standing flat cuts the growth half of the ROM.' },
+  { id: 'dumbbell-calf-raise', name: 'Dumbbell Calf Raise', setsCount: 5, repRange: '15–20', restSeconds: 45, startWeight: '20–30 kg / hand', gifUrl: 'assets/exercise-gifs/dumbbell-calf-raise.gif', cue: 'Toes on a plate or step — let the heel drop for a full stretch at the bottom, then rise all the way onto the toes. Pause 1–2s in the stretched bottom position; standing flat cuts the growth half of the ROM.' },
   { id: 'hanging-leg-raise', name: 'Lying Leg Raise', setsCount: 3, repRange: '12–15', restSeconds: 60, startWeight: 'bodyweight', gifUrl: 'assets/exercise-gifs/hanging-leg-raise.gif' },
   { id: 'plank', name: 'Plank', setsCount: 3, repRange: '45–60s hold', restSeconds: 45, startWeight: 'bodyweight', gifUrl: 'assets/exercise-gifs/plank.gif' },
   { id: 'incline-barbell-bench-press', name: 'Incline Barbell Bench Press', setsCount: 4, repRange: '8–10', restSeconds: 120, startWeight: '40–50 kg bar', gifUrl: 'assets/exercise-gifs/incline-barbell-bench-press.gif' },
   { id: 'decline-dumbbell-press', name: 'Decline Dumbbell Press', setsCount: 3, repRange: '10–12', restSeconds: 75, startWeight: '16–20 kg / hand', gifUrl: 'assets/exercise-gifs/decline-dumbbell-press.gif' },
-  { id: 'two-arm-dumbbell-row', name: 'Two-Arm Dumbbell Row', setsCount: 4, repRange: '10–12', restSeconds: 75, startWeight: '18–24 kg / hand', gifUrl: 'assets/exercise-gifs/two-arm-dumbbell-row.gif' },
+  { id: 'two-arm-dumbbell-row', name: 'Two-Arm Dumbbell Row', setsCount: 4, repRange: '10–12', restSeconds: 75, startWeight: '18–24 kg / hand', gifUrl: 'assets/exercise-gifs/two-arm-dumbbell-row.gif', cue: 'Hinge and let both dumbbells hang for a full stretch, then row them toward your hips with the elbows tracking down and back — “elbow to back pocket.” A brief dead-stop stretch at the bottom of each rep keeps the lats working instead of the biceps taking over.' },
   { id: 'dumbbell-pullover', name: 'Dumbbell Pullover (lat/chest)', setsCount: 3, repRange: '12', restSeconds: 60, startWeight: '16–22 kg', gifUrl: 'assets/exercise-gifs/dumbbell-pullover.gif' },
   { id: 'standing-dumbbell-curl', name: 'Standing Dumbbell Curl', setsCount: 3, repRange: '10–12', restSeconds: 60, startWeight: '12–16 kg / hand', gifUrl: 'assets/exercise-gifs/standing-dumbbell-curl.gif' },
   { id: 'overhead-dumbbell-triceps-extension', name: 'Overhead Dumbbell Triceps Extension', setsCount: 3, repRange: '10–12', restSeconds: 60, startWeight: '14–18 kg', gifUrl: 'assets/exercise-gifs/overhead-dumbbell-triceps-extension.gif' },
@@ -406,7 +427,6 @@ const DEFAULT_ROUTINES = [
       'renegade-row',
       'push-up',
       'dumbbell-push-press',
-      'mountain-climber',
       'bicycle-crunch',
       'side-plank',
       'treadmill-hiit-intervals',

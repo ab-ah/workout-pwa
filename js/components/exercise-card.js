@@ -1,6 +1,6 @@
 import { mountRestTimer } from './rest-timer.js';
 import { mountWorkoutTimer, buildPhases } from './workout-timer.js';
-import { suggestProgression, parseTopReps, prescribeRpe, recommendLoad } from '../progression.js';
+import { suggestProgression, parseTopReps, prescribeRpe, recommendLoad, isDistanceBased } from '../progression.js';
 import { warmupSets, HEAVY_BARBELL_LIFTS } from '../warmup.js';
 import { bestE1RM, loadForReps, roundLoad } from '../one-rep-max.js';
 import { getDeloadMode, deloadSetTarget } from '../deload-mode.js';
@@ -185,6 +185,11 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
   const sideTag = perSide ? ' <span class="set-side">/side</span>' : '';
   const weightStep = Number.isFinite(exercise.weightStep) ? exercise.weightStep : 2.5;
   const mode = exerciseLogMode(exercise); // 'strength' | 'cardio' | 'hold'
+  // A loaded carry (Farmer's Carry) is logged in metres, not reps — label the
+  // field and the logged-set text as distance so "Reps" and "28kg x 40" don't
+  // read as reps of metres. Only meaningful in strength mode.
+  const repUnit = (mode === 'strength' && isDistanceBased(exercise.repRange)) ? 'm' : '';
+  const repsLabel = repUnit ? 'Distance (m)' : 'Reps';
   const defaultCardioSeconds = mode === 'cardio' ? cardioDefaultSeconds(exercise) : null;
   const loggedSets = Array.isArray(initialSets) ? initialSets.map(s => ({ ...s })) : [];
   let activeSetIndex = loggedSets.length;
@@ -226,7 +231,7 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
       loading="lazy"
       onerror="this.style.display='none'"
     >
-    <p class="muted">${escapeHtml(exercise.repRange)}${mode === 'strength' ? ' reps' : ''} · rest ${exercise.restSeconds}s · start ~${escapeHtml(String(exercise.startWeight ?? ''))}</p>
+    <p class="muted">${escapeHtml(exercise.repRange)}${mode === 'strength' && !repUnit ? ' reps' : ''} · rest ${exercise.restSeconds}s · start ~${escapeHtml(String(exercise.startWeight ?? ''))}</p>
     ${perSide ? `<p class="muted unilateral-note">${unilateralNote}</p>` : ''}
     ${deload.active ? `<p class="deload-tag">🌙 Deload week — ${effectiveSetsCount} of ${exercise.setsCount} sets, hold the weight</p>` : ''}
     ${mode === 'strength' ? recommendedWeightBlock(exercise, previousSets) : ''}
@@ -257,8 +262,8 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
           ${stepperHtml(`<input type="number" inputmode="decimal" class="set-input" id="${idPrefix}weight-input" placeholder="${escapeHtml(String(exercise.startWeight ?? 'kg'))}" value="${defaultWeight ?? ''}">`, { step: weightStep, label: 'weight' })}
         </div>
         <div class="field-row">
-          <label class="input-label">Reps</label>
-          ${stepperHtml(`<input type="number" inputmode="numeric" class="set-input" id="${idPrefix}reps-input" placeholder="${escapeHtml(String(exercise.repRange ?? ''))}" value="${defaultReps ?? ''}">`, { step: 1, label: 'reps' })}
+          <label class="input-label">${repsLabel}</label>
+          ${stepperHtml(`<input type="number" inputmode="numeric" class="set-input" id="${idPrefix}reps-input" placeholder="${escapeHtml(String(exercise.repRange ?? ''))}" value="${defaultReps ?? ''}">`, { step: 1, label: repUnit ? 'distance' : 'reps' })}
         </div>
         <div class="field-row rpe-field">
           <label class="input-label">RPE (optional)</label>
@@ -294,7 +299,7 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
     const rpeTag = Number.isFinite(s.rpe) ? ` <span class="set-rpe">@${s.rpe}</span>` : '';
     if (mode === 'cardio') return `${formatDuration(s.durationSeconds)}${rpeTag}`;
     if (mode === 'hold') return `${s.durationSeconds}s${sideTag}`;
-    return `${s.weight}kg x ${s.reps}${sideTag}${rpeTag}`;
+    return `${s.weight}kg x ${s.reps}${repUnit}${sideTag}${rpeTag}`;
   }
 
   function setRowHtml(i) {
@@ -329,7 +334,7 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
         // the rounded value that Log will actually save, not the exact planned
         // seconds — otherwise "repeats 12:30" logs as 13:00 with nothing typed.
         const summary = mode === 'strength'
-          ? `${defaultWeight}kg × ${defaultReps}${perSide ? ' /side' : ''}`
+          ? `${defaultWeight}kg × ${defaultReps}${repUnit}${perSide ? ' /side' : ''}`
           : (mode === 'cardio' ? formatDuration(Math.round(defaultDurationSeconds / 60) * 60) : `${defaultDurationSeconds}s${perSide ? ' /side' : ''}`);
         repeatHint = `<p class="repeat-hint muted">↻ Log repeats ${summary} — adjust with ± or type</p>`;
       }
@@ -421,8 +426,11 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
     // Log field is never stranded below the fold mid-workout.
     if (!restActive && editingIndex === null && activeSetIndex !== lastScrolledSetIndex) {
       lastScrolledSetIndex = activeSetIndex;
+      // Honour the OS "reduce motion" setting — jump instead of smooth-scrolling.
+      const reduceMotion = typeof matchMedia === 'function'
+        && matchMedia('(prefers-reduced-motion: reduce)').matches;
       dynamicRoot.querySelector('#active-set-row')
-        ?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        ?.scrollIntoView({ block: 'center', behavior: reduceMotion ? 'auto' : 'smooth' });
     }
   }
 

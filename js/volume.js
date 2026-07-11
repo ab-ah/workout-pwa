@@ -23,8 +23,15 @@ export const VOLUME_LANDMARKS = {
   // productive band instead of falsely flagging "over MRV".
   front_delts: { mev: 6,  mav: 10, mrv: 18 },
   side_delts:  { mev: 8,  mav: 14, mrv: 22 },
-  rear_delts:  { mev: 6,  mav: 10, mrv: 18 },
-  traps:       { mev: 4,  mav: 10, mrv: 18 },
+  // Rear delts recover fast and tolerate high frequency; here they take direct
+  // work (rear-delt fly + band pull-apart, 2×/week) on top of heavy indirect
+  // volume from every row. MRV 18→20 keeps that in the productive band.
+  rear_delts:  { mev: 6,  mav: 10, mrv: 20 },
+  // Traps get almost no direct work here (only the farmer's carry) — nearly all
+  // their tally is synergist half-credit off rows/RDLs/presses, and traps are a
+  // very work-tolerant postural muscle. MRV 18→22 (same mostly-indirect rationale
+  // as glutes) so a row-heavy back plan doesn't false-flag them "over MRV".
+  traps:       { mev: 4,  mav: 10, mrv: 22 },
   lats:        { mev: 10, mav: 16, mrv: 22 },
   lower_back:  { mev: 2,  mav: 6,  mrv: 10 },
   biceps:      { mev: 8,  mav: 14, mrv: 20 },
@@ -33,9 +40,12 @@ export const VOLUME_LANDMARKS = {
   quads:       { mev: 8,  mav: 14, mrv: 20 },
   hamstrings:  { mev: 6,  mav: 10, mrv: 16 },
   // Glutes now get direct work (dumbbell-hip-thrust, prime mover) on top of the
-  // indirect synergist half-credit from squats/RDLs/lunges. The ceiling stays a
-  // touch higher because most of the weekly tally is still indirect.
-  glutes:      { mev: 4,  mav: 10, mrv: 18 },
+  // indirect synergist half-credit from squats/RDLs/lunges. Most of the weekly
+  // tally is still indirect (synergist half-credit off every squat/RDL/lunge), so
+  // the raw set count overstates real glute fatigue — and glutes are famously
+  // work-tolerant. MRV lifted 18→22 so a plan loaded with compound lower-body work
+  // stops false-flagging "over MRV" for volume the glutes recover from easily.
+  glutes:      { mev: 4,  mav: 10, mrv: 22 },
   calves:      { mev: 8,  mav: 12, mrv: 18 },
   abs:         { mev: 6,  mav: 14, mrv: 25 },
   obliques:    { mev: 4,  mav: 10, mrv: 20 },

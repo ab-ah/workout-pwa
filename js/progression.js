@@ -25,6 +25,14 @@ function isTimeBased(repRange) {
   return typeof repRange === 'string' && /(\d\s*s\b|sec|hold)/i.test(repRange);
 }
 
+/** True when the "rep range" is actually a distance, e.g. a loaded carry logged
+ *  in metres ("30–40 m"). Such work isn't scored in reps, so the reps-in-reserve
+ *  RPE target doesn't apply and the logger labels the field as distance. The
+ *  negative lookahead keeps "min" (cardio) from matching the metre unit. */
+export function isDistanceBased(repRange) {
+  return typeof repRange === 'string' && /\d\s*m(?![a-z])/i.test(repRange);
+}
+
 /**
  * Prescribed effort target for a working set, so the app tells you how hard to
  * push (reps in reserve) instead of only recording RPE after the fact. Heavier,
@@ -39,6 +47,7 @@ export function prescribeRpe(exercise) {
   if (exercise.timer) return null; // cardio countdown — effort isn't RPE-scored
   const repRange = exercise.repRange;
   if (isTimeBased(repRange)) return null; // holds are chased by time, not RPE
+  if (isDistanceBased(repRange)) return null; // loaded carries are chased by distance/load, not a reps-in-reserve target
   const top = parseTopReps(repRange);
   if (top == null) return null;
 

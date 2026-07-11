@@ -29,7 +29,10 @@ body{
   /* Stop Android pull-to-refresh from reloading the app mid-workout. */
   overscroll-behavior-y:contain;
 }
-.wrap{max-width:920px;margin:0 auto;padding-top:20px}
+/* padding-top clears the device status bar / punch-hole camera when the PWA runs
+   fullscreen with viewport-fit=cover (e.g. installed on a Galaxy S25), where
+   content would otherwise slide under the translucent status bar. */
+.wrap{max-width:920px;margin:0 auto;padding-top:calc(20px + env(safe-area-inset-top))}
 
 /* BOTTOM NAV */
 .bottom-nav{
@@ -194,6 +197,16 @@ body{
 .stepper .set-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .stepper .set-input{-moz-appearance:textfield;appearance:textfield}
 .set-row.active > button{width:100%;margin-top:2px}
+/* Keep the active set's inputs + Log button within thumb reach on a tall phone:
+   pin the single-card entry row just above the bottom nav while the rest of the
+   set list scrolls past (mirrors the sticky rest timer at the top). Scoped to
+   #exercise-dynamic — the superset card renders two entry panels and a blanket
+   rule would stack two sticky rows. Sticky only engages once content overflows,
+   so short exercises are unaffected. */
+#exercise-dynamic .set-row.active{
+  position:sticky;bottom:calc(72px + env(safe-area-inset-bottom));z-index:20;
+  box-shadow:0 -4px 16px rgba(0,0,0,.4);
+}
 .repeat-hint{font-size:12px;margin:-2px 0 2px;line-height:1.4}
 .set-label{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent-dim);width:56px;flex-shrink:0}
 .set-input{
@@ -247,7 +260,7 @@ body{
 .chart-svg{width:100%;height:220px;background:var(--panel);border:1px solid var(--line);border-radius:14px}
 
 @media(max-width:680px){
-  .wrap{padding-top:14px}
+  .wrap{padding-top:calc(14px + env(safe-area-inset-top))}
 }
 .input-group{display:flex;flex-direction:column;gap:3px}
 .input-label{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
@@ -548,4 +561,15 @@ html{scroll-padding-bottom:170px;scroll-padding-top:90px}
 .gif-lightbox-hint{
   font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.05em;
   text-transform:uppercase;color:var(--muted);
+}
+
+/* Respect the OS "reduce motion" preference: neutralise CSS animations,
+   transitions and smooth scrolling. (Autoplaying demo GIFs can't be paused from
+   CSS — that arrives with the planned GIF→video conversion, where a still poster
+   frame can stand in for motion-sensitive users.) */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{
+    animation-duration:.001ms !important;animation-iteration-count:1 !important;
+    transition-duration:.001ms !important;scroll-behavior:auto !important;
+  }
 }
