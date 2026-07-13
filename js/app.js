@@ -1,6 +1,6 @@
 import { createStore } from './store.js';
 import { renderToday } from './views/today.js';
-import { renderWeek } from './views/week.js';
+import { renderPlan } from './views/plan.js';
 import { renderHistory } from './views/history.js';
 import { renderRecovery } from './views/recovery.js';
 import { renderSettings } from './views/settings.js';
@@ -36,7 +36,7 @@ window.addEventListener('orientationchange', syncNavHeight);
 
 const VIEWS = {
   today: () => renderToday(viewRoot, store),
-  week: () => renderWeek(viewRoot, store),
+  plan: () => renderPlan(viewRoot, store),
   history: () => renderHistory(viewRoot, store),
   recovery: () => renderRecovery(viewRoot, store),
   // Settings is now a bottom-nav tab (moved off the floating top-right gear,

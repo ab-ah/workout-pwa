@@ -1,4 +1,4 @@
-const CACHE_NAME = 'leanbuild-v36';
+const CACHE_NAME = 'leanbuild-v37';
 const ASSETS = [
   './',
   './index.html',
@@ -34,7 +34,7 @@ const ASSETS = [
   './js/notify.js',
   './js/escape.js',
   './js/views/today.js',
-  './js/views/week.js',
+  './js/views/plan.js',
   './js/views/history.js',
   './js/views/recovery.js',
   './css/recovery.css',

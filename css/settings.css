@@ -410,3 +410,34 @@
 }
 .settings-update .btn-data { width: auto; min-width: 180px; }
 .settings-update-status { font-size: 11px; min-height: 14px; }
+
+/* Small explanatory paragraph under a section label (Settings + Plan). */
+.settings-help {
+  font-size: 12px; color: var(--muted); line-height: 1.5;
+  margin: -4px 0 12px;
+}
+
+/* ─── Plan tab ──────────────────────────────────────────────────────────────
+   The program-building surface (Schedule / Routines / Exercises). Reuses the
+   settings-tabs, settings-ex-card, routine-card and ex-filter styling; only the
+   header, full-width sub-tabs, and the inline schedule day-picker are new. */
+.plan-view { min-height: 100vh; padding-bottom: 80px }
+.plan-header {
+  display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+  padding: 14px 0 12px; margin-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.plan-title { font-family: 'Anton', sans-serif; font-size: 22px; text-transform: uppercase; letter-spacing: .01em }
+.plan-subtitle { font-size: 12px; color: var(--muted) }
+
+/* Top-level sub-tabs read better filling the width than left-clustered. */
+.plan-tabs button { flex: 1 1 0 }
+
+.plan-hint {
+  font-size: 12px; color: var(--muted); line-height: 1.5; margin: 0 0 14px;
+}
+
+/* Inline routine picker inside each Schedule day card. */
+.plan-day-picker { margin-top: 10px }
+.plan-day-select { width: 100% }
+.week-item.is-rest .plan-day-picker { margin-top: 8px }
