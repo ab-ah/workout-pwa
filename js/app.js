@@ -41,7 +41,7 @@ const VIEWS = {
   recovery: () => renderRecovery(viewRoot, store),
   // Settings is now a bottom-nav tab (moved off the floating top-right gear,
   // the worst thumb-zone on a tall phone). Its own ✕ Close returns to Today.
-  settings: () => renderSettings(viewRoot, () => setActiveTab('today')),
+  settings: () => renderSettings(viewRoot),
 };
 
 let currentTab = 'today';

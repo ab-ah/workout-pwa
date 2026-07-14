@@ -83,7 +83,10 @@ export function renderHistory(container, store) {
       const totalSets = session.exercises.reduce((n, e) => n + (e.sets?.length ?? 0), 0);
       return `
         <div class="session-row">
-          <strong>${escapeHtml(session.dayTitle)}</strong> — ${meta}
+          <div class="session-row-head">
+            <strong>${escapeHtml(session.dayTitle)}</strong>
+            <span class="session-row-meta">${meta}</span>
+          </div>
           <details class="session-details">
             <summary>${plural(session.exercises.length, 'exercise')} · ${plural(totalSets, 'set')}</summary>
             <ul>

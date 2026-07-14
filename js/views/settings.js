@@ -1,17 +1,12 @@
-import { getSettings, saveSettings, CURRENT_PLAN_VERSION } from '../settings-store.js';
+import { CURRENT_PLAN_VERSION } from '../settings-store.js';
 import { APP_VERSION, BUILD_DATE } from '../version.js';
 import { PROGRESS_KEY, HISTORY_KEY } from '../store.js';
-import { MUSCLE_LABELS } from '../components/muscle-atlas.js';
 import { downloadBackup, restoreBackupFromFile } from '../backup-io.js';
 
 // Settings is now app/data concerns only. The program-building editors it used
 // to host — Exercises, Routines, and the weekly Schedule — moved to the Plan
-// tab, where "what am I training and when" is easier to find. What remains here:
-// data backup/restore/reset, per-muscle recovery-window tuning, and the version
-// + update check.
-
-const MUSCLE_NAMES = MUSCLE_LABELS;
-const ALL_MUSCLES = Object.keys(MUSCLE_NAMES);
+// tab; per-muscle recovery-window tuning moved to the Recovery tab. What remains
+// here: data backup/restore/reset, and the version + update check.
 
 /**
  * Manually check the service worker for a new deployment. The worker calls
@@ -51,15 +46,10 @@ async function checkForUpdates(btn, statusEl) {
   }
 }
 
-export function renderSettings(container, onClose) {
-  let settings = getSettings();
-
-  function save() { saveSettings(settings); }
-
+export function renderSettings(container) {
   function importBackup(file) {
     restoreBackupFromFile(file)
       .then(() => {
-        settings = getSettings();
         render();
         alert('Backup restored.');
       })
@@ -67,18 +57,9 @@ export function renderSettings(container, onClose) {
   }
 
   function render() {
-    const recoveryRows = ALL_MUSCLES.map(m => `
-      <div class="settings-recovery-row">
-        <span class="settings-ex-name">${MUSCLE_NAMES[m]}</span>
-        <input type="number" class="set-input" style="width:72px" data-muscle="${m}" value="${settings.recoveryHours?.[m] ?? 48}" min="1">
-        <span class="muted" style="font-size:11px">hours</span>
-      </div>
-    `).join('');
-
     container.innerHTML = `
       <div class="settings-view">
         <div class="settings-header">
-          <button class="settings-back" id="settings-close">✕ Close</button>
           <span class="settings-title">Settings</span>
         </div>
 
@@ -90,9 +71,7 @@ export function renderSettings(container, onClose) {
           <input type="file" id="settings-import-file" accept="application/json,.json" hidden>
         </div>
 
-        <div class="settings-section-label" style="margin-top:22px">Full Recovery Time per Muscle</div>
-        <p class="settings-help">How long each muscle takes to fully recover. Drives the readiness shown on Today, Plan, and Recovery. You can also nudge these from the Recovery tab.</p>
-        ${recoveryRows}
+        <p class="settings-help" style="margin-top:22px">Per-muscle recovery times are now tuned on the <strong>Recovery</strong> tab — tap a muscle's + / − to adjust its window, or type an exact value.</p>
 
         <div class="settings-version">Lean Build v${APP_VERSION} · plan v${CURRENT_PLAN_VERSION} · ${BUILD_DATE}</div>
         <div class="settings-update">
@@ -102,7 +81,6 @@ export function renderSettings(container, onClose) {
       </div>
     `;
 
-    container.querySelector('#settings-close').addEventListener('click', onClose);
     container.querySelector('#settings-export').addEventListener('click', downloadBackup);
     const importInput = container.querySelector('#settings-import-file');
     container.querySelector('#settings-import').addEventListener('click', () => importInput.click());
@@ -123,14 +101,6 @@ export function renderSettings(container, onClose) {
         checkForUpdates(checkUpdateBtn, container.querySelector('#settings-update-status'));
       });
     }
-
-    container.querySelectorAll('[data-muscle]').forEach(input => {
-      input.addEventListener('change', () => {
-        settings.recoveryHours = settings.recoveryHours ?? {};
-        settings.recoveryHours[input.dataset.muscle] = +input.value;
-        save();
-      });
-    });
   }
 
   render();

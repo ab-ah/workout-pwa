@@ -315,8 +315,15 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
     if (i === activeSetIndex && editingIndex === null) {
       const prevSessionSet = previousSets ? previousSets[activeSetIndex] ?? previousSets[previousSets.length - 1] : null;
       const prevLoggedSet = loggedSets.length > 0 ? loggedSets[loggedSets.length - 1] : null;
-      const defaultWeight = prevLoggedSet?.weight ?? prevSessionSet?.weight ?? '';
+      // Weight falls back to the exercise's start-weight hint on the first-ever
+      // set (no logged or prior-session set to inherit), so a loaded lift never
+      // opens with an empty weight field the user has to fill from scratch.
+      const startWeightGuess = mode === 'strength' ? firstNumber(exercise.startWeight) : null;
+      const defaultWeight = prevLoggedSet?.weight ?? prevSessionSet?.weight ?? startWeightGuess ?? '';
       const defaultReps   = prevLoggedSet?.reps   ?? prevSessionSet?.reps   ?? '';
+      // RPE prefills like weight/reps so the previous effort is visible (it was
+      // already inherited on Log, but the field showed blank — looked ignored).
+      const defaultRpe    = prevLoggedSet?.rpe    ?? prevSessionSet?.rpe    ?? '';
       const defaultDurationSeconds = prevLoggedSet?.durationSeconds ?? prevSessionSet?.durationSeconds
         ?? (mode === 'cardio' ? defaultCardioSeconds : null);
       const canRepeat = mode === 'strength'
@@ -336,7 +343,7 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
       return `
         <div class="set-row active" id="active-set-row">
           <span class="set-label">Set ${i + 1}</span>
-          ${fieldsHtml({ idPrefix: '', defaultWeight, defaultReps, defaultDurationSeconds })}
+          ${fieldsHtml({ idPrefix: '', defaultWeight, defaultReps, defaultRpe, defaultDurationSeconds })}
           ${repeatHint}
           <button class="btn-primary" id="log-set-btn" ${restActive ? 'disabled style="opacity:.45"' : ''}>${logLabel}</button>
         </div>

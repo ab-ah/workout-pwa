@@ -14,13 +14,26 @@ import { escapeHtml } from '../escape.js';
 
 const MUSCLE_NAMES = MUSCLE_LABELS;
 
-const ROUTINE_COLOR_OPTIONS = [
-  { label: 'Push', value: '--push' },
-  { label: 'Pull', value: '--pull' },
-  { label: 'Legs', value: '--legs' },
-  { label: 'Upper', value: '--upper' },
-  { label: 'Lower', value: '--lower' },
+// Routine colours are just a visual label for the day — pick by colour, not by
+// split name (the old "Push / Pull / Legs / Upper / Lower" labels named CSS
+// tokens, which was confusing and left two options blank). Each maps to a
+// defined palette token in styles.css.
+const ROUTINE_COLORS = [
+  { label: 'Red', value: '--push' },
+  { label: 'Blue', value: '--pull' },
+  { label: 'Purple', value: '--legs' },
+  { label: 'Green', value: '--cardio' },
+  { label: 'Amber', value: '--core' },
 ];
+const DEFAULT_ROUTINE_COLOR = ROUTINE_COLORS[0].value;
+
+/** Swatch button row for choosing a routine colour. `selected` is the colorVar
+ *  currently chosen; `attrs` are extra attributes for the wrapping element. */
+function colorSwatchesHtml(selected, attrs = '') {
+  return `<div class="routine-color-swatches" ${attrs}>
+    ${ROUTINE_COLORS.map(c => `<button type="button" class="routine-swatch${c.value === selected ? ' selected' : ''}" data-color="${c.value}" style="background:var(${c.value})" title="${c.label}" aria-label="${c.label}"></button>`).join('')}
+  </div>`;
+}
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -303,9 +316,7 @@ export function renderPlan(container, store) {
           </div>
           <div class="settings-field">
             <label class="settings-field-label">Color</label>
-            <select class="set-input routine-color-select" data-routine="${ri}">
-              ${ROUTINE_COLOR_OPTIONS.map(opt => `<option value="${opt.value}" ${r.colorVar === opt.value ? 'selected' : ''}>${opt.label}</option>`).join('')}
-            </select>
+            ${colorSwatchesHtml(r.colorVar ?? DEFAULT_ROUTINE_COLOR, `data-routine="${ri}"`)}
           </div>
           <div class="settings-section-label" style="margin-top:10px">Exercises</div>
           <div class="routine-ex-list">${exListItems || '<div class="muted" style="font-size:12px;padding:6px 0">No exercises yet</div>'}</div>
@@ -328,9 +339,7 @@ export function renderPlan(container, store) {
         <button class="btn-add-ex" id="btn-add-routine">+ Create Routine</button>
         <div id="add-routine-form" style="display:none" class="settings-add-ex-form">
           <input type="text" class="set-input" id="new-routine-name" placeholder="Routine name">
-          <select class="set-input" id="new-routine-color">
-            ${ROUTINE_COLOR_OPTIONS.map(opt => `<option value="${opt.value}">${opt.label}</option>`).join('')}
-          </select>
+          ${colorSwatchesHtml(DEFAULT_ROUTINE_COLOR, 'id="new-routine-color"')}
           <button class="btn-primary" id="confirm-add-routine">Create</button>
         </div>
       </div>
@@ -345,13 +354,22 @@ export function renderPlan(container, store) {
       });
     });
 
-    // Routine color change
-    body.querySelectorAll('.routine-color-select').forEach(sel => {
-      sel.addEventListener('change', () => {
-        const ri = +sel.dataset.routine;
-        settings.routines[ri].colorVar = sel.value;
+    // Routine color change — swatch clicks on a per-routine picker.
+    body.querySelectorAll('.routine-color-swatches[data-routine] .routine-swatch').forEach(sw => {
+      sw.addEventListener('click', () => {
+        const ri = +sw.closest('.routine-color-swatches').dataset.routine;
+        settings.routines[ri].colorVar = sw.dataset.color;
         save();
         render();
+      });
+    });
+
+    // Create-form swatch selection — visual-only until "Create" reads it.
+    const newColorPicker = body.querySelector('#new-routine-color');
+    newColorPicker?.querySelectorAll('.routine-swatch').forEach(sw => {
+      sw.addEventListener('click', () => {
+        newColorPicker.querySelectorAll('.routine-swatch').forEach(s => s.classList.remove('selected'));
+        sw.classList.add('selected');
       });
     });
 
@@ -429,7 +447,7 @@ export function renderPlan(container, store) {
     body.querySelector('#confirm-add-routine').addEventListener('click', () => {
       const name = body.querySelector('#new-routine-name').value.trim();
       if (!name) return;
-      const colorVar = body.querySelector('#new-routine-color').value;
+      const colorVar = body.querySelector('#new-routine-color .routine-swatch.selected')?.dataset.color ?? DEFAULT_ROUTINE_COLOR;
       const id = name.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Date.now();
       settings.routines = settings.routines ?? [];
       settings.routines.push({ id, name, colorVar, exerciseIds: [] });

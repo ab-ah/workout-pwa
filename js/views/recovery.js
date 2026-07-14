@@ -45,7 +45,9 @@ export function renderRecovery(container, store, justTunedMuscle = null) {
       <div class="muscle-dot" style="background:${d.color}"></div>
       <span class="muscle-name">${d.label}</span>
       <span class="muscle-status">${statusText}</span>
-      <span class="muscle-window${m === justTunedMuscle ? ' just-tuned' : ''}" title="Full recovery window">${hrs}h</span>
+      <span class="muscle-window${m === justTunedMuscle ? ' just-tuned' : ''}" title="Full recovery window — type an exact value or use + / −">
+        <input type="number" class="muscle-window-input" data-muscle-hours="${m}" value="${hrs}" min="1" max="336" aria-label="${d.label} full recovery hours">h
+      </span>
       <span class="muscle-tune">
         <button class="tune-btn" data-muscle="${m}" data-dir="sore" title="Still sore — recover slower">+</button>
         <button class="tune-btn" data-muscle="${m}" data-dir="fresh" title="Already fresh — recover faster">−</button>
@@ -73,6 +75,20 @@ export function renderRecovery(container, store, justTunedMuscle = null) {
       const current = settings.recoveryHours?.[muscle] ?? 48;
       settings.recoveryHours = settings.recoveryHours ?? {};
       settings.recoveryHours[muscle] = nudgeRecoveryHours(current, btn.dataset.dir);
+      saveSettings(settings);
+      renderRecovery(container, store, muscle); // re-render; pulse the changed window
+    });
+  });
+
+  // Exact numeric entry (replaces the Settings-tab recovery editor). Clamp to a
+  // sane 1h–14d window so a stray keystroke can't wreck the readiness model.
+  container.querySelectorAll('.muscle-window-input').forEach(input => {
+    input.addEventListener('change', () => {
+      const muscle = input.dataset.muscleHours;
+      const hours = Math.max(1, Math.min(336, Math.round(+input.value)));
+      if (!Number.isFinite(hours)) { input.value = settings.recoveryHours?.[muscle] ?? 48; return; }
+      settings.recoveryHours = settings.recoveryHours ?? {};
+      settings.recoveryHours[muscle] = hours;
       saveSettings(settings);
       renderRecovery(container, store, muscle); // re-render; pulse the changed window
     });

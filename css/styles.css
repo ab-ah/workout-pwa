@@ -12,6 +12,13 @@
   --legs:#c08bff;
   --core:#ffd24a;
   --cardio:#46d160;
+  /* Safety definitions so a routine saved with these tokens still renders a
+     colour. The colour picker was previously labelled by split-name and
+     referenced --upper / --lower without ever defining them, so those two
+     options came out blank. The picker now uses real colour names mapped to the
+     defined palette above; these aliases keep any already-saved values valid. */
+  --upper:#46d160;
+  --lower:#ffb347;
   /* Height of the fixed bottom nav (content + safe-area). app.js measures the
      real rendered height on load/resize and overwrites this; the fallback here
      just needs to be a close over-estimate so sticky content never tucks under
@@ -107,7 +114,13 @@ body{
 /* History log — edit date/time */
 .session-edit{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:4px}
 .session-edit .set-input{font-size:12px;padding:4px 6px}
-.session-edit-btn{margin-left:6px;padding:2px 10px;min-height:44px;font-size:14px;line-height:1}
+/* Compact inline edit affordance. It used to carry a 44px min-height touch
+   target, which forced the whole title/date line tall and wrapped the icon onto
+   its own row. Kept tappable via padding, not a giant fixed height. */
+/* Higher specificity than the generic .btn-icon (which forces a 44×44 touch
+   target and, loading later, was overriding this). Kept comfortably tappable via
+   padding without a fixed height that would blow up the row. */
+.session-edit-btn.btn-icon{margin-left:6px;padding:5px 10px;min-width:0;min-height:0;font-size:13px;line-height:1;vertical-align:middle}
 
 /* Progression hint (exercise card) */
 .progression-hint{
@@ -270,6 +283,9 @@ body{
 .session-row{
   background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 18px;margin-bottom:10px;
 }
+.session-row-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.session-row-head>strong{font-size:15px}
+.session-row-meta{display:inline-flex;align-items:center;gap:2px;margin-left:auto}
 .chart-svg{width:100%;height:220px;background:var(--panel);border:1px solid var(--line);border-radius:14px}
 
 @media(max-width:680px){

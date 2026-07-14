@@ -1,4 +1,4 @@
-const CACHE_NAME = 'leanbuild-v37';
+const CACHE_NAME = 'leanbuild-v38';
 const ASSETS = [
   './',
   './index.html',

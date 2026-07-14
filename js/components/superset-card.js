@@ -24,6 +24,14 @@ import { demoMediaHtml } from './demo-media.js';
 //                   onSetsChange(entries) persists mid-superset progress; swapOptions
 //                   = [optsA, optsB] of {id,name}; onSwap(side,newId) swaps a side.
 
+/** First number in a string like "50–60 kg bar" → 50, else null. Used to seed a
+ *  side's weight field from its start-weight hint on the first-ever set. */
+function firstNumber(str) {
+  if (typeof str !== 'string') return null;
+  const m = str.match(/\d+(\.\d+)?/);
+  return m ? parseFloat(m[0]) : null;
+}
+
 /** Optional RPE from an input; returns { rpe } to spread onto a set, or {}. */
 function readRpe(input) {
   if (!input) return {};
@@ -97,8 +105,11 @@ export function mountSupersetCard(container, exA, exB, prevSets = [], initialSet
       } else if (isActiveSide && i === slot.set) {
         const prevSessionSet = prevs[side] ? (prevs[side][i] ?? prevs[side][prevs[side].length - 1]) : null;
         const prevLoggedSet = logged[side].length > 0 ? logged[side][logged[side].length - 1] : null;
-        const defWeight = prevLoggedSet?.weight ?? prevSessionSet?.weight ?? '';
+        // First-ever set seeds weight from the start-weight hint so the field
+        // isn't empty; RPE prefills so the previous effort is visible.
+        const defWeight = prevLoggedSet?.weight ?? prevSessionSet?.weight ?? firstNumber(ex.startWeight) ?? '';
         const defReps = prevLoggedSet?.reps ?? prevSessionSet?.reps ?? '';
+        const defRpe = prevLoggedSet?.rpe ?? prevSessionSet?.rpe ?? '';
         const canRepeat = defWeight !== '' && defReps !== '';
         const logLabel = (canRepeat && !activeDirty) ? 'Log same ↻' : 'Log';
         const repeatHint = canRepeat
@@ -112,7 +123,7 @@ export function mountSupersetCard(container, exA, exB, prevSets = [], initialSet
             <div class="field-row"><label class="input-label">Reps</label>
               ${stepperHtml(`<input type="number" inputmode="numeric" class="set-input" data-reps="${side}" placeholder="${escapeHtml(String(ex.repRange ?? ''))}" value="${defReps}">`, { step: 1, label: 'reps' })}</div>
             <div class="field-row rpe-field"><label class="input-label">RPE (optional)</label>
-              ${stepperHtml(`<input type="number" inputmode="decimal" step="0.5" class="set-input set-input-rpe" data-rpe="${side}" placeholder="${prescribeRpe(ex)?.placeholder || '—'}" value="">`, { step: 0.5, min: 1, max: 10, label: 'RPE' })}</div>
+              ${stepperHtml(`<input type="number" inputmode="decimal" step="0.5" class="set-input set-input-rpe" data-rpe="${side}" placeholder="${prescribeRpe(ex)?.placeholder || '—'}" value="${defRpe}">`, { step: 0.5, min: 1, max: 10, label: 'RPE' })}</div>
             ${repeatHint}
             <button class="btn-primary" data-log="${side}" ${restActive ? 'disabled style="opacity:.45"' : ''}>${logLabel}</button>
           </div>`);
@@ -321,6 +332,12 @@ export function mountSupersetCard(container, exA, exB, prevSets = [], initialSet
         restSlot.innerHTML = '';
         render();
       });
+      // The rest timer mounts at the top of the card, well above the panel you
+      // just logged — scroll it into view so the countdown isn't stranded
+      // off-screen after every set (honouring reduce-motion).
+      const reduceMotion = typeof matchMedia === 'function'
+        && matchMedia('(prefers-reduced-motion: reduce)').matches;
+      restSlot.scrollIntoView({ block: 'center', behavior: reduceMotion ? 'auto' : 'smooth' });
     }
   }
 

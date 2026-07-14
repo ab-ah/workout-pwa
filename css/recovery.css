@@ -28,7 +28,15 @@
 .muscle-legend { grid-template-columns: 1fr }
 .muscle-name { flex: 1 }
 .muscle-status { margin-left: 0 }
-.muscle-window { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--muted); min-width: 40px; text-align: right; border-radius: 5px }
+.muscle-window { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--muted); text-align: right; border-radius: 5px; display: inline-flex; align-items: baseline; gap: 1px }
+.muscle-window-input {
+  width: 42px; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 13px;
+  color: var(--ink); background: var(--bg); border: 1px solid var(--line);
+  border-radius: 6px; padding: 4px 4px; -moz-appearance: textfield;
+}
+.muscle-window-input::-webkit-outer-spin-button,
+.muscle-window-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0 }
+.muscle-window-input:focus { outline: none; border-color: var(--accent); color: var(--accent) }
 /* Brief highlight on the window value that just changed, so a + / − tap gives
    visible confirmation of what it did. Neutralised under reduce-motion. */
 .muscle-window.just-tuned { animation: tune-pulse .55s ease }
