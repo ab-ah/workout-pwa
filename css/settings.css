@@ -306,6 +306,32 @@
   flex-direction: column;
   gap: 10px;
 }
+/* Collapsed-by-default routine cards: a tappable summary header that expands
+   the card into the full editor. The est-time chip reuses .week-item-est. */
+.routine-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+.routine-head-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.routine-head-name { font-size: 14px }
+.routine-head-count { font-size: 12px }
+.routine-chevron { font-size: 11px; color: var(--muted) }
+/* Swatches + est-time chip side by side in the expanded editor. */
+.routine-color-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
 /* Colour picker — swatch chips (replaces the old split-name <select>). */
 .routine-color-swatches {
   display: flex;

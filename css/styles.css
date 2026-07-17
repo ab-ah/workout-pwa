@@ -177,6 +177,10 @@ body{
   color:var(--muted);background:transparent;border:1px solid var(--line);
   padding:11px 16px;min-height:44px;border-radius:10px;cursor:pointer;margin-top:10px;
 }
+/* Start Workout + estimated-time chip on one line (Today intro card). The row
+   carries the button's usual top margin so the chip centres against it. */
+.start-workout-row{display:flex;align-items:center;gap:12px;margin-top:14px}
+.start-workout-row .btn-primary{flex:1;margin-top:0}
 
 /* EXERCISE CARD (flow) */
 .exercise-progress{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted);margin-bottom:10px}

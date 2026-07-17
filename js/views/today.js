@@ -12,6 +12,7 @@ import { generalPrimer } from '../warmup.js';
 import { MUSCLE_LABELS } from '../components/muscle-atlas-paths.js';
 import { demoMediaHtml } from '../components/demo-media.js';
 import { findMissedWorkouts, localDateStr } from '../schedule.js';
+import { estimateRoutineMinutes } from '../duration-estimate.js';
 import { enableWakeLock, disableWakeLock } from '../wake-lock.js';
 import { downloadBackup, promptRestore } from '../backup-io.js';
 import { substituteOptions } from '../substitutions.js';
@@ -424,6 +425,9 @@ export function renderToday(container, store) {
     }
 
     const { readiness, perMuscle } = routineReadiness(routine, settings, history);
+    // Same estimate as the Plan tab's Schedule/Routines chips, so "how long will
+    // this take" reads the same number everywhere.
+    const estMins = estimateRoutineMinutes(routine, settings.exercises);
     container.innerHTML = `
       ${restoreBanner}
       ${deloadBanner}
@@ -434,7 +438,10 @@ export function renderToday(container, store) {
         <p class="muted" style="margin-top:10px">${plural(exercises.length, 'exercise')}</p>
         ${buildReadinessBlock(readiness, perMuscle)}
         ${buildAdaptiveBlock(readiness, perMuscle)}
-        <button class="btn-primary" id="start-workout-btn">Start Workout</button>
+        <div class="start-workout-row">
+          <button class="btn-primary" id="start-workout-btn">Start Workout</button>
+          ${estMins > 0 ? `<span class="week-item-est" title="Estimated time to train">~${estMins} min</span>` : ''}
+        </div>
       </div>
       ${catchUp}
       ${routine.id === 'recovery-walk' ? mobilityCardHtml() : ''}

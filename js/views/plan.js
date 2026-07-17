@@ -80,6 +80,7 @@ export function renderPlan(container, store) {
 
   let activeSection = 'schedule';
   let expandedExerciseIndex = null;
+  let expandedRoutineIndex = null; // routine card open for editing in Routines, or null (all collapsed)
   let expandedRoutineExKey = null; // `${routineIndex}:${exerciseId}` open in Routines
   let exerciseFilter = null;       // prime-mover muscle id filtering the Exercises list, or null
   let expandedDow = null;          // day-of-week card expanded in Schedule, or null
@@ -106,6 +107,7 @@ export function renderPlan(container, store) {
       btn.addEventListener('click', () => {
         activeSection = btn.dataset.sec;
         expandedExerciseIndex = null;
+        expandedRoutineIndex = null;
         expandedRoutineExKey = null;
         exerciseFilter = null;
         render();
@@ -289,6 +291,29 @@ export function renderPlan(container, store) {
 
     const routineCards = routines.map((r, ri) => {
       const borderColor = `var(${r.colorVar ?? '--accent'})`;
+      const isOpen = expandedRoutineIndex === ri;
+      // Same estimate as the Schedule chips (duration-estimate.js) so the two
+      // panels never disagree about how long a routine takes.
+      const mins = estimateRoutineMinutes(r, allExercises);
+      const estChip = mins > 0 ? `<span class="week-item-est" title="Estimated time to train">~${mins} min</span>` : '';
+      const exCount = (r.exerciseIds ?? []).length;
+
+      // Collapsed-by-default: every routine renders as a tappable summary row;
+      // tapping it swaps that card into the full editor (and back).
+      const head = `
+        <div class="routine-head" data-expand-routine="${ri}">
+          <div class="routine-head-info">
+            <strong class="routine-head-name">${escapeHtml(r.name)}</strong>
+            <span class="muted routine-head-count">${exCount} exercise${exCount === 1 ? '' : 's'}</span>
+          </div>
+          ${isOpen ? '' : estChip}
+          <span class="routine-chevron">${isOpen ? '▲' : '▼'}</span>
+        </div>`;
+
+      if (!isOpen) {
+        return `<div class="routine-card is-collapsed" style="border-left:3px solid ${borderColor}">${head}</div>`;
+      }
+
       const exListItems = (r.exerciseIds ?? []).map(exId => {
         const ex = allExercises.find(e => e.id === exId);
         if (!ex) return '';
@@ -317,13 +342,17 @@ export function renderPlan(container, store) {
 
       return `
         <div class="routine-card" style="border-left:3px solid ${borderColor}">
+          ${head}
           <div class="settings-field">
             <label class="settings-field-label">Name</label>
             <input type="text" class="set-input routine-name-input" style="width:100%" data-routine="${ri}" value="${escapeHtml(r.name)}">
           </div>
           <div class="settings-field">
             <label class="settings-field-label">Color</label>
-            ${colorSwatchesHtml(r.colorVar ?? DEFAULT_ROUTINE_COLOR, `data-routine="${ri}"`)}
+            <div class="routine-color-row">
+              ${colorSwatchesHtml(r.colorVar ?? DEFAULT_ROUTINE_COLOR, `data-routine="${ri}"`)}
+              ${estChip}
+            </div>
           </div>
           <div class="settings-section-label" style="margin-top:10px">Exercises</div>
           <div class="routine-ex-list">${exListItems || '<div class="muted" style="font-size:12px;padding:6px 0">No exercises yet</div>'}</div>
@@ -340,7 +369,7 @@ export function renderPlan(container, store) {
     }).join('');
 
     body.innerHTML = `
-      <p class="plan-hint">Routines are the reusable sessions you drop onto days in Schedule. Each is a named, ordered list of exercises.</p>
+      <p class="plan-hint">Routines are the reusable sessions you drop onto days in Schedule. Tap one to edit it.</p>
       ${routineCards || '<div class="muted" style="font-size:12px;margin-bottom:16px">No routines yet</div>'}
       <div class="settings-add-ex-section">
         <button class="btn-add-ex" id="btn-add-routine">+ Create Routine</button>
@@ -351,6 +380,16 @@ export function renderPlan(container, store) {
         </div>
       </div>
     `;
+
+    // Expand / collapse a routine card (only one open at a time).
+    body.querySelectorAll('[data-expand-routine]').forEach(head => {
+      head.addEventListener('click', () => {
+        const ri = +head.dataset.expandRoutine;
+        expandedRoutineIndex = expandedRoutineIndex === ri ? null : ri;
+        expandedRoutineExKey = null; // per-exercise details don't carry across cards
+        render();
+      });
+    });
 
     // Routine name change
     body.querySelectorAll('.routine-name-input').forEach(input => {
@@ -439,6 +478,7 @@ export function renderPlan(container, store) {
             if (settings.schedule[dow] === removedId) settings.schedule[dow] = null;
           }
         }
+        expandedRoutineIndex = null; // indices shifted — collapse everything
         save();
         render();
       });
@@ -458,6 +498,7 @@ export function renderPlan(container, store) {
       const id = name.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Date.now();
       settings.routines = settings.routines ?? [];
       settings.routines.push({ id, name, colorVar, exerciseIds: [] });
+      expandedRoutineIndex = settings.routines.length - 1; // open the new routine for editing
       save();
       render();
     });
