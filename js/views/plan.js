@@ -2,6 +2,7 @@ import { getSettings, saveSettings } from '../settings-store.js';
 import { createMuscleAtlas, ROLE_COLORS, MUSCLE_LABELS } from '../components/muscle-atlas.js';
 import { weeklyVolumeByMuscle, volumeStatus } from '../volume.js';
 import { routineReadiness } from '../recovery-model.js';
+import { estimateRoutineMinutes } from '../duration-estimate.js';
 import { escapeHtml } from '../escape.js';
 
 // The Plan tab is the program-building surface: your weekly Schedule, the
@@ -232,6 +233,11 @@ export function renderPlan(container, store) {
         ? `${readinessHtml(routine)}<ol class="week-ex-list">${exercises.map(e => `<li>${escapeHtml(e.name)}</li>`).join('')}</ol>`
         : '';
       const sub = routine.tag ? `${escapeHtml(routine.name)} · ${escapeHtml(routine.tag)}` : escapeHtml(routine.name);
+      // Estimated time to train the day's routine — accounts for sets, rest and
+      // supersets (see duration-estimate.js). Shown as a chip next to each day so
+      // you can balance the week by time, not just by muscle volume.
+      const mins = estimateRoutineMinutes(routine, settings.exercises);
+      const estChip = mins > 0 ? `<span class="week-item-est" title="Estimated time to train">~${mins} min</span>` : '';
 
       return `<div class="week-item${isToday ? ' is-today' : ''}${isExpanded ? ' is-open' : ''}" style="border-left:4px solid var(${routine.colorVar})" data-dow="${dow}">
         <div class="week-item-main" data-expand="${dow}">
@@ -239,6 +245,7 @@ export function renderPlan(container, store) {
             <strong>${DAY_NAMES[dow]}</strong>
             <div class="muted">${sub}</div>
           </div>
+          ${estChip}
           <span class="status">${isToday ? 'Today' : '▼'}</span>
         </div>
         ${exList}

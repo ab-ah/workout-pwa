@@ -326,26 +326,14 @@ export function mountExerciseCard(container, exercise, previousSets, initialSets
       const defaultRpe    = prevLoggedSet?.rpe    ?? prevSessionSet?.rpe    ?? '';
       const defaultDurationSeconds = prevLoggedSet?.durationSeconds ?? prevSessionSet?.durationSeconds
         ?? (mode === 'cardio' ? defaultCardioSeconds : null);
-      const canRepeat = mode === 'strength'
-        ? (defaultWeight !== '' && defaultReps !== '')
-        : Number.isFinite(defaultDurationSeconds);
-      const logLabel = (canRepeat && !activeDirty) ? 'Log same ↻' : 'Log';
-      let repeatHint = '';
-      if (canRepeat) {
-        // Cardio's duration field only accepts whole minutes, so the hint shows
-        // the rounded value that Log will actually save, not the exact planned
-        // seconds — otherwise "repeats 12:30" logs as 13:00 with nothing typed.
-        const summary = mode === 'strength'
-          ? `${defaultWeight}kg × ${defaultReps}${repUnit}${perSide ? ' /side' : ''}`
-          : (mode === 'cardio' ? formatDuration(Math.round(defaultDurationSeconds / 60) * 60) : `${defaultDurationSeconds}s${perSide ? ' /side' : ''}`);
-        repeatHint = `<p class="repeat-hint muted">↻ Log repeats ${summary} — adjust with ± or type</p>`;
-      }
+      // The active row is still pre-filled with last set's values as a convenience,
+      // but the button always reads a plain "Log" — the previous "Log same ↻"
+      // wording (and its repeat hint) read as a separate action to some users.
       return `
         <div class="set-row active" id="active-set-row">
           <span class="set-label">Set ${i + 1}</span>
           ${fieldsHtml({ idPrefix: '', defaultWeight, defaultReps, defaultRpe, defaultDurationSeconds })}
-          ${repeatHint}
-          <button class="btn-primary" id="log-set-btn" ${restActive ? 'disabled style="opacity:.45"' : ''}>${logLabel}</button>
+          <button class="btn-primary" id="log-set-btn" ${restActive ? 'disabled style="opacity:.45"' : ''}>Log</button>
         </div>
       `;
     }

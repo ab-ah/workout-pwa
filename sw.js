@@ -1,4 +1,4 @@
-const CACHE_NAME = 'leanbuild-v38';
+const CACHE_NAME = 'leanbuild-v39';
 const ASSETS = [
   './',
   './index.html',
@@ -28,6 +28,7 @@ const ASSETS = [
   './js/mobility.js',
   './js/supersets.js',
   './js/schedule.js',
+  './js/duration-estimate.js',
   './js/wake-lock.js',
   './js/audio.js',
   './js/rest-persist.js',

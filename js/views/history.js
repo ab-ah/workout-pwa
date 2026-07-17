@@ -38,6 +38,87 @@ function timeStr(ms) {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
+/** A logged exercise's mode for the editor: use its catalog definition's mode
+ *  when known, else infer from set shape (duration-carrying = cardio). Mirrors
+ *  formatHistorySet's fallback so display and edit agree. */
+function resolveLogMode(exEntry, exMode) {
+  if (exMode) return exMode;
+  return (exEntry.sets ?? []).some(s => Number.isFinite(s.durationSeconds)) ? 'cardio' : 'strength';
+}
+
+/** One editable set inside the history editor. Inputs are addressed on save by
+ *  their data-ex / data-set / data-k attributes. */
+function setEditorHtml(s, mode, ei, si) {
+  const label = `<span class="hist-edit-set-label">Set ${si + 1}</span>`;
+  const field = (k, val, ph) =>
+    `<label class="hist-edit-field"><input type="number" inputmode="decimal" class="set-input hist-edit-input" data-ex="${ei}" data-set="${si}" data-k="${k}" value="${val ?? ''}" placeholder="${ph}"><span>${ph}</span></label>`;
+  if (mode === 'cardio') {
+    const min = Number.isFinite(s.durationSeconds) ? Math.round(s.durationSeconds / 60) : '';
+    return `<div class="hist-edit-set">${label}${field('duration', min, 'min')}${field('rpe', s.rpe, 'RPE')}</div>`;
+  }
+  if (mode === 'hold') {
+    return `<div class="hist-edit-set">${label}${field('duration', s.durationSeconds, 'sec')}</div>`;
+  }
+  return `<div class="hist-edit-set">${label}${field('weight', s.weight, 'kg')}${field('reps', s.reps, 'reps')}${field('rpe', s.rpe, 'RPE')}</div>`;
+}
+
+/** The expanded, in-place editor for one session: date/time plus every logged
+ *  set's weight/reps/RPE (or duration/RPE for cardio, duration for holds). */
+function sessionEditorHtml(session, modeByExerciseId) {
+  const exBlocks = session.exercises.map((e, ei) => {
+    const mode = resolveLogMode(e, modeByExerciseId.get(e.exerciseId));
+    const rows = e.sets.map((s, si) => setEditorHtml(s, mode, ei, si)).join('');
+    return `<div class="hist-edit-ex">
+      <div class="hist-edit-ex-name">${escapeHtml(e.name)}</div>
+      ${rows || '<span class="muted" style="font-size:12px">No sets logged</span>'}
+    </div>`;
+  }).join('');
+  return `
+    <div class="session-row is-editing">
+      <div class="session-row-head"><strong>${escapeHtml(session.dayTitle)}</strong></div>
+      <div class="hist-edit-datetime">
+        <label class="hist-edit-field"><input type="date" class="set-input" data-edit="date" value="${escapeHtml(session.date)}"><span>Date</span></label>
+        <label class="hist-edit-field"><input type="time" class="set-input" data-edit="time" value="${escapeHtml(timeStr(session.finishedAt))}"><span>Time</span></label>
+      </div>
+      <div class="hist-edit-body">${exBlocks}</div>
+      <div class="hist-edit-actions">
+        <button class="btn-primary" data-edit-save="${escapeHtml(session.sessionId)}">Save changes</button>
+        <button class="btn-secondary" data-edit-cancel="1">Cancel</button>
+      </div>
+    </div>
+  `;
+}
+
+/** Rebuild one set from the editor's string inputs, preserving fields the editor
+ *  doesn't surface. `getVal(key)` returns the raw input value (or ''). An empty
+ *  weight/reps/duration keeps the original value; an empty/zero RPE clears it. */
+function buildEditedSet(orig, mode, getVal) {
+  const num = (k) => { const v = parseFloat(getVal(k)); return Number.isFinite(v) ? v : null; };
+  const out = { ...orig };
+  const applyRpe = () => {
+    const rpe = num('rpe');
+    if (rpe != null && rpe > 0) out.rpe = Math.min(10, rpe);
+    else delete out.rpe;
+  };
+  if (mode === 'cardio') {
+    const min = num('duration');
+    if (min != null && min > 0) out.durationSeconds = Math.round(min * 60);
+    applyRpe();
+    return out;
+  }
+  if (mode === 'hold') {
+    const sec = num('duration');
+    if (sec != null && sec > 0) out.durationSeconds = Math.round(sec);
+    return out;
+  }
+  const weight = num('weight');
+  const reps = num('reps');
+  if (weight != null) out.weight = weight;
+  if (reps != null) out.reps = Math.round(reps);
+  applyRpe();
+  return out;
+}
+
 export function renderHistory(container, store) {
   let mode = 'log'; // 'log' | 'progress'
   let editingId = null; // sessionId currently being edited
@@ -70,22 +151,16 @@ export function renderHistory(container, store) {
       (getSettings().exercises ?? []).map((ex) => [ex.id, exerciseLogMode(ex)])
     );
     body.innerHTML = history.map((session) => {
-      const isEditing = editingId === session.sessionId;
-      const meta = isEditing
-        ? `<div class="session-edit">
-             <input type="date" class="set-input" data-edit="date" value="${escapeHtml(session.date)}">
-             <input type="time" class="set-input" data-edit="time" value="${escapeHtml(timeStr(session.finishedAt))}">
-             <button class="btn-primary" data-edit-save="${escapeHtml(session.sessionId)}">Save</button>
-             <button class="btn-secondary" data-edit-cancel="1">Cancel</button>
-           </div>`
-        : `<span class="muted">${escapeHtml(session.date)}</span>
-           <button class="btn-icon session-edit-btn" data-edit-open="${escapeHtml(session.sessionId)}" title="Edit date & time">✎</button>`;
+      if (editingId === session.sessionId) return sessionEditorHtml(session, modeByExerciseId);
       const totalSets = session.exercises.reduce((n, e) => n + (e.sets?.length ?? 0), 0);
       return `
         <div class="session-row">
           <div class="session-row-head">
             <strong>${escapeHtml(session.dayTitle)}</strong>
-            <span class="session-row-meta">${meta}</span>
+            <span class="session-row-meta">
+              <span class="muted">${escapeHtml(session.date)}</span>
+              <button class="btn-icon session-edit-btn" data-edit-open="${escapeHtml(session.sessionId)}" title="Edit date, time & sets">✎</button>
+            </span>
           </div>
           <details class="session-details">
             <summary>${plural(session.exercises.length, 'exercise')} · ${plural(totalSets, 'set')}</summary>
@@ -104,25 +179,41 @@ export function renderHistory(container, store) {
       btn.addEventListener('click', () => { editingId = null; render(); });
     });
     body.querySelectorAll('[data-edit-save]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const sessionId = btn.dataset.editSave;
-        const row = btn.closest('.session-row');
-        const date = row.querySelector('[data-edit="date"]').value;
-        const time = row.querySelector('[data-edit="time"]').value || '12:00';
-        if (!date) return;
-        const newFinishedAt = new Date(`${date}T${time}`).getTime();
-        if (Number.isNaN(newFinishedAt)) return;
-        const session = store.getHistory().find(s => s.sessionId === sessionId);
-        const patch = { date, finishedAt: newFinishedAt };
-        // Preserve the recorded workout duration when a startedAt exists.
-        if (session && typeof session.startedAt === 'number' && typeof session.finishedAt === 'number') {
-          patch.startedAt = session.startedAt + (newFinishedAt - session.finishedAt);
-        }
-        store.updateSession(sessionId, patch);
-        editingId = null;
-        render();
-      });
+      btn.addEventListener('click', () => saveEdit(btn, modeByExerciseId));
     });
+  }
+
+  /** Persist an edited session: date/time AND every set's weight/reps/RPE (or
+   *  duration/RPE for cardio, duration for holds). Shifts startedAt with
+   *  finishedAt so the recorded workout duration is preserved. */
+  function saveEdit(btn, modeByExerciseId) {
+    const sessionId = btn.dataset.editSave;
+    const row = btn.closest('.session-row');
+    const date = row.querySelector('[data-edit="date"]').value;
+    const time = row.querySelector('[data-edit="time"]').value || '12:00';
+    if (!date) return;
+    const newFinishedAt = new Date(`${date}T${time}`).getTime();
+    if (Number.isNaN(newFinishedAt)) return;
+    const session = store.getHistory().find(s => s.sessionId === sessionId);
+    if (!session) return;
+
+    const exercises = session.exercises.map((e, ei) => {
+      const mode = resolveLogMode(e, modeByExerciseId.get(e.exerciseId));
+      const sets = (e.sets ?? []).map((s, si) => {
+        const getVal = (k) => row.querySelector(`[data-ex="${ei}"][data-set="${si}"][data-k="${k}"]`)?.value ?? '';
+        return buildEditedSet(s, mode, getVal);
+      });
+      return { ...e, sets };
+    });
+
+    const patch = { date, finishedAt: newFinishedAt, exercises };
+    // Preserve the recorded workout duration when a startedAt exists.
+    if (typeof session.startedAt === 'number' && typeof session.finishedAt === 'number') {
+      patch.startedAt = session.startedAt + (newFinishedAt - session.finishedAt);
+    }
+    store.updateSession(sessionId, patch);
+    editingId = null;
+    render();
   }
 
   let metric = 'topset'; // 'topset' | 'e1rm'

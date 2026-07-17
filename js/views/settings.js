@@ -71,9 +71,7 @@ export function renderSettings(container) {
           <input type="file" id="settings-import-file" accept="application/json,.json" hidden>
         </div>
 
-        <p class="settings-help" style="margin-top:22px">Per-muscle recovery times are now tuned on the <strong>Recovery</strong> tab — tap a muscle's + / − to adjust its window, or type an exact value.</p>
-
-        <div class="settings-version">Lean Build v${APP_VERSION} · plan v${CURRENT_PLAN_VERSION} · ${BUILD_DATE}</div>
+        <div class="settings-version" style="margin-top:22px">Lean Build v${APP_VERSION} · plan v${CURRENT_PLAN_VERSION} · ${BUILD_DATE}</div>
         <div class="settings-update">
           <button class="btn-data" id="settings-check-update">↻ Check for Updates</button>
           <span class="settings-update-status muted" id="settings-update-status"></span>
