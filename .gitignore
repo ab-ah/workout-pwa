@@ -2,3 +2,7 @@
 .claude/
 .superpowers/
 node_modules/
+
+# Internal docs: session plans/specs and business/feasibility material are
+# confidential. Only the app itself (code, assets, tests) belongs on GitHub.
+docs/
