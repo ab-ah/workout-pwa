@@ -1,4 +1,4 @@
-const CACHE_NAME = 'leanbuild-v40';
+const CACHE_NAME = 'leanbuild-v41';
 const ASSETS = [
   './',
   './index.html',
@@ -46,6 +46,7 @@ const ASSETS = [
   './js/components/superset-card.js',
   './js/components/stepper.js',
   './js/components/gif-lightbox.js',
+  './js/components/form-popup.js',
   './js/components/mobility-flow.js',
   './js/components/rest-timer.js',
   './js/components/workout-timer.js',

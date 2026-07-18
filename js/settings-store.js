@@ -107,7 +107,10 @@ export const SETTINGS_KEY = 'leanbuild-settings-v1';
 //     old ceiling; nearly all their volume is synergist half-credit from rows).
 //   Migration refreshes setsCount + cue on the affected default exercises and
 //   reinstalls the routines on the bump; logged history is untouched.
-export const CURRENT_PLAN_VERSION = 16;
+// v17 = written per-exercise `form` guidance (DEFAULT_EXERCISE_FORM) shown in the
+// new "ⓘ Form" popup beside each demo. Migration refreshes `form` onto existing
+// default exercises on the bump (same mechanism as `cue`); nothing else changes.
+export const CURRENT_PLAN_VERSION = 17;
 
 const DEFAULT_RECOVERY_HOURS = {
   chest: 54, front_delts: 48, side_delts: 48, traps: 48, triceps: 48, lats: 60,
@@ -255,6 +258,65 @@ const DEFAULT_FATIGUE_SCALE = {
   'hanging-leg-raise': 0.8,
   'treadmill-incline-walk': 0.5,
   'treadmill-hiit-intervals': 0.8,
+};
+
+// Written technique guidance shown in the "ⓘ Form" popup next to each exercise's
+// demo (see components/form-popup.js). One clear, correct paragraph per exercise:
+// setup, the working range, and the most common fault to avoid. Kept in its own
+// map (like DEFAULT_EXERCISE_MUSCLES) and merged onto the pool in
+// defaultExercises(); the plan-version migration refreshes it onto existing users.
+const DEFAULT_EXERCISE_FORM = {
+  'flat-barbell-bench-press': "Plant your feet flat and drive them into the floor, pull your shoulder blades back and down, and keep a slight arch in your lower back. Lower the bar under control to your mid-chest with your elbows tucked to roughly 45° (not flared to 90°), touch lightly, then press up and slightly back toward your face. Keep your wrists stacked over your elbows and never bounce the bar off your chest.",
+  'incline-dumbbell-press': "Set the bench to about 30° — steeper shifts the work off your upper chest onto your shoulders. Start with the dumbbells at the sides of your upper chest, elbows at ~45°, then press up and slightly together without clashing the bells at the top. Lower under control until you feel a stretch across the chest, keeping your shoulder blades pinned to the bench.",
+  'seated-dumbbell-shoulder-press': "Sit tall with your back supported and brace your core so you don't arch your lower back. Start with the dumbbells at ear height, palms facing forward and elbows slightly in front of your body rather than flared straight out to the sides. Press overhead until your arms are nearly straight, then lower under control back to ear level each rep.",
+  'dumbbell-lateral-raise': "Stand with a slight bend in your elbows and a small forward lean. Lead with your elbows, not your hands, and raise the dumbbells out to the sides until your upper arms reach shoulder height — imagine pouring water from the bells at the top. Keep your traps relaxed and lower slowly; don't swing or shrug the weight up.",
+  'lying-dumbbell-triceps-extension': "Lie on a flat bench holding the dumbbells over your chest, palms facing each other. Keeping your upper arms vertical and still, bend only at the elbows to lower the bells toward the sides of your head, then extend back up. Don't let the elbows flare outward or the upper arms drift back — the movement happens only at the elbow.",
+  'close-grip-dumbbell-press': "Press two dumbbells held together, or with a neutral palms-facing grip, over your chest while keeping your elbows tucked close to your sides throughout. The tucked elbows shift the work onto the triceps. Lower to your lower chest under control and press back up without letting the elbows flare out.",
+  'bent-over-barbell-row': "Hinge at the hips to about 45° with soft knees and a flat, braced back — never rounded. Let the bar hang at arm's length, then pull it to your lower ribs or belt line by driving your elbows back and down and squeezing the shoulder blades. Pause briefly at the top, lower under control to a full stretch, and don't heave with your lower back or jerk your torso upright.",
+  'one-arm-dumbbell-row': "Brace one hand and knee on a bench with your back flat and roughly parallel to the floor. Let the dumbbell hang straight down for a full stretch, then row it up toward your hip by driving the elbow back and down, keeping it close to your body. Squeeze the lat at the top, don't twist your torso, and lower under control.",
+  'chest-supported-dumbbell-row': "Lie chest-down on an incline bench so your torso is fully supported — this takes the lower back out of it. Let the dumbbells hang for a full stretch, then row them toward your hips by driving the elbows down and back (not up toward your chest) to bias the lats. Squeeze the shoulder blades at the top and lower slowly.",
+  'back-hyperextension': "Set the pad just below your hip crease so you can hinge freely. Cross your arms or hold a plate, keep a neutral spine, and lower your torso by bending only at the hips until you feel a stretch in the hamstrings. Raise back up by squeezing the glutes until your body is a straight line — don't hyper-arch or swing past neutral.",
+  'preacher-curl': "Rest the backs of your upper arms flat on the pad with your armpits set high on it. Lower the bar under control to a near-full stretch without letting your elbows lift off the pad, then curl up by contracting the biceps, stopping short of straight-up vertical to keep tension. Keep your wrists neutral and don't heave the weight.",
+  'dumbbell-hammer-curl': "Hold the dumbbells with a neutral grip — palms facing each other — and keep that grip the whole set. With your elbows pinned to your sides, curl the weights up without swinging, then lower under control. The neutral grip works the brachialis and forearms alongside the biceps.",
+  'rear-delt-dumbbell-fly': "Hinge forward at the hips to about 45° with a flat back, dumbbells hanging beneath you and a slight bend in the elbows. Raise the bells out to the sides in a wide arc until your upper arms reach shoulder height, leading with the elbows and squeezing the rear delts. Move slowly, don't use momentum, and keep the traps from shrugging.",
+  'goblet-squat': "Hold a single dumbbell vertically against your chest with your elbows tucked. Set your feet about shoulder-width with toes slightly out, brace your core, and squat by sitting back and spreading your knees out over your toes. Descend to at least parallel with your chest tall and heels flat, then drive up through the whole foot.",
+  'barbell-back-squat': "Set the bar on your upper back (not your neck), brace your core hard, and stand with feet shoulder-width, toes slightly out. Break at the hips and knees together, keeping your knees tracking over your toes and your torso as upright as the bar allows, and descend to at least parallel. Drive up through mid-foot without letting your knees cave in or your hips shoot up first.",
+  'dumbbell-romanian-deadlift': "Hold the dumbbells in front of your thighs with softly bent knees. Hinge at the hips by pushing your butt back, keeping the weights close to your legs and your back flat, until you feel a strong hamstring stretch around mid-shin. Drive your hips forward to stand tall and squeeze the glutes — the knees stay mostly fixed; this is a hinge, not a squat.",
+  'bulgarian-split-squat': "Rest the top of your rear foot on a bench with your front foot planted about two feet ahead. Keep your torso slightly forward and lower straight down until your front thigh is roughly parallel, with the front knee tracking over the toes. Drive up through the front heel; most of the load stays on the front leg and the back leg is only for balance.",
+  'dumbbell-calf-raise': "Stand with the balls of your feet on a plate or step, holding dumbbells at your sides. Let your heels drop below the step for a full stretch at the bottom, then rise all the way up onto your toes and pause a second at the top. Move slowly through the whole range — bouncing or cutting the stretch short wastes the set.",
+  'hanging-leg-raise': "Lie flat on your back with your hands under your hips or gripping the bench for stability. Keeping your legs fairly straight, raise them until they're vertical, curling your hips slightly off the floor at the top for the abs. Lower under control and stop just before your heels touch down to keep constant tension — don't let your lower back arch up.",
+  'plank': "Set your forearms under your shoulders and extend your legs back. Form one straight line from head to heels — squeeze your glutes and brace your abs so your hips neither sag nor pike up. Keep your neck neutral and keep breathing; hold the position rather than letting the lower back dip.",
+  'incline-barbell-bench-press': "Set the bench to about 30° and plant your feet, shoulder blades retracted. Lower the bar under control to your upper chest, just below the collarbone, with your elbows at ~45°, then press up and slightly back. Keep your wrists stacked and don't let your shoulders roll forward at the bottom.",
+  'decline-dumbbell-press': "On a slight decline, start with the dumbbells at the sides of your lower chest and your elbows tucked to about 45°. Press up and slightly together over your lower chest, then lower under control to a stretch. Keep your shoulder blades pinned and your core braced so you stay stable on the decline.",
+  'two-arm-dumbbell-row': "Hinge at the hips to about 45° with a flat, braced back and soft knees, letting both dumbbells hang at arm's length. Row them toward your hips by driving the elbows down and back — think 'elbow to back pocket' — and pause briefly at the top. Lower to a full stretch each rep and don't stand up or round your back.",
+  'dumbbell-pullover': "Lie across or along a bench holding one dumbbell over your chest with both hands cupping the top end. Keeping a slight, fixed bend in your elbows, lower the weight back behind your head until you feel a stretch through the chest and lats, then pull it back over your chest. Keep your hips down and move only at the shoulders.",
+  'standing-dumbbell-curl': "Stand tall with the dumbbells at your sides, palms forward and elbows pinned to your ribs. Curl the weights up by contracting the biceps without swinging your torso or letting your elbows drift forward, then lower under full control. Keep your wrists neutral and don't use momentum out of the bottom.",
+  'overhead-dumbbell-triceps-extension': "Hold one dumbbell overhead with both hands (or one per hand), upper arms vertical and close to your head. Bend at the elbows to lower the weight behind your head until you feel a stretch in the triceps, then extend back up. Keep your elbows pointing forward and still — only the forearms move.",
+  'lateral-raise-dropset': "Same as a lateral raise: a slight elbow bend, lead with the elbows, and raise out to shoulder height without shrugging. On the final set, once you hit failure, immediately grab a lighter pair and keep repping to extend the set. Keep your form strict even as you fatigue — reduce the weight rather than swinging it up.",
+  'barbell-romanian-deadlift': "Start standing with the bar at your thighs and knees softly bent. Push your hips back and slide the bar down your legs, keeping it close and your back flat, until you feel a deep hamstring stretch around mid-shin. Drive your hips forward to lock out tall — the bar stays close, the spine stays neutral, and the movement is a hinge, not a squat.",
+  'goblet-heels-elevated-squat': "Hold a dumbbell at your chest and put your heels on a small plate or wedge — the elevation lets you sit straighter and bias the quads. Squat straight down with an upright torso and knees tracking over the toes to at least parallel, then drive up through the whole foot. Keep your chest tall and your heels down on the plate.",
+  'dumbbell-reverse-lunge': "Hold the dumbbells at your sides and step one foot back, lowering until both knees are about 90° and the front thigh is parallel. Keep your torso upright and your weight on the front heel, then drive back to standing through the front leg. Stepping backward rather than forward is easier on the knees and keeps the front shin more vertical.",
+  'dumbbell-lying-leg-curl': "Lie face-down on a bench and pinch a dumbbell between your feet. Keeping your hips pressed into the bench, curl your heels toward your glutes by contracting the hamstrings, pause at the top, then lower under control. Don't let your hips rise or your lower back arch to help.",
+  'weighted-back-hyperextension': "Set the pad just below the hip crease and hold a plate to your chest. With a neutral spine, hinge at the hips to lower your torso until you feel a hamstring stretch, then squeeze the glutes to raise back to a straight line. Add weight gradually and never round or over-extend the spine.",
+  'dumbbell-russian-twist': "Sit with your knees bent and lean back to about 45° with a braced core (lift the heels for more challenge). Hold a dumbbell at your chest and rotate your torso to bring the weight toward the floor on each side, turning through your ribs rather than just swinging your arms. Keep your chest tall and move under control.",
+  'weighted-crunch': "Lie on your back with knees bent, holding a dumbbell or plate on your chest. Curl your shoulder blades off the floor by contracting the abs — think about shortening the distance between your ribs and hips — then lower under control. It's a short crunch, not a full sit-up, so don't yank on your neck or hip-flex your whole torso up.",
+  'dead-bug': "Lie on your back with your arms reaching to the ceiling and your hips and knees bent to 90°. Press your lower back flat into the floor and brace, then slowly lower the opposite arm and leg toward the floor without letting your back arch off it. Return and switch sides — control and a flat back matter far more than range or speed.",
+  'incline-dumbbell-curl': "Sit back on an incline bench (about 45–60°) and let your arms hang straight down, palms forward — this stretched position loads the biceps more than a standing curl. Curl the dumbbells up while keeping your upper arms still and your back on the bench, then lower slowly to a full stretch. Don't let your elbows swing forward.",
+  'dumbbell-hip-thrust': "Sit with your shoulder blades against a bench and a padded dumbbell across your hips, feet flat and about hip-width. Tuck your chin, drive through your heels, and lift your hips until your torso is parallel to the floor, squeezing the glutes hard at the top. Lower under control and keep your ribs down — don't arch your lower back to gain height.",
+  'band-pull-apart': "Hold a band in front of you at shoulder height with straight arms, hands about shoulder-width apart. Pull the band apart out to your sides by squeezing your shoulder blades together, keeping your arms straight, until the band nears your chest. Return slowly under control — this trains the rear delts and upper-back posture.",
+  'treadmill-incline-walk': "Set a brisk pace at a 6–10% incline and walk tall — don't hunch or grip the handrails, which cuts the effort. Let your arms swing naturally and drive through the whole foot. Aim for a pace where you can just about hold a conversation; this steady, low-impact cardio burns calories without eating into your lifting recovery.",
+  'treadmill-hiit-intervals': "Alternate hard efforts (a fast run or steep fast walk) with easy recovery periods. During the work interval push to a genuinely hard pace; during the rest interval slow right down to recover. Warm up first, keep your posture tall, and end the set if your form breaks down — the quality of the hard efforts matters more than grinding through.",
+  'dumbbell-thruster': "Hold the dumbbells at your shoulders and squat down to at least parallel with an upright torso. Drive up explosively through your heels and ride that momentum to press the dumbbells overhead in one fluid motion. Lower the weights back to your shoulders as you descend into the next squat, and keep your core braced throughout.",
+  'dumbbell-swing': "Hold one dumbbell with both hands and hinge at the hips, hiking the weight back between your legs. Snap your hips forward powerfully to swing the weight up to about chest height — the drive comes from your hips and glutes, not your arms or shoulders. Keep your back flat, let the weight float at the top, then hinge again to absorb it.",
+  'renegade-row': "Get into a push-up position gripping two dumbbells with your feet set wide for stability. Brace your core hard and, without twisting your hips, row one dumbbell to your ribs while balancing on the other. Lower it under control and alternate — the priority is an anti-rotation plank, so keep your hips square and level rather than chasing heavy weight.",
+  'dumbbell-push-press': "Hold the dumbbells at your shoulders, brace your core, and dip slightly at the knees. Drive up explosively through your legs and use that momentum to press the dumbbells overhead to a full lockout. Lower under control back to your shoulders — the leg drive lets you move more weight than a strict press while sparing the shoulders.",
+  'dumbbell-farmer-carry': "Pick up a heavy dumbbell in each hand with a flat back, then stand tall with your shoulders back and core braced. Walk with controlled steps, keeping the weights from swinging and your posture upright the whole distance — don't lean or shuffle. Grip hard; this builds grip, traps and core stability.",
+  'burpee': "From standing, squat down and plant your hands, then jump or step your feet back into a plank. Do a push-up (or lower your chest), jump your feet back up to your hands, and stand or jump up. Keep a flat back in the plank and land softly; slow the reps down rather than letting your midsection sag when you tire.",
+  'mountain-climber': "Start in a strong push-up plank with your hands under your shoulders and your core braced. Drive one knee toward your chest, then switch legs in a running motion, keeping your hips low and level. Don't let your butt pike up or your lower back sag — speed comes second to a stable plank.",
+  'push-up': "Set your hands slightly wider than your shoulders and form a straight line from head to heels with your core and glutes tight. Lower under control until your chest is just above the floor with your elbows at about 45° (not flared to 90°), then press back to full extension. Keep your body rigid — no sagging hips or piking up.",
+  'bicycle-crunch': "Lie on your back with your hands lightly behind your head and your shoulder blades off the floor. Bring one knee in while rotating the opposite elbow toward it and extending the other leg, then alternate in a smooth pedalling motion. Turn through your torso to bring elbow and knee together — don't pull on your neck or just flail your arms.",
+  'side-plank': "Lie on your side and prop up on one forearm with your elbow under your shoulder, stacking your feet. Lift your hips so your body forms a straight line from head to feet and hold — don't let your hips sag toward the floor. Keep your neck neutral and brace the obliques; work each side for equal time.",
+  'flutter-kicks': "Lie on your back with your hands under your hips and your legs extended, lower back pressed flat into the floor. Lift your heels a few inches off the ground and make small, quick alternating up-and-down kicks. Keep the movement controlled and your lower back flat the whole time — if it arches, raise your legs higher or stop.",
 };
 
 // All exercise data self-contained
@@ -522,7 +584,8 @@ function migrateSettings(settings) {
         (e.fatigueScale ?? null) !== (d.fatigueScale ?? null) ||
         (d.restSeconds != null && e.restSeconds !== d.restSeconds) ||
         (d.setsCount != null && e.setsCount !== d.setsCount) ||
-        (d.cue != null && e.cue !== d.cue);
+        (d.cue != null && e.cue !== d.cue) ||
+        (d.form != null && e.form !== d.form);
       return stale
         ? {
             ...e, name: d.name, gifUrl: d.gifUrl, muscles: { ...d.muscles },
@@ -532,6 +595,7 @@ function migrateSettings(settings) {
             ...(d.restSeconds != null ? { restSeconds: d.restSeconds } : {}),
             ...(d.setsCount != null ? { setsCount: d.setsCount } : {}),
             ...(d.cue != null ? { cue: d.cue } : {}),
+            ...(d.form != null ? { form: d.form } : {}),
           }
         : e;
     });
@@ -594,6 +658,7 @@ function defaultExercises() {
         muscles: DEFAULT_EXERCISE_MUSCLES[ex.id] ?? {},
         ...(DEFAULT_WEIGHT_STEP[ex.id] != null ? { weightStep: DEFAULT_WEIGHT_STEP[ex.id] } : {}),
         ...(DEFAULT_FATIGUE_SCALE[ex.id] != null ? { fatigueScale: DEFAULT_FATIGUE_SCALE[ex.id] } : {}),
+        ...(DEFAULT_EXERCISE_FORM[ex.id] != null ? { form: DEFAULT_EXERCISE_FORM[ex.id] } : {}),
       });
     }
   }

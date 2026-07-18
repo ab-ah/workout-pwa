@@ -405,6 +405,87 @@
   margin-top: 6px;
 }
 
+/* Per-exercise reorder (▲▼) + remove controls, kept compact (not 44px each). */
+.routine-ex-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.routine-ex-actions .btn-icon {
+  min-width: 0;
+  min-height: 0;
+  padding: 5px 9px;
+  font-size: 12px;
+  line-height: 1;
+}
+
+/* Superset grouping in the routine editor (item: group exercises into a pair). */
+.routine-ss-group {
+  border: 1px solid var(--legs);
+  border-radius: 12px;
+  padding: 2px 10px;
+  margin: 4px 0;
+  background: rgba(192, 139, 255, .06);
+}
+.routine-ss-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 0 2px;
+}
+.routine-ss-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.routine-ss-actions .btn-icon {
+  min-width: 0;
+  min-height: 0;
+  padding: 5px 9px;
+  font-size: 12px;
+  line-height: 1;
+}
+.routine-ss-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--legs);
+}
+.routine-ss-group .routine-ex-item {
+  border-bottom: 1px dashed var(--line);
+}
+.routine-ss-group .routine-ex-item:last-child {
+  border-bottom: none;
+}
+.routine-ss-unlink,
+.routine-ss-link {
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  padding: 5px 11px;
+  cursor: pointer;
+  line-height: 1;
+}
+.routine-ss-unlink:hover,
+.routine-ss-link:hover {
+  color: var(--ink);
+  border-color: var(--accent-dim);
+}
+.routine-ss-link {
+  display: block;
+  width: 100%;
+  margin: 3px 0 5px;
+}
+
 /* GIF preview in the Exercises tab */
 .settings-gif-preview {
   width: 100%;

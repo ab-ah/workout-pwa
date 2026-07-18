@@ -631,6 +631,58 @@ html{scroll-padding-bottom:170px;scroll-padding-top:90px}
   text-transform:uppercase;color:var(--muted);
 }
 
+/* Form-cue + Google-search controls beside an exercise demo (form-popup.js) */
+.gif-info-row{display:flex;justify-content:center;gap:8px;margin:-2px 0 8px;flex-wrap:wrap}
+.ss-panel .gif-info-row{justify-content:flex-start;margin:2px 0 4px}
+.gif-info-btn{
+  display:inline-flex;align-items:center;gap:5px;
+  font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:.04em;
+  color:var(--muted);background:rgba(255,255,255,.05);
+  border:1px solid var(--line);border-radius:999px;padding:5px 11px;
+  cursor:pointer;text-decoration:none;line-height:1;
+}
+.gif-info-btn:hover{color:var(--ink);border-color:var(--accent-dim)}
+.gif-info-btn:active{transform:scale(.97)}
+.gif-info-icon{font-size:12px}
+
+/* Written-form popup — pops over the screen, tap backdrop / ✕ / Esc to close */
+.form-popup{
+  position:fixed;inset:0;z-index:1100;
+  display:flex;align-items:center;justify-content:center;padding:22px;
+  background:rgba(6,8,12,.9);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);
+  animation:gif-lightbox-in .15s ease;
+}
+.form-popup-card{
+  width:100%;max-width:440px;max-height:82vh;overflow-y:auto;
+  background:var(--panel);border:1px solid var(--line);border-radius:16px;
+  padding:18px 20px 20px;box-shadow:0 24px 70px rgba(0,0,0,.7);
+}
+.form-popup-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px}
+.form-popup-title{font-family:'Anton',sans-serif;font-size:19px;text-transform:uppercase;line-height:1.15}
+.form-popup-close{
+  flex-shrink:0;background:transparent;border:1px solid var(--line);border-radius:8px;
+  color:var(--muted);font-size:15px;line-height:1;padding:6px 10px;cursor:pointer;
+}
+.form-popup-close:hover{color:var(--ink);border-color:var(--accent-dim)}
+.form-popup-body{font-size:14.5px;line-height:1.62;color:var(--ink);margin:0}
+
+/* Collapsible history session rows: one line (name + date) → full panel */
+.session-row.session-collapse{padding:0;overflow:hidden}
+.session-summary{
+  display:flex;align-items:center;gap:10px;justify-content:space-between;
+  padding:13px 18px;cursor:pointer;list-style:none;
+}
+.session-summary::-webkit-details-marker{display:none}
+.session-summary-text{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;min-width:0}
+.session-summary-text>strong{font-size:15px}
+.session-summary-date{font-family:'JetBrains Mono',monospace;font-size:12px}
+.session-summary-chevron{color:var(--muted);font-size:12px;flex-shrink:0;transition:transform .15s ease}
+.session-collapse[open] .session-summary-chevron{transform:rotate(180deg)}
+.session-expanded{padding:0 18px 14px}
+.session-expanded-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px}
+.session-expanded>ul{margin:4px 0 0;padding-left:20px}
+.session-expanded>ul li{font-size:13px}
+
 /* Respect the OS "reduce motion" preference: neutralise CSS animations,
    transitions and smooth scrolling. Demo playback is handled in JS: demo-media.js
    drops autoplay under reduce-motion so the (now video, not GIF) demo holds on

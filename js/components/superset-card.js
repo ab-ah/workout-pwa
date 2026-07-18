@@ -9,6 +9,7 @@ import { getPendingRestSeconds, clearPendingRest } from '../rest-persist.js';
 import { stepperHtml, wireSteppers } from './stepper.js';
 import { escapeHtml } from '../escape.js';
 import { demoMediaHtml } from './demo-media.js';
+import { formInfoButtonsHtml } from './form-popup.js';
 
 // Interleaved antagonist-superset card: two exercises logged a set at a time in
 // alternation (A1, B1, rest, A2, B2, rest, …) with one shared rest after each
@@ -163,6 +164,7 @@ export function mountSupersetCard(container, exA, exB, prevSets = [], initialSet
           <span class="exercise-name">${escapeHtml(ex.name)}</span>
           ${demoMediaHtml({ gifUrl: ex.gifUrl, className: 'ss-gif', name: ex.name })}
         </div>
+        ${formInfoButtonsHtml(ex)}
         <p class="muted">${escapeHtml(ex.repRange)} reps · rest ${ex.restSeconds}s${ex.startWeight ? ` · start ~${escapeHtml(String(ex.startWeight))}` : ''}</p>
         ${recommendedWeightBlock(ex, prevs[side])}
         ${hint ? `<p class="progression-hint">💡 ${escapeHtml(hint.text)}</p>` : ''}

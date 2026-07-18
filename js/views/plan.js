@@ -3,6 +3,7 @@ import { createMuscleAtlas, ROLE_COLORS, MUSCLE_LABELS } from '../components/mus
 import { weeklyVolumeByMuscle, volumeStatus } from '../volume.js';
 import { routineReadiness } from '../recovery-model.js';
 import { estimateRoutineMinutes } from '../duration-estimate.js';
+import { buildFlowSteps } from '../supersets.js';
 import { escapeHtml } from '../escape.js';
 
 // The Plan tab is the program-building surface: your weekly Schedule, the
@@ -42,11 +43,14 @@ const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frid
 const READINESS_LOW = 0.6;
 
 // Colour + label per volume tier (see volume.js volumeStatus). Warm ramp for the
-// productive path — orange (undertraining) → amber (maintenance) → green
-// (optimal) — then RED for over-MRV, the actual overtraining risk.
+// productive path — orange (undertraining) → yellow (maintenance) → green
+// (optimal) — then RED for over-MRV, the actual overtraining risk. Below and
+// maintenance are deliberately a clear orange vs. yellow (not the old near-identical
+// #e08a3a/#e0b03a, which read as the same colour and hid that a muscle was actually
+// above MEV in the maintenance band).
 const VOLUME_TIERS = {
-  below:       { color: '#e08a3a', label: 'below MEV' },
-  maintenance: { color: '#e0b03a', label: 'maintenance' },
+  below:       { color: '#e0743a', label: 'below MEV' },
+  maintenance: { color: '#e8c22e', label: 'maintenance' },
   optimal:     { color: '#46d160', label: 'optimal' },
   high:        { color: '#e0553a', label: 'over MRV' },
   unknown:     { color: '#8a8a8a', label: '' },
@@ -71,6 +75,60 @@ function getExMuscles(ex) {
 /** Save the muscles map back to the exercise object. */
 function setExMuscles(ex, rolesObj) {
   ex.muscles = { ...rolesObj };
+}
+
+// ── Superset editing (Option A: group exercises inside a routine) ─────────────
+// A routine's `supersets` are [idA, idB] pairs the Today flow runs interleaved
+// (see supersets.js). The engine only honours a pair when its two exercises are
+// ADJACENT in exerciseIds, so the editor links/unlinks adjacent exercises and
+// prunes any pair that reordering has pulled apart. The same exercise can sit in
+// different supersets across different routines — each routine owns its own pairs.
+
+/** Drop any superset pair whose two ids are no longer adjacent (or present) in
+ *  the routine's exercise order, keeping the stored pairs valid. Mutates. */
+function pruneSupersets(routine) {
+  const ids = routine.exerciseIds ?? [];
+  const kept = (routine.supersets ?? []).filter(([a, b]) => {
+    const ia = ids.indexOf(a), ib = ids.indexOf(b);
+    return ia !== -1 && ib !== -1 && Math.abs(ia - ib) === 1;
+  });
+  if (kept.length) routine.supersets = kept;
+  else delete routine.supersets;
+}
+
+/** True if `id` is already part of a superset pair in this routine. */
+function isInSuperset(routine, id) {
+  return (routine.supersets ?? []).some(p => p.includes(id));
+}
+
+/** Pair the exercises at positions `pos` and `pos + 1` into a superset, if both
+ *  exist and neither is already paired. Mutates. */
+function linkSuperset(routine, pos) {
+  const ids = routine.exerciseIds ?? [];
+  const a = ids[pos], b = ids[pos + 1];
+  if (a == null || b == null) return;
+  if (isInSuperset(routine, a) || isInSuperset(routine, b)) return;
+  routine.supersets = [...(routine.supersets ?? []), [a, b]];
+}
+
+/** Remove the superset pairing exercises `a` and `b`. Mutates. */
+function unlinkSuperset(routine, a, b) {
+  const kept = (routine.supersets ?? []).filter(p => !(p.includes(a) && p.includes(b)));
+  if (kept.length) routine.supersets = kept;
+  else delete routine.supersets;
+}
+
+/** Move the flow step at `stepIndex` — a single exercise OR a whole superset —
+ *  one place in `dir` (-1 up / +1 down). Reordering whole steps keeps a paired
+ *  superset's two exercises together (they travel as one unit) rather than a
+ *  single exercise sliding between them. Mutates. */
+function moveStep(routine, stepIndex, dir) {
+  const steps = buildFlowSteps(routine);
+  const to = stepIndex + dir;
+  if (to < 0 || to >= steps.length) return;
+  [steps[stepIndex], steps[to]] = [steps[to], steps[stepIndex]];
+  routine.exerciseIds = steps.flatMap(s => s.exerciseIds);
+  pruneSupersets(routine); // pairs stay intact; safety only
 }
 
 export function renderPlan(container, store) {
@@ -314,27 +372,73 @@ export function renderPlan(container, store) {
         return `<div class="routine-card is-collapsed" style="border-left:3px solid ${borderColor}">${head}</div>`;
       }
 
-      const exListItems = (r.exerciseIds ?? []).map(exId => {
+      // One exercise row: expandable detail + remove, plus optional reorder
+      // controls (`moveControls`). A superset's member rows omit them because the
+      // whole group reorders as one unit from its header.
+      const renderExRow = (exId, moveControls = '') => {
         const ex = allExercises.find(e => e.id === exId);
         if (!ex) return '';
         const key = `${ri}:${exId}`;
-        const isOpen = expandedRoutineExKey === key;
-        const details = isOpen ? `
+        const isExOpen = expandedRoutineExKey === key;
+        const details = isExOpen ? `
           <div class="routine-ex-detail">
             <p class="muted">${ex.setsCount} sets · ${ex.repRange} reps · rest ${ex.restSeconds}s${ex.startWeight ? ` · start ${ex.startWeight}` : ''}</p>
             ${ex.gifUrl ? `<img class="routine-ex-gif" src="${escapeHtml(ex.gifUrl)}" alt="${escapeHtml(ex.name)} demonstration" loading="lazy" onerror="this.style.display='none'">` : ''}
             <div id="routine-atlas-${ri}-${exId}" class="routine-ex-atlas"></div>
           </div>` : '';
-        return `<div class="routine-ex-item ${isOpen ? 'expanded' : ''}">
+        return `<div class="routine-ex-item ${isExOpen ? 'expanded' : ''}">
           <div class="routine-ex-row">
             <button class="routine-ex-toggle" data-routine="${ri}" data-ex-id="${exId}">
-              <span class="routine-ex-chevron">${isOpen ? '▲' : '▼'}</span>
+              <span class="routine-ex-chevron">${isExOpen ? '▲' : '▼'}</span>
               <span>${escapeHtml(ex.name)}</span>
             </button>
-            <button class="btn-icon danger" data-remove-routine="${ri}" data-ex-id="${exId}" title="Remove from routine">×</button>
+            <span class="routine-ex-actions">
+              ${moveControls}
+              <button class="btn-icon danger" data-remove-routine="${ri}" data-ex-id="${exId}" title="Remove from routine">×</button>
+            </span>
           </div>
           ${details}
         </div>`;
+      };
+
+      // Reorder ▲▼ for a whole flow step (single OR superset). Reordering at step
+      // granularity is what keeps a linked pair moving together as one unit.
+      const moveBtns = (si, label) => `
+        <button class="btn-icon" data-move-routine="${ri}" data-move-step="${si}" data-move-dir="-1" title="Move up" aria-label="Move ${escapeHtml(label)} up">▲</button>
+        <button class="btn-icon" data-move-routine="${ri}" data-move-step="${si}" data-move-dir="1" title="Move down" aria-label="Move ${escapeHtml(label)} down">▼</button>`;
+
+      // Group the routine into flow steps (single exercise, or a 2-exercise
+      // superset of adjacent ids) — the same grouping the workout flow uses — so
+      // paired exercises render bracketed (reorder + Unlink on the group header),
+      // and a single exercise offers "make superset with next" when the next is
+      // also single. `exPos` tracks the exercise index for the link action.
+      let exPos = 0;
+      const steps = buildFlowSteps(r);
+      const exListItems = steps.map((step, si) => {
+        const ids = step.exerciseIds;
+        const startPos = exPos;
+        exPos += ids.length;
+        if (ids.length === 2) {
+          return `<div class="routine-ss-group">
+            <div class="routine-ss-head">
+              <span class="routine-ss-badge">🔁 Superset</span>
+              <span class="routine-ss-actions">
+                ${moveBtns(si, 'superset')}
+                <button class="routine-ss-unlink" data-unlink-routine="${ri}" data-unlink-a="${escapeHtml(ids[0])}" data-unlink-b="${escapeHtml(ids[1])}">Unlink</button>
+              </span>
+            </div>
+            ${renderExRow(ids[0])}
+            ${renderExRow(ids[1])}
+          </div>`;
+        }
+        const ex = allExercises.find(e => e.id === ids[0]);
+        const row = renderExRow(ids[0], moveBtns(si, ex ? ex.name : 'exercise'));
+        const next = steps[si + 1];
+        const canLink = next && next.exerciseIds.length === 1;
+        const linkBtn = canLink
+          ? `<button class="routine-ss-link" data-link-routine="${ri}" data-link-pos="${startPos}" title="Run these two as a superset">⇄ Make superset with next</button>`
+          : '';
+        return row + linkBtn;
       }).join('');
 
       const availableExercises = allExercises.filter(e => !(r.exerciseIds ?? []).includes(e.id));
@@ -445,6 +549,37 @@ export function renderPlan(container, store) {
         const exId = btn.dataset.exId;
         settings.routines[ri].exerciseIds = (settings.routines[ri].exerciseIds ?? []).filter(id => id !== exId);
         if (expandedRoutineExKey === `${ri}:${exId}`) expandedRoutineExKey = null;
+        save();
+        render();
+      });
+    });
+
+    // Reorder a flow step within its routine (▲▼) — a single exercise or a whole
+    // superset, which travels as one unit.
+    body.querySelectorAll('[data-move-routine]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const ri = +btn.dataset.moveRoutine;
+        moveStep(settings.routines[ri], +btn.dataset.moveStep, +btn.dataset.moveDir);
+        save();
+        render();
+      });
+    });
+
+    // Link two adjacent exercises into a superset.
+    body.querySelectorAll('[data-link-routine]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const ri = +btn.dataset.linkRoutine;
+        linkSuperset(settings.routines[ri], +btn.dataset.linkPos);
+        save();
+        render();
+      });
+    });
+
+    // Break a superset back into two singles.
+    body.querySelectorAll('[data-unlink-routine]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const ri = +btn.dataset.unlinkRoutine;
+        unlinkSuperset(settings.routines[ri], btn.dataset.unlinkA, btn.dataset.unlinkB);
         save();
         render();
       });

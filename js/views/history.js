@@ -150,25 +150,30 @@ export function renderHistory(container, store) {
     const modeByExerciseId = new Map(
       (getSettings().exercises ?? []).map((ex) => [ex.id, exerciseLogMode(ex)])
     );
+    // Each session collapses to a single line (day name + date); tapping it
+    // expands the full panel — set-by-set detail plus the ✎ edit control.
     body.innerHTML = history.map((session) => {
       if (editingId === session.sessionId) return sessionEditorHtml(session, modeByExerciseId);
       const totalSets = session.exercises.reduce((n, e) => n + (e.sets?.length ?? 0), 0);
       return `
-        <div class="session-row">
-          <div class="session-row-head">
-            <strong>${escapeHtml(session.dayTitle)}</strong>
-            <span class="session-row-meta">
-              <span class="muted">${escapeHtml(session.date)}</span>
-              <button class="btn-icon session-edit-btn" data-edit-open="${escapeHtml(session.sessionId)}" title="Edit date, time & sets">✎</button>
+        <details class="session-row session-collapse">
+          <summary class="session-summary">
+            <span class="session-summary-text">
+              <strong>${escapeHtml(session.dayTitle)}</strong>
+              <span class="muted session-summary-date">${escapeHtml(session.date)}</span>
             </span>
-          </div>
-          <details class="session-details">
-            <summary>${plural(session.exercises.length, 'exercise')} · ${plural(totalSets, 'set')}</summary>
+            <span class="session-summary-chevron" aria-hidden="true">▾</span>
+          </summary>
+          <div class="session-expanded">
+            <div class="session-expanded-head">
+              <span class="muted">${plural(session.exercises.length, 'exercise')} · ${plural(totalSets, 'set')}</span>
+              <button class="btn-icon session-edit-btn" data-edit-open="${escapeHtml(session.sessionId)}" title="Edit date, time &amp; sets">✎ Edit</button>
+            </div>
             <ul>
               ${session.exercises.map((e) => `<li>${escapeHtml(e.name)}: ${e.sets.map((s) => formatHistorySet(s, modeByExerciseId.get(e.exerciseId))).join(', ')}</li>`).join('')}
             </ul>
-          </details>
-        </div>
+          </div>
+        </details>
       `;
     }).join('');
 
